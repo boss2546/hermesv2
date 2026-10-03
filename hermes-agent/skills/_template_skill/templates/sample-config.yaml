@@ -1,0 +1,14 @@
+# Sample Configuration Template
+# Used as starter template by skills/_template_skill/SKILL.md
+
+version: "1.0"
+environment: "development"
+service:
+  name: "template-service"
+  port: 8080
+  timeout_seconds: 30
+
+options:
+  enable_cache: true
+  log_level: "INFO"
+  retry_attempts: 3
