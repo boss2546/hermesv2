@@ -7,10 +7,14 @@
 4. **9Router AI Gateway (`api.meuu.club`):** เชื่อมต่อโมเดล Claude 4.6 Sonnet, Gemini 2.5 Flash, ระบบ TTS ภาษาไทย และ STT 2.7s
 5. **Universal BOSS-AI Suite (v1.6.1):** รวม 6 สกิลระดับโปรดักชัน (`docker-workflow`, `production-architecture`, `git-team-workflow`, `meuu-api-gateway`, `oracle-lifecycle`, `maymint-companion`)
 
+6. **Hermes v2 Agent & Master Blueprint Ecosystem:** ติดตั้ง Hermes Agent แกนกลางรุ่นล่าสุด เชื่อมต่อ 9Router AI Gateway ปรับแต่งจิตวิญญาณมายมิ้น (Maymint) สกัดสถาปัตยกรรมและสร้าง Master Blueprint สำหรับ Custom Tool (`tools/_template_custom_tool.py`) และ Skill (`skills/_template_skill/`) พร้อมซิงค์ GitHub Repository `boss2546/hermesv2` สมบูรณ์ 100%
+
 ---
 
 ## 🚀 สถาปัตยกรรมโปรเจกต์ Hermes v2
 * **เป้าหมายโปรเจกต์:** พัฒนาระบบ AI Assistant & Automation รุ่นที่ 2 ต่อยอดจากสถาปัตยกรรมและสกิลกลางแม่บท
+* **GitHub Repository:** https://github.com/boss2546/hermesv2 (Branch: `main`)
 * **แกนเชื่อมต่อ AI:** 9Router AI Gateway (`https://api.meuu.club/v1`)
 * **ระบบความจำ:** ระบบความจำ 2 ชั้น (Local `./memory/` + Global Oracle Vault `~/ψ/`)
 * **มาตรฐาน Git:** ทำงานเป็นทีมด้วย Git Team Workflow (Branching, Semantic Commits, Zero-leakage)
+
