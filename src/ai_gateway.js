@@ -18,10 +18,11 @@ export class MeuuAIGateway {
     this.headers = {
       'Authorization': `Bearer ${this.apiKey}`,
       'Content-Type': 'application/json',
+      'User-Agent': 'Hermes-v2/1.0.0',
     };
   }
 
-  async chat({ messages, model = DEFAULT_CHAT_MODEL, temperature = 0.7, max_tokens = 4096 }) {
+  async chat({ messages, model = DEFAULT_CHAT_MODEL, temperature = 0.7, max_tokens = 4096, stream = false }) {
     const res = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: this.headers,
@@ -30,6 +31,7 @@ export class MeuuAIGateway {
         messages,
         temperature,
         max_tokens,
+        stream,
       }),
     });
 
@@ -37,7 +39,28 @@ export class MeuuAIGateway {
       throw new Error(`9Router Error ${res.status}: ${await res.text()}`);
     }
 
-    const data = await res.json();
+    const text = await res.text();
+    if (text.startsWith('data:')) {
+      const lines = text.split('\n');
+      let combined = '';
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('data:') && !trimmed.includes('[DONE]')) {
+          const jsonStr = trimmed.slice(5).trim();
+          if (jsonStr) {
+            try {
+              const chunk = JSON.parse(jsonStr);
+              if (chunk.choices?.[0]?.delta?.content) {
+                combined += chunk.choices[0].delta.content;
+              }
+            } catch (_) {}
+          }
+        }
+      }
+      return combined;
+    }
+
+    const data = JSON.parse(text);
     return data.choices[0].message.content;
   }
 
@@ -47,7 +70,7 @@ export class MeuuAIGateway {
       messages.push({ role: 'system', content: systemPrompt });
     }
     messages.push({ role: 'user', content: prompt });
-    return this.chat({ messages, model: DEFAULT_FAST_MODEL });
+    return this.chat({ messages, model: DEFAULT_FAST_MODEL, stream: false });
   }
 
   async textToSpeech(text, outputPath = 'output.mp3', voice = DEFAULT_TTS_VOICE) {
@@ -81,4 +104,13 @@ export class MeuuAIGateway {
     const data = await res.json();
     return data.data || [];
   }
+}
+
+// Quick self-test if executed directly
+if (process.argv[1]?.endsWith('ai_gateway.js')) {
+  const client = new MeuuAIGateway();
+  console.log('Testing connection to 9Router Gateway (Node.js ESM)...');
+  client.fastChat('สวัสดีจ้า ทดสอบ Node.js Client 1 บรรทัด')
+    .then(reply => console.log('✅ AI Response:', reply))
+    .catch(err => console.error('❌ Error:', err));
 }

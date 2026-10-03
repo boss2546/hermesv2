@@ -1,18 +1,20 @@
 """
 🌐 9Router Central AI Gateway Client (api.meuu.club)
-Hermes v2 Universal AI Client: Supports Claude Sonnet 4.6, Gemini 2.5 Flash, and Thai TTS
+Hermes v2 Universal AI Client (Zero-Dependency Python Standard Library)
+Supports: Claude Sonnet 4.6, Gemini 2.5 Flash, and Thai TTS
 """
 
 import os
-import requests
-from typing import Generator, Optional, Dict, Any, List
+import json
+import urllib.request
+import urllib.error
+from typing import Optional, Dict, Any, List
 
-# Load configuration from environment or fallback to defaults
 BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.meuu.club/v1")
 API_KEY = os.getenv("OPENAI_API_KEY", "sk-07ccde1e709eb2ca-e05r6c-a11b5d7c")
 DEFAULT_CHAT_MODEL = os.getenv("DEFAULT_CHAT_MODEL", "ag/claude-sonnet-4-6")
 DEFAULT_FAST_MODEL = os.getenv("DEFAULT_FAST_MODEL", "ag/gemini-2.5-flash")
-DEFAULT_TTS_VOICE = os.getenv("DEFAULT_TTS_VOICE", "th-TH-PremwadeeNeural")
+DEFAULT_TTS_VOICE = os.getenv("DEFAULT_TTS_VOICE", "edge-tts/th-TH-PremwadeeNeural")
 
 
 class MeuuAIGateway:
@@ -24,6 +26,7 @@ class MeuuAIGateway:
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
+            "User-Agent": "Hermes-v2/1.0.0",
         }
 
     def chat(
@@ -44,14 +47,36 @@ class MeuuAIGateway:
         }
 
         endpoint = f"{self.base_url}/chat/completions"
-        response = requests.post(endpoint, headers=self.headers, json=payload, stream=stream)
-        response.raise_for_status()
+        req = urllib.request.Request(
+            endpoint,
+            data=json.dumps(payload).encode("utf-8"),
+            headers=self.headers,
+            method="POST",
+        )
 
-        if stream:
-            return response.iter_lines()
-        
-        data = response.json()
-        return data["choices"][0]["message"]["content"]
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                raw_text = resp.read().decode("utf-8")
+                
+                # If SSE streaming format
+                if raw_text.startswith("data:"):
+                    content_parts = []
+                    for line in raw_text.splitlines():
+                        line = line.strip()
+                        if line.startswith("data:") and not line.endswith("[DONE]"):
+                            json_str = line[5:].strip()
+                            if json_str:
+                                chunk = json.loads(json_str)
+                                choices = chunk.get("choices", [])
+                                if choices and "delta" in choices[0]:
+                                    content_parts.append(choices[0]["delta"].get("content", ""))
+                    return "".join(content_parts)
+
+                data = json.loads(raw_text)
+                return data["choices"][0]["message"]["content"]
+        except urllib.error.HTTPError as e:
+            error_body = e.read().decode("utf-8")
+            raise RuntimeError(f"9Router HTTP {e.code}: {error_body}") from e
 
     def fast_chat(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """High-speed query using Gemini 2.5 Flash"""
@@ -59,7 +84,7 @@ class MeuuAIGateway:
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
-        return self.chat(messages=messages, model=DEFAULT_FAST_MODEL)
+        return self.chat(messages=messages, model=DEFAULT_FAST_MODEL, stream=False)
 
     def text_to_speech(
         self,
@@ -75,25 +100,34 @@ class MeuuAIGateway:
         }
 
         endpoint = f"{self.base_url}/audio/speech"
-        response = requests.post(endpoint, headers=self.headers, json=payload)
-        response.raise_for_status()
+        req = urllib.request.Request(
+            endpoint,
+            data=json.dumps(payload).encode("utf-8"),
+            headers=self.headers,
+            method="POST",
+        )
 
-        with open(output_filepath, "wb") as f:
-            f.write(response.content)
-
-        return output_filepath
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                with open(output_filepath, "wb") as f:
+                    f.write(resp.read())
+            return output_filepath
+        except urllib.error.HTTPError as e:
+            error_body = e.read().decode("utf-8")
+            raise RuntimeError(f"9Router TTS HTTP {e.code}: {error_body}") from e
 
     def list_models(self) -> List[Dict[str, Any]]:
         """List all available models on 9Router Gateway"""
         endpoint = f"{self.base_url}/models"
-        response = requests.get(endpoint, headers=self.headers)
-        response.raise_for_status()
-        return response.json().get("data", [])
+        req = urllib.request.Request(endpoint, headers=self.headers, method="GET")
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            return data.get("data", [])
 
 
 if __name__ == "__main__":
     client = MeuuAIGateway()
-    print("Testing connection to 9Router Gateway...")
+    print("Testing connection to 9Router Gateway (Python Zero-Dep)...")
     try:
         reply = client.fast_chat("สวัสดีจ้า ขอข้อความสั้นๆ 1 บรรทัดทดสอบระบบหน่อยนะ")
         print(f"✅ AI Response: {reply}")
