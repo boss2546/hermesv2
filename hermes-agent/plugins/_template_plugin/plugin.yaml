@@ -1,0 +1,18 @@
+name: template-plugin
+version: 1.0.0
+description: "Master template plugin for Hermes Agent — demonstrates hooks, custom slash commands, and tools."
+author: "Boss (ratchanon2003), Hermes Agent"
+license: MIT
+kind: general
+provides_hooks:
+  - on_session_start
+  - on_session_end
+  - pre_tool_call
+  - post_tool_call
+provides_commands:
+  - template-cmd
+provides_tools:
+  - template_plugin_action
+config:
+  enable_logging: true
+  api_endpoint: "https://api.example.com/v1"
