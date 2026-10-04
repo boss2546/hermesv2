@@ -50,6 +50,10 @@ wheels/
 logs/
 tmp/
 temp/
+*.mp3
+*.wav
+*.ogg
+
 
 # IDE specific cache (but keep team rules)
 .idea/
