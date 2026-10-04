@@ -9,8 +9,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --glass-bg: rgba(25, 15, 38, 0.35);
-      --glass-card: rgba(22, 14, 35, 0.42);
+      --glass-blur: 32px;
+      --glass-opacity: 0.42;
+      --glass-bg: rgba(25, 15, 38, var(--glass-opacity));
+      --glass-card: rgba(22, 14, 35, var(--glass-opacity));
       --glass-card-hover: rgba(40, 25, 60, 0.55);
       --glass-border: rgba(255, 255, 255, 0.22);
       --glass-border-light: rgba(255, 255, 255, 0.35);
@@ -45,7 +47,7 @@
       overflow-x: hidden;
     }
 
-    /* User Custom Dreamscape Wallpaper Background */
+    /* Custom Dreamscape Wallpaper Background */
     .wallpaper-bg {
       position: fixed;
       top: 0;
@@ -57,6 +59,7 @@
       background-position: center 30%;
       background-repeat: no-repeat;
       z-index: -2;
+      transition: background-image 0.8s ease-in-out;
       animation: subtle-pan 25s ease-in-out infinite alternate;
     }
 
@@ -85,7 +88,7 @@
       padding: 1.2rem 2.8rem;
       background: rgba(25, 15, 40, 0.35);
       border-bottom: 1px solid var(--glass-border);
-      backdrop-filter: blur(32px) saturate(200%);
+      backdrop-filter: blur(var(--glass-blur)) saturate(200%);
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
     }
 
@@ -134,7 +137,7 @@
     .header-controls {
       display: flex;
       align-items: center;
-      gap: 1.5rem;
+      gap: 1.2rem;
     }
 
     /* Auto Speak Glass Toggle */
@@ -223,6 +226,11 @@
       box-shadow: 0 10px 25px -5px rgba(236, 72, 153, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.6);
     }
 
+    .glass-btn.icon-only {
+      padding: 0.5rem 0.8rem;
+      font-size: 1.1rem;
+    }
+
     /* Main Container */
     main {
       flex: 1;
@@ -241,7 +249,7 @@
       border: 1px solid var(--glass-border);
       border-radius: 24px;
       padding: 1.3rem 1.8rem;
-      backdrop-filter: blur(36px) saturate(210%);
+      backdrop-filter: blur(var(--glass-blur)) saturate(210%);
       box-shadow: var(--glass-specular);
       position: relative;
       overflow: hidden;
@@ -354,7 +362,7 @@
       border: 1px solid var(--glass-border);
       border-radius: 32px;
       padding: 2.8rem 2.2rem;
-      backdrop-filter: blur(40px) saturate(210%);
+      backdrop-filter: blur(var(--glass-blur)) saturate(210%);
       box-shadow: var(--glass-specular);
       display: flex;
       flex-direction: column;
@@ -586,6 +594,230 @@
       border: 1px solid rgba(255, 255, 255, 0.15);
     }
 
+    /* =========================================================================
+       LIQUID GLASS CONFIG MODAL (หน้าต่างตั้งค่าระบบ)
+       ========================================================================= */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(10, 5, 20, 0.65);
+      backdrop-filter: blur(18px);
+      z-index: 999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+      opacity: 1;
+    }
+
+    .modal-window {
+      background: rgba(26, 16, 42, 0.82);
+      border: 1.5px solid rgba(255, 255, 255, 0.3);
+      border-radius: 28px;
+      max-width: 650px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 2.2rem;
+      backdrop-filter: blur(40px) saturate(220%);
+      box-shadow: var(--glass-specular), 0 30px 80px rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      gap: 1.8rem;
+      position: relative;
+      animation: modalSlide 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes modalSlide {
+      from { opacity: 0; transform: translateY(20px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+      padding-bottom: 1rem;
+    }
+
+    .modal-header h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #ffffff;
+    }
+
+    .modal-close-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .modal-close-btn:hover {
+      background: rgba(236, 72, 153, 0.4);
+      transform: rotate(90deg);
+    }
+
+    .config-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--pink-glow);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .form-group.full-width {
+      grid-column: span 2;
+    }
+
+    .form-group label {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .form-group select, .form-group input[type="text"] {
+      background: rgba(15, 10, 25, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      padding: 0.65rem 0.9rem;
+      border-radius: 14px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-group select:focus, .form-group input[type="text"]:focus {
+      border-color: var(--pink-glow);
+      box-shadow: 0 0 10px rgba(236, 72, 153, 0.4);
+    }
+
+    .range-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .range-wrapper input[type="range"] {
+      flex: 1;
+      accent-color: var(--pink-core);
+      cursor: pointer;
+    }
+
+    .range-val {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--pink-glow);
+      min-width: 50px;
+      text-align: right;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+      padding-top: 1.2rem;
+    }
+
+    .save-btn {
+      background: linear-gradient(135deg, var(--pink-core), var(--purple-accent));
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: white;
+      padding: 0.65rem 1.6rem;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      box-shadow: 0 5px 20px rgba(236, 72, 153, 0.5);
+      transition: all 0.2s;
+    }
+
+    .save-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(236, 72, 153, 0.8);
+    }
+
+    .reset-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text-dim);
+      padding: 0.65rem 1.2rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .reset-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+
+    /* Toast Notification */
+    .toast-pill {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(20, 10, 30, 0.9);
+      border: 1px solid var(--pink-glow);
+      color: white;
+      padding: 0.75rem 1.8rem;
+      border-radius: 30px;
+      font-size: 0.92rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(236, 72, 153, 0.6);
+      backdrop-filter: blur(20px);
+      z-index: 1000;
+      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      pointer-events: none;
+    }
+
+    .toast-pill.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
     footer {
       text-align: center;
       padding: 1.2rem;
@@ -618,7 +850,8 @@
           <span class="slider"></span>
         </label>
       </label>
-      <button class="glass-btn" id="testVoiceBtn">🔊 ทดสอบเสียงมายมิ้นท์</button>
+      <button class="glass-btn" id="testVoiceBtn">🔊 ทดสอบเสียง</button>
+      <button class="glass-btn icon-only" id="configOpenBtn" title="ตั้งค่าระบบ (Voice & AI Config)">⚙️</button>
     </div>
   </header>
 
@@ -698,8 +931,109 @@
     </div>
   </main>
 
+  <!-- =========================================================================
+       CONFIG MODAL WINDOW (หน้าต่างปรับแต่งการตั้งค่า)
+       ========================================================================= -->
+  <div class="modal-overlay" id="configModal">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h2>⚙️ ตั้งค่าระบบเสียง & สมอง AI</h2>
+        <button class="modal-close-btn" id="configCloseBtn" title="ปิดหน้าต่าง">✕</button>
+      </div>
+
+      <!-- 1. Voice & TTS Settings -->
+      <div class="config-section">
+        <div class="section-title">🎙️ 1. ปรับแต่งเสียงพูด (Edge-TTS)</div>
+        <div class="config-grid">
+          <div class="form-group full-width">
+            <label>โมเดลเสียงหลัก (Voice Model):</label>
+            <select id="cfgVoiceSelect">
+              <option value="th-TH-PremwadeeNeural">👩 th-TH-PremwadeeNeural (มายมิ้นท์ - หวาน นุ่มนวล แนะนำ 💖)</option>
+              <option value="th-TH-NiwatNeural">👨 th-TH-NiwatNeural (นิวัฒน์ - สุขุม หนักแน่น)</option>
+              <option value="en-US-JennyNeural">🇺🇸 en-US-JennyNeural (Jenny - หญิงภาษาอังกฤษ)</option>
+              <option value="en-US-GuyNeural">🇺🇸 en-US-GuyNeural (Guy - ชายภาษาอังกฤษ)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>ความเร็วเสียง (Speed): <span id="cfgSpeedDisplay" class="range-val">+0%</span></label>
+            <div class="range-wrapper">
+              <input type="range" id="cfgSpeedSlider" min="-30" max="40" step="5" value="0">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>ระดับเสียงทุ้ม-แหลม (Pitch): <span id="cfgPitchDisplay" class="range-val">+0Hz</span></label>
+            <div class="range-wrapper">
+              <input type="range" id="cfgPitchSlider" min="-15" max="15" step="1" value="0">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. AI Brain & Thinking Settings -->
+      <div class="config-section">
+        <div class="section-title">🧠 2. สมองและความคิด AI (9Router Gateway)</div>
+        <div class="config-grid">
+          <div class="form-group full-width">
+            <label>โมเดลภาษา AI (AI Brain Model):</label>
+            <select id="cfgModelSelect">
+              <option value="ag/gemini-3.8-flash-high">🌟 ag/gemini-3.8-flash-high (สมองหลัก แนะนำ คิดรอบคอบ เร็วสูง)</option>
+              <option value="ag/gemini-3.7-flash-low">⚡ ag/gemini-3.7-flash-low (ความเร็วพิเศษ 2.6s ตอบไวที่สุด)</option>
+              <option value="ag/gemini-3.8-flash">⚡ ag/gemini-3.8-flash (สมดุลความเร็ว)</option>
+            </select>
+          </div>
+
+          <div class="form-group full-width">
+            <label>ระดับความคิดสร้างสรรค์ (Temperature): <span id="cfgTempDisplay" class="range-val">0.7</span></label>
+            <div class="range-wrapper">
+              <input type="range" id="cfgTempSlider" min="0" max="1" step="0.05" value="0.7">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Liquid Glass Theme Settings -->
+      <div class="config-section">
+        <div class="section-title">🎨 3. ปรับแต่งหน้าจอ Liquid Glass</div>
+        <div class="config-grid">
+          <div class="form-group full-width">
+            <label>ภาพพื้นหลัง (Wallpaper Mode):</label>
+            <select id="cfgWallpaperSelect">
+              <option value="custom">🌸 ภาพทุ่งดอกไม้อัลไพน์ยามเย็น (รูปของบอส)</option>
+              <option value="bing">🏞️ ภาพธรรมชาติ Bing 4K ประจำวัน (Daily Wallpaper)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>ความเบลอกระจก (Blur): <span id="cfgBlurDisplay" class="range-val">32px</span></label>
+            <div class="range-wrapper">
+              <input type="range" id="cfgBlurSlider" min="10" max="50" step="2" value="32">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>ความโปร่งแสง (Glass Opacity): <span id="cfgOpacityDisplay" class="range-val">42%</span></label>
+            <div class="range-wrapper">
+              <input type="range" id="cfgOpacitySlider" min="20" max="75" step="5" value="42">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="modal-actions">
+        <button class="reset-btn" id="cfgResetBtn">🔄 คืนค่าเริ่มต้น</button>
+        <button class="save-btn" id="cfgSaveBtn">💾 บันทึกการตั้งค่า</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast-pill" id="toastPill">✅ บันทึกการตั้งค่าเรียบร้อยแล้วค่ะบอส 💖</div>
+
   <footer>
-    <p>Hermes Agent Realtime Voice &middot; Microsoft Edge-TTS (th-TH-PremwadeeNeural) &middot; 9Router AI Gateway</p>
+    <p>Hermes Agent Realtime Voice &middot; Microsoft Edge-TTS (Studio 24kHz) &middot; 9Router AI Gateway</p>
   </footer>
 
   <script>
@@ -708,6 +1042,7 @@
     let currentAudio = null;
     let waveInterval = null;
 
+    // Elements
     const micButton = document.getElementById('micButton');
     const micHint = document.getElementById('micHint');
     const micRipple = document.getElementById('micRipple');
@@ -717,6 +1052,28 @@
     const audioPlayingStatus = document.getElementById('audioPlayingStatus');
     const stopAudioBtn = document.getElementById('stopAudioBtn');
     const timingsBadge = document.getElementById('timingsBadge');
+    const wallpaperBg = document.getElementById('wallpaperBg');
+
+    // Modal Elements
+    const configModal = document.getElementById('configModal');
+    const configOpenBtn = document.getElementById('configOpenBtn');
+    const configCloseBtn = document.getElementById('configCloseBtn');
+    const cfgVoiceSelect = document.getElementById('cfgVoiceSelect');
+    const cfgSpeedSlider = document.getElementById('cfgSpeedSlider');
+    const cfgSpeedDisplay = document.getElementById('cfgSpeedDisplay');
+    const cfgPitchSlider = document.getElementById('cfgPitchSlider');
+    const cfgPitchDisplay = document.getElementById('cfgPitchDisplay');
+    const cfgModelSelect = document.getElementById('cfgModelSelect');
+    const cfgTempSlider = document.getElementById('cfgTempSlider');
+    const cfgTempDisplay = document.getElementById('cfgTempDisplay');
+    const cfgWallpaperSelect = document.getElementById('cfgWallpaperSelect');
+    const cfgBlurSlider = document.getElementById('cfgBlurSlider');
+    const cfgBlurDisplay = document.getElementById('cfgBlurDisplay');
+    const cfgOpacitySlider = document.getElementById('cfgOpacitySlider');
+    const cfgOpacityDisplay = document.getElementById('cfgOpacityDisplay');
+    const cfgSaveBtn = document.getElementById('cfgSaveBtn');
+    const cfgResetBtn = document.getElementById('cfgResetBtn');
+    const toastPill = document.getElementById('toastPill');
 
     // Create 24 wave sticks
     const visualizer = document.getElementById('visualizer');
@@ -727,7 +1084,184 @@
     }
     const waveSticks = document.querySelectorAll('.wave-stick');
 
-    // 1. Stage Management
+    // Toast Notification Helper
+    function showToast(msg) {
+      toastPill.innerText = msg;
+      toastPill.classList.add('show');
+      setTimeout(() => toastPill.classList.remove('show'), 3000);
+    }
+
+    // 1. Load Configuration from Server
+    async function loadConfig() {
+      try {
+        const res = await fetch('/api/config');
+        const cfg = await res.json();
+        
+        cfgVoiceSelect.value = cfg.voice || 'th-TH-PremwadeeNeural';
+        
+        const speedNum = parseInt(cfg.speed) || 0;
+        cfgSpeedSlider.value = speedNum;
+        cfgSpeedDisplay.innerText = (speedNum >= 0 ? '+' : '') + speedNum + '%';
+
+        const pitchNum = parseInt(cfg.pitch) || 0;
+        cfgPitchSlider.value = pitchNum;
+        cfgPitchDisplay.innerText = (pitchNum >= 0 ? '+' : '') + pitchNum + 'Hz';
+
+        cfgModelSelect.value = cfg.model || 'ag/gemini-3.8-flash-high';
+        cfgTempSlider.value = cfg.temperature !== undefined ? cfg.temperature : 0.7;
+        cfgTempDisplay.innerText = cfgTempSlider.value;
+
+        cfgWallpaperSelect.value = cfg.wallpaper_mode || 'custom';
+        applyWallpaper(cfg.wallpaper_mode || 'custom');
+
+        cfgBlurSlider.value = cfg.glass_blur || 32;
+        cfgBlurDisplay.innerText = cfgBlurSlider.value + 'px';
+        applyGlassBlur(cfgBlurSlider.value);
+
+        const opPercent = Math.round((cfg.glass_opacity || 0.42) * 100);
+        cfgOpacitySlider.value = opPercent;
+        cfgOpacityDisplay.innerText = opPercent + '%';
+        applyGlassOpacity(opPercent / 100);
+
+        if (cfg.auto_speak !== undefined) {
+          autoSpeakToggle.checked = Boolean(cfg.auto_speak);
+        }
+      } catch (e) {
+        console.warn('Failed to load /api/config:', e);
+      }
+    }
+    loadConfig();
+
+    // Sliders Live Feedback
+    cfgSpeedSlider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      cfgSpeedDisplay.innerText = (val >= 0 ? '+' : '') + val + '%';
+    });
+
+    cfgPitchSlider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      cfgPitchDisplay.innerText = (val >= 0 ? '+' : '') + val + 'Hz';
+    });
+
+    cfgTempSlider.addEventListener('input', (e) => {
+      cfgTempDisplay.innerText = e.target.value;
+    });
+
+    cfgBlurSlider.addEventListener('input', (e) => {
+      cfgBlurDisplay.innerText = e.target.value + 'px';
+      applyGlassBlur(e.target.value);
+    });
+
+    cfgOpacitySlider.addEventListener('input', (e) => {
+      cfgOpacityDisplay.innerText = e.target.value + '%';
+      applyGlassOpacity(parseInt(e.target.value) / 100);
+    });
+
+    function applyGlassBlur(val) {
+      document.documentElement.style.setProperty('--glass-blur', `${val}px`);
+    }
+
+    function applyGlassOpacity(val) {
+      document.documentElement.style.setProperty('--glass-opacity', val);
+    }
+
+    async function applyWallpaper(mode) {
+      if (mode === 'bing') {
+        try {
+          const res = await fetch('/api/bing-wallpaper');
+          const data = await res.json();
+          if (data.url) wallpaperBg.style.backgroundImage = `url('${data.url}')`;
+        } catch (e) {
+          wallpaperBg.style.backgroundImage = "url('/background.jpg')";
+        }
+      } else {
+        wallpaperBg.style.backgroundImage = "url('/background.jpg')";
+      }
+    }
+
+    // Modal Open & Close
+    configOpenBtn.addEventListener('click', () => {
+      configModal.classList.add('open');
+    });
+
+    configCloseBtn.addEventListener('click', () => {
+      configModal.classList.remove('open');
+    });
+
+    configModal.addEventListener('click', (e) => {
+      if (e.target === configModal) configModal.classList.remove('open');
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') configModal.classList.remove('open');
+    });
+
+    // Save Settings
+    cfgSaveBtn.addEventListener('click', async () => {
+      const speedVal = (parseInt(cfgSpeedSlider.value) >= 0 ? '+' : '') + parseInt(cfgSpeedSlider.value) + '%';
+      const pitchVal = (parseInt(cfgPitchSlider.value) >= 0 ? '+' : '') + parseInt(cfgPitchSlider.value) + 'Hz';
+      
+      const payload = {
+        voice: cfgVoiceSelect.value,
+        speed: speedVal,
+        pitch: pitchVal,
+        model: cfgModelSelect.value,
+        temperature: parseFloat(cfgTempSlider.value),
+        wallpaper_mode: cfgWallpaperSelect.value,
+        glass_blur: parseInt(cfgBlurSlider.value),
+        glass_opacity: parseInt(cfgOpacitySlider.value) / 100,
+        auto_speak: autoSpeakToggle.checked
+      };
+
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          applyWallpaper(payload.wallpaper_mode);
+          configModal.classList.remove('open');
+          showToast('✅ บันทึกการตั้งค่าระบบเรียบร้อยแล้วค่ะบอส 💖');
+        }
+      } catch (err) {
+        alert('เกิดข้อผิดพลาดในการบันทึก: ' + err);
+      }
+    });
+
+    // Reset Defaults
+    cfgResetBtn.addEventListener('click', () => {
+      cfgVoiceSelect.value = 'th-TH-PremwadeeNeural';
+      cfgSpeedSlider.value = 0;
+      cfgSpeedDisplay.innerText = '+0%';
+      cfgPitchSlider.value = 0;
+      cfgPitchDisplay.innerText = '+0Hz';
+      cfgModelSelect.value = 'ag/gemini-3.8-flash-high';
+      cfgTempSlider.value = 0.7;
+      cfgTempDisplay.innerText = '0.7';
+      cfgWallpaperSelect.value = 'custom';
+      cfgBlurSlider.value = 32;
+      cfgBlurDisplay.innerText = '32px';
+      cfgOpacitySlider.value = 42;
+      cfgOpacityDisplay.innerText = '42%';
+      applyGlassBlur(32);
+      applyGlassOpacity(0.42);
+      applyWallpaper('custom');
+    });
+
+    // Auto-Speak Toggle Sync
+    autoSpeakToggle.addEventListener('change', async () => {
+      try {
+        await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ auto_speak: autoSpeakToggle.checked })
+        });
+      } catch (e) {}
+    });
+
+    // 2. Stage Management (1 to 5)
     function setStage(stageNum, textDesc) {
       for (let i = 1; i <= 5; i++) {
         const capsule = document.getElementById(`stage-${i}`);
@@ -746,7 +1280,7 @@
       currentStatusText.innerText = "พร้อมรับฟังคำสั่งเสียงบอส";
     }
 
-    // 2. Waveform Animation
+    // 3. Waveform Animation
     function startWaveform() {
       clearInterval(waveInterval);
       waveInterval = setInterval(() => {
@@ -762,7 +1296,7 @@
       waveSticks.forEach(stick => { stick.style.height = '8px'; });
     }
 
-    // 3. Web Speech Recognition (Real-time Browser STT)
+    // 4. Web Speech Recognition (Real-time Browser STT)
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       recognition = new SpeechRecognition();
@@ -831,19 +1365,26 @@
       }
     });
 
-    // 4. Submit Speech
+    // 5. Submit Speech / Text
     async function submitUserSpeech(text) {
       appendChatMessage('user', text);
       setStage(2, '✍️ [สเต็ป 2/5] ถอดความเสียงสำเร็จ กำลังส่งวิเคราะห์...');
 
       setTimeout(async () => {
-        setStage(3, '🧠 [สเต็ป 3/5] สมอง Gemini 3.8 Flash High กำลังคิดคำตอบ...');
+        setStage(3, `🧠 [สเต็ป 3/5] สมอง ${cfgModelSelect.value} กำลังคิดคำตอบ...`);
 
         try {
           const res = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: text })
+            body: JSON.stringify({ 
+              text: text,
+              voice: cfgVoiceSelect.value,
+              speed: (parseInt(cfgSpeedSlider.value) >= 0 ? '+' : '') + parseInt(cfgSpeedSlider.value) + '%',
+              pitch: (parseInt(cfgPitchSlider.value) >= 0 ? '+' : '') + parseInt(cfgPitchSlider.value) + 'Hz',
+              model: cfgModelSelect.value,
+              temperature: parseFloat(cfgTempSlider.value)
+            })
           });
           const data = await res.json();
 
@@ -870,13 +1411,13 @@
       }, 300);
     }
 
-    // 5. Play Audio
+    // 6. Play Audio
     function playAudioResponse(url) {
       if (currentAudio) currentAudio.pause();
 
       currentAudio = new Audio(url);
       setStage(5, '🔊 [สเต็ป 5/5] มายมิ้นท์กำลังพูดออกเสียง...');
-      audioPlayingStatus.innerText = '🔊 กำลังพูดเสียงเปรมวดี (th-TH-PremwadeeNeural)';
+      audioPlayingStatus.innerText = `🔊 กำลังพูดเสียง: ${cfgVoiceSelect.value}`;
       stopAudioBtn.style.display = 'inline-block';
       startWaveform();
 
@@ -912,21 +1453,29 @@
       }
     });
 
-    // 6. Quick Prompts
+    // 7. Quick Prompts
     window.sendQuickPrompt = function(promptText) {
       micHint.innerText = `ส่งคำถาม: "${promptText}"`;
       submitUserSpeech(promptText);
     };
 
-    // 7. Test Voice Button
+    // 8. Test Voice Button (Uses active config)
     document.getElementById('testVoiceBtn').addEventListener('click', async () => {
-      const testText = 'สวัสดีค่ะบอส มายมิ้นท์เองนะคะ นี่คือเสียงเปรมวดีแท้จาก Microsoft Edge คมชัดระดับสตูดิโอเลยค่ะบอส';
-      setStage(4, '🎙️ กำลังดึงเสียงตัวอย่าง Edge-TTS...');
+      const testText = 'สวัสดีค่ะบอส มายมิ้นท์เองนะคะ นี่คือการทดสอบเสียงตามที่คุณบอสตั้งค่าไว้ค่ะ';
+      setStage(4, '🎙️ กำลังสังเคราะห์เสียง Edge-TTS...');
       try {
+        const speedVal = (parseInt(cfgSpeedSlider.value) >= 0 ? '+' : '') + parseInt(cfgSpeedSlider.value) + '%';
+        const pitchVal = (parseInt(cfgPitchSlider.value) >= 0 ? '+' : '') + parseInt(cfgPitchSlider.value) + 'Hz';
+
         const res = await fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: testText, voice: 'th-TH-PremwadeeNeural' })
+          body: JSON.stringify({ 
+            text: testText, 
+            voice: cfgVoiceSelect.value,
+            speed: speedVal,
+            pitch: pitchVal
+          })
         });
         const data = await res.json();
         if (data.audio_url) {

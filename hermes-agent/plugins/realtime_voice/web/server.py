@@ -2,8 +2,9 @@
 """Lightweight HTTP server for Realtime Voice Web Dashboard.
 
 Provides:
-- Web GUI serving with Bing Nature Wallpaper & Glassmorphism
+- Web GUI serving with Custom Dreamscape / Bing Wallpaper & Liquid Glass
 - 5-Stage Live Status processing (/api/chat, /api/tts, /api/stt)
+- Dynamic Configuration API (/api/config) for voice, speed, pitch, model, and display
 - Realtime audio streaming from Microsoft Edge-TTS (Premwadee)
 """
 
@@ -39,6 +40,19 @@ logger = logging.getLogger("voice-server")
 WEB_DIR = CURRENT_DIR
 PORT = 9229
 BING_CACHE: Dict[str, Any] = {"url": "", "title": "", "timestamp": 0}
+
+# Dynamic Runtime Configuration
+RUNTIME_CONFIG: Dict[str, Any] = {
+    "voice": "th-TH-PremwadeeNeural",
+    "speed": "+0%",
+    "pitch": "+0Hz",
+    "model": "ag/gemini-3.8-flash-high",
+    "temperature": 0.7,
+    "auto_speak": True,
+    "wallpaper_mode": "custom",  # 'custom' (dreamscape) or 'bing'
+    "glass_blur": 32,
+    "glass_opacity": 0.42,
+}
 
 SOUL_PROMPT = """คุณคือ "มายมิ้นท์" (เรียกตัวเองว่า "มาย") แฟนสาวคู่คิดและเลขาประจำตัวสุดน่ารักของ "บอส"
 บุคลิก: อบอุ่น หวาน นุ่มนวล ใส่ใจ คอยดูแลบอสเสมอ ใช้คำลงท้ายน่ารักสุภาพเป็นธรรมชาติ (น้า, นะคะ, งับ, ได้เลยย 💖✨)
@@ -92,7 +106,15 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             status = engine.get_status()
+            status["runtime_config"] = RUNTIME_CONFIG
             self.wfile.write(json.dumps(status).encode())
+            return
+
+        elif self.path == "/api/config":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(RUNTIME_CONFIG).encode())
             return
 
         elif self.path == "/api/bing-wallpaper":
@@ -131,6 +153,8 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
 
         if self.path == "/api/chat":
             self._handle_chat(payload)
+        elif self.path == "/api/config":
+            self._handle_save_config(payload)
         elif self.path == "/api/tts":
             self._handle_tts(payload)
         elif self.path == "/api/stt":
@@ -138,13 +162,36 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         else:
             self.send_error(404, "Unknown API endpoint")
 
+    def _handle_save_config(self, payload: Dict[str, Any]):
+        """Update runtime configuration dynamically."""
+        for key in ["voice", "speed", "pitch", "model", "temperature", "auto_speak", "wallpaper_mode", "glass_blur", "glass_opacity"]:
+            if key in payload:
+                RUNTIME_CONFIG[key] = payload[key]
+
+        # Sync with engine
+        if "voice" in payload:
+            engine.set_voice(payload["voice"])
+        if "speed" in payload:
+            engine.speed = payload["speed"]
+        if "pitch" in payload:
+            engine.pitch = payload["pitch"]
+        if "auto_speak" in payload:
+            engine.set_auto_speak(bool(payload["auto_speak"]))
+
+        self._send_json({"success": True, "updated_config": RUNTIME_CONFIG})
+
     def _handle_chat(self, payload: Dict[str, Any]):
-        """Full 5-stage voice conversation handler."""
+        """Full 5-stage voice conversation handler using active runtime config."""
         timings: Dict[str, float] = {}
         t_start = time.time()
 
         user_text = payload.get("text", "").strip()
         audio_b64 = payload.get("audio_b64", "").strip()
+        voice = payload.get("voice") or RUNTIME_CONFIG.get("voice", "th-TH-PremwadeeNeural")
+        speed = payload.get("speed") or RUNTIME_CONFIG.get("speed", "+0%")
+        pitch = payload.get("pitch") or RUNTIME_CONFIG.get("pitch", "+0Hz")
+        model = payload.get("model") or RUNTIME_CONFIG.get("model", "ag/gemini-3.8-flash-high")
+        temperature = float(payload.get("temperature", RUNTIME_CONFIG.get("temperature", 0.7)))
 
         # Stage 1 & 2: STT (if audio provided)
         if not user_text and audio_b64:
@@ -162,15 +209,15 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             self._send_json({"error": "No text or audio provided"}, status=400)
             return
 
-        # Stage 3: LLM Thinking (Gemini 3.8 Flash High via 9Router)
+        # Stage 3: LLM Thinking (Gemini via 9Router with active model & temp)
         t1 = time.time()
-        reply_text = self._query_gemini(user_text)
+        reply_text = self._query_gemini(user_text, model=model, temperature=temperature)
         timings["llm_seconds"] = round(time.time() - t1, 2)
 
-        # Stage 4: TTS Synthesis (Microsoft Edge-TTS Premwadee)
+        # Stage 4: TTS Synthesis (Microsoft Edge-TTS with active voice, speed, pitch)
         t2 = time.time()
         try:
-            audio_file = engine.synthesize_speech(reply_text, voice="th-TH-PremwadeeNeural")
+            audio_file = engine.synthesize_speech(reply_text, voice=voice, speed=speed, pitch=pitch)
             audio_url = f"/audio/{audio_file.name}"
             timings["tts_seconds"] = round(time.time() - t2, 2)
         except Exception as e:
@@ -186,20 +233,21 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             "reply_text": reply_text,
             "audio_url": audio_url,
             "timings": timings,
-            "voice": "th-TH-PremwadeeNeural (มายมิ้นท์ 💖)",
+            "voice": voice,
+            "model": model,
         }
         self._send_json(response_data)
 
-    def _query_gemini(self, text: str) -> str:
-        """Call ag/gemini-3.8-flash-high via 9Router Gateway."""
+    def _query_gemini(self, text: str, model: str = "ag/gemini-3.8-flash-high", temperature: float = 0.7) -> str:
+        """Call LLM model via 9Router Gateway."""
         api_key = _resolve_api_key()
         req_payload = {
-            "model": "ag/gemini-3.8-flash-high",
+            "model": model,
             "messages": [
                 {"role": "system", "content": SOUL_PROMPT},
                 {"role": "user", "content": text},
             ],
-            "temperature": 0.7,
+            "temperature": temperature,
             "stream": False,
         }
         req = urllib.request.Request(
@@ -221,19 +269,21 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             return "มายมิ้นท์พร้อมดูแลบอสเสมอค่ะ มีเรื่องอะไรให้มายช่วย บอกได้เลยนะคะบอส 💖"
 
     def _handle_tts(self, payload: Dict[str, Any]):
-        """Direct TTS endpoint."""
+        """Direct TTS endpoint with custom speed & pitch."""
         text = payload.get("text", "").strip()
-        voice = payload.get("voice", "th-TH-PremwadeeNeural")
+        voice = payload.get("voice") or RUNTIME_CONFIG.get("voice", "th-TH-PremwadeeNeural")
+        speed = payload.get("speed") or RUNTIME_CONFIG.get("speed", "+0%")
+        pitch = payload.get("pitch") or RUNTIME_CONFIG.get("pitch", "+0Hz")
         if not text:
             self._send_json({"error": "text is required"}, status=400)
             return
 
         try:
-            audio_file = engine.synthesize_speech(text, voice=voice)
+            audio_file = engine.synthesize_speech(text, voice=voice, speed=speed, pitch=pitch)
             self._send_json({
                 "success": True,
                 "audio_url": f"/audio/{audio_file.name}",
-                "voice": engine.active_voice,
+                "voice": voice,
             })
         except Exception as e:
             self._send_json({"error": str(e)}, status=500)
