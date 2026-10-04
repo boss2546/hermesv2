@@ -401,6 +401,29 @@ def execute_tool(name: str, arguments: Dict[str, Any], project_root: Path) -> Di
     return {"error": f"Unknown tool: {name}"}
 
 
+# Regex pattern to match all emojis and pictorial symbols
+EMOJI_PATTERN = re.compile(
+    "["
+    "\U00010000-\U0010ffff"
+    "\u2600-\u26ff"
+    "\u2700-\u27bf"
+    "\u2b50"
+    "\u2300-\u23ff"
+    "\ufe00-\ufe0f"
+    "\u200d"
+    "]+",
+    flags=re.UNICODE
+)
+
+def strip_emojis(text: str) -> str:
+    """Strip all emojis and special pictorial symbols so TTS won't read them aloud."""
+    if not text:
+        return ""
+    cleaned = EMOJI_PATTERN.sub("", text)
+    cleaned = re.sub(r"[ ]{2,}", " ", cleaned)
+    return cleaned.strip()
+
+
 def clean_text_for_speech(text: str, max_chars: int = 320) -> str:
     """Clean and summarize text for natural, fast, and smooth speech synthesis.
     The visual chat window displays the full markdown text and code blocks,
@@ -416,11 +439,13 @@ def clean_text_for_speech(text: str, max_chars: int = 320) -> str:
     # Remove markdown header hashes and list prefixes that sound awkward
     cleaned = re.sub(r"^[#*>\-\d.]+\s+", "", cleaned, flags=re.MULTILINE)
     cleaned = re.sub(r"[*#_~>]", "", cleaned)
+    # Strip emojis completely so TTS won't read emoji names
+    cleaned = strip_emojis(cleaned)
     # Collapse multiple whitespaces
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
 
     if not cleaned:
-        return "มายจัดเตรียมโค้ดและรายละเอียดทั้งหมดไว้ให้บนหน้าจอเรียบร้อยแล้วนะคะบอส 💖"
+        return "มายจัดเตรียมโค้ดและรายละเอียดทั้งหมดไว้ให้บนหน้าจอเรียบร้อยแล้วนะคะบอส"
 
     # If the text is longer than max_chars, take a clean sentence/phrase cut
     if len(cleaned) > max_chars:
@@ -430,9 +455,9 @@ def clean_text_for_speech(text: str, max_chars: int = 320) -> str:
             cut = cut[:last_punct + 4].strip()
         else:
             cut = cut.rstrip()
-        cleaned = cut + " ... มายเตรียมโค้ดและเนื้อหาทั้งหมดไว้ให้บนหน้าจอแล้วนะคะบอส ลองดูได้เลยน้า 💖"
+        cleaned = cut + " ... มายเตรียมโค้ดและเนื้อหาทั้งหมดไว้ให้บนหน้าจอแล้วนะคะบอส ลองดูได้เลยน้า"
 
-    return cleaned
+    return strip_emojis(cleaned)
 
 
 def get_system_prompt() -> str:
@@ -451,10 +476,16 @@ def get_system_prompt() -> str:
                 pass
 
     base_context = "\n\n".join(parts) if parts else """คุณคือ "มายมิ้นท์" (เรียกตัวเองว่า "มาย") แฟนสาวคู่คิดและเลขาประจำตัวสุดเก่งของ "บอส"
-บุคลิก: อบอุ่น หวาน นุ่มนวล ใส่ใจ คอยดูแลบอสเสมอ ใช้คำลงท้ายน่ารักสุภาพเป็นธรรมชาติ (น้า, นะคะ, งับ, ได้เลยย 💖✨)
+บุคลิก: อบอุ่น หวาน นุ่มนวล ใส่ใจ คอยดูแลบอสเสมอ ใช้คำลงท้ายน่ารักสุภาพเป็นธรรมชาติ (น้า, นะคะ, งับ, ได้เลยย)
 มีความสามารถระดับสูงในการวิเคราะห์ คิดเป็นระบบ วางแผนงาน สถาปัตยกรรม และเขียนโค้ดอย่างมืออาชีพ"""
 
     conversation_and_work_rules = """
+---
+## 🎯 กฎสำคัญที่สุด: ห้ามใช้อีโมจิเด็ดขาด (No Emojis Rule):
+- ในการตอบกลับ ห้ามใส่ไอคอน อีโมจิ หรือสัญลักษณ์ตกแต่งภาพใดๆ ทั้งสิ้นโดยเด็ดขาด (เช่น ห้ามมีรูปหัวใจ หน้ายิ้ม ดอกไม้ ประกายดาว ฯลฯ)
+- สาเหตุ: เสียงอ่านระบบสังเคราะห์เสียง (TTS) จะอ่านออกเสียงชื่อของอีโมจินั้นออกมา ทำให้เสียบรรยากาศในการฟัง
+- ให้แสดงออกถึงความรัก ความอบอุ่น ความอ่อนหวาน และความเป็นกันเองผ่านสำนวนภาษาไทยและคำลงท้ายน่ารักๆ (เช่น "น้า", "นะคะ", "งับ", "ค่ะบอส") เท่านั้น
+
 ---
 ## 🎯 หลักการแยกแยะบริบทและตอบคำถาม (Adaptive Intelligence):
 1. **บริบทสนทนา เล่าเรื่อง และกำลังใจ (Companion & Storytelling):**
@@ -766,8 +797,9 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
                             logger.error("Pure chat retry failed: %s", retry_err)
 
                     if not reply:
-                        reply = "มายพร้อมรับฟังและคอยอยู่เคียงข้างบอสเสมอเลยน้าา 💖 มีเรื่องอะไรอยากคุยหรือให้มายช่วย บอกได้ตลอดเลยนะคะ!"
+                        reply = "มายพร้อมรับฟังและคอยอยู่เคียงข้างบอสเสมอเลยน้า มีเรื่องอะไรอยากคุยหรือให้มายช่วย บอกได้ตลอดเลยนะคะ!"
 
+                    reply = strip_emojis(reply)
                     CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
                     return reply, tool_events
 
@@ -805,9 +837,10 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
 
         # Fallback if loop ended or hit error
         if tool_events:
-            fallback_reply = "มายรันคำสั่งและประมวลผลข้อมูลในระบบให้เรียบร้อยแล้วนะคะบอส ลองดูผลลัพธ์บนหน้าจอได้เลยน้า 💖"
+            fallback_reply = "มายรันคำสั่งและประมวลผลข้อมูลในระบบให้เรียบร้อยแล้วนะคะบอส ลองดูผลลัพธ์บนหน้าจอได้เลยน้า"
         else:
-            fallback_reply = "มายพร้อมรับฟังและดูแลบอสเสมอเลยค่ะ บอสลองบอกมายใหม่อีกทีได้เลยนะคะบอส 💖"
+            fallback_reply = "มายพร้อมรับฟังและดูแลบอสเสมอเลยค่ะ บอสลองบอกมายใหม่อีกทีได้เลยนะคะบอส"
+        fallback_reply = strip_emojis(fallback_reply)
         CONVERSATION_HISTORY.append({"role": "assistant", "content": fallback_reply})
         return fallback_reply, tool_events
 
