@@ -50,7 +50,8 @@ BING_CACHE: Dict[str, Any] = {"url": "", "title": "", "timestamp": 0}
 # Conversational Multi-Turn Memory
 CONVERSATION_HISTORY: List[Dict[str, str]] = []
 
-# Dynamic Runtime Configuration with persistent config.json support
+# Dynamic Runtime Configuration with persistent config.txt & config.json support
+CONFIG_TXT_PATH = CURRENT_DIR.parent / "config.txt"
 CONFIG_PATH = HERMES_AGENT_DIR.parent / "config.json"
 
 DEFAULT_CONFIG: Dict[str, Any] = {
@@ -63,7 +64,47 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "wallpaper_mode": "custom",
     "glass_blur": 32,
     "glass_opacity": 0.42,
+    "enable_terminal_tools": True,
+    "command_timeout": 120,
+    "custom_prompt": ""
 }
+
+def parse_config_txt() -> Dict[str, Any]:
+    """Parse key-value and multiline settings from config.txt."""
+    cfg = {}
+    if not CONFIG_TXT_PATH.exists():
+        return cfg
+    try:
+        content = CONFIG_TXT_PATH.read_text(encoding="utf-8")
+        # Extract multiline CUSTOM_PROMPT if present
+        multiline_match = re.search(r'CUSTOM_PROMPT\s*=\s*"""([\s\S]*?)"""', content)
+        if multiline_match:
+            cfg["custom_prompt"] = multiline_match.group(1).strip()
+            content = content[:multiline_match.start()] + content[multiline_match.end():]
+
+        for line in content.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or line.startswith("["):
+                continue
+            if "=" in line:
+                key, val = line.split("=", 1)
+                key = key.strip().lower()
+                val = val.strip().strip('"').strip("'")
+                if val.lower() == "true":
+                    cfg[key] = True
+                elif val.lower() == "false":
+                    cfg[key] = False
+                else:
+                    try:
+                        if "." in val:
+                            cfg[key] = float(val)
+                        else:
+                            cfg[key] = int(val)
+                    except ValueError:
+                        cfg[key] = val
+    except Exception as e:
+        logger.warning("Error parsing config.txt: %s", e)
+    return cfg
 
 def load_stored_config() -> Dict[str, Any]:
     cfg = dict(DEFAULT_CONFIG)
@@ -76,6 +117,10 @@ def load_stored_config() -> Dict[str, Any]:
                         cfg[k] = v
         except Exception as e:
             logger.warning("Could not read config.json: %s", e)
+    
+    # config.txt takes highest priority
+    txt_cfg = parse_config_txt()
+    cfg.update(txt_cfg)
     return cfg
 
 def save_stored_config(cfg: Dict[str, Any]):
@@ -232,7 +277,8 @@ def execute_tool(name: str, arguments: Dict[str, Any], project_root: Path) -> Di
         if not target_cwd.exists():
             target_cwd = project_root
 
-        cmd_timeout = min(int(arguments.get("timeout", 90)), 300)
+        default_timeout = RUNTIME_CONFIG.get("command_timeout", 120)
+        cmd_timeout = min(int(arguments.get("timeout", default_timeout)), 300)
         t0 = time.time()
         try:
             proc = subprocess.run(
@@ -430,7 +476,9 @@ def get_system_prompt() -> str:
 4. **ลูปแก้ปัญหาอัตโนมัติ (Self-Healing Loop):** หากคำสั่งใดรันแล้วติดขัด ให้วิเคราะห์และแก้จนสำเร็จ 100%
 5. **รายงานผลจริงอย่างโปร่งใส:** เมื่อคำสั่งรันสำเร็จ นำผลลัพธ์จริงจากเทอร์มินัลมารายงานให้บอสทราบ
 """
-    return base_context + conversation_and_work_rules + terminal_rules
+    custom_prompt = RUNTIME_CONFIG.get("custom_prompt", "").strip()
+    custom_section = f"\n\n---\n## 💌 คำสั่งและบทบาทพิเศษที่บอสกำหนดไว้ (Custom Prompt):\n{custom_prompt}\n" if custom_prompt else ""
+    return base_context + custom_section + conversation_and_work_rules + terminal_rules
 
 
 def get_bing_wallpaper() -> Dict[str, str]:
@@ -576,6 +624,9 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
 
     def _handle_chat(self, payload: Dict[str, Any]):
         """Full 5-stage voice conversation handler using active runtime config."""
+        global RUNTIME_CONFIG
+        RUNTIME_CONFIG = load_stored_config()
+
         timings: Dict[str, float] = {}
         t_start = time.time()
 
@@ -641,6 +692,7 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         api_key = _resolve_api_key()
         system_prompt = get_system_prompt()
         project_root = HERMES_AGENT_DIR.parent
+        enable_tools = RUNTIME_CONFIG.get("enable_terminal_tools", True)
 
         # Append user message to history
         CONVERSATION_HISTORY.append({"role": "user", "content": text})
@@ -648,17 +700,18 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         # Provide up to 20 recent messages
         messages = [{"role": "system", "content": system_prompt}] + CONVERSATION_HISTORY[-20:]
         tool_events: List[Dict[str, Any]] = []
-        max_tool_rounds = 6
+        max_tool_rounds = 6 if enable_tools else 1
 
         for round_idx in range(max_tool_rounds):
             payload = {
                 "model": model,
                 "messages": messages,
-                "tools": AVAILABLE_TOOLS,
-                "tool_choice": "auto",
                 "temperature": temperature,
                 "stream": False,
             }
+            if enable_tools:
+                payload["tools"] = AVAILABLE_TOOLS
+                payload["tool_choice"] = "auto"
             try:
                 res = requests.post(
                     f"{DEFAULT_GATEWAY_URL}/chat/completions",
