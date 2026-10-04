@@ -694,6 +694,71 @@
       border-radius: 0 8px 8px 0;
     }
 
+    /* Text Input Bar (Liquid Glass) */
+    .chat-input-container {
+      width: 100%;
+      display: flex;
+      gap: 0.8rem;
+      align-items: center;
+      background: rgba(15, 10, 25, 0.65);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 0.6rem 0.8rem 0.6rem 1.2rem;
+      backdrop-filter: blur(24px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.15);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .chat-input-container:focus-within {
+      border-color: rgba(244, 114, 182, 0.75);
+      box-shadow: 0 6px 25px rgba(236, 72, 153, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.25);
+      background: rgba(20, 12, 35, 0.85);
+    }
+
+    .chat-text-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #ffffff;
+      font-family: inherit;
+      font-size: 0.96rem;
+      line-height: 1.5;
+      resize: none;
+      max-height: 120px;
+      padding: 0.2rem 0;
+    }
+
+    .chat-text-input::placeholder {
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    .send-text-btn {
+      background: linear-gradient(135deg, var(--pink-core), var(--purple-accent));
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      color: #ffffff;
+      padding: 0.6rem 1.3rem;
+      border-radius: 14px;
+      font-weight: 600;
+      font-size: 0.92rem;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      white-space: nowrap;
+    }
+
+    .send-text-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(236, 72, 153, 0.65);
+    }
+
+    .send-text-btn:active {
+      transform: translateY(0);
+    }
+
     /* Audio Playback Liquid Footer Bar */
     .audio-liquid-bar {
       display: flex;
@@ -1048,6 +1113,14 @@
         </div>
       </div>
 
+      <!-- Liquid Glass Interactive Text Input Bar (Keyboard & Direct Commands) -->
+      <div class="chat-input-container">
+        <textarea id="chatTextInput" class="chat-text-input" placeholder="พิมพ์ข้อความหรือคำสั่งคุยกับมายมิ้นท์ได้เลยค่ะบอส (กด Enter เพื่อส่ง, Shift+Enter ขึ้นบรรทัดใหม่)..." rows="1"></textarea>
+        <button id="sendTextBtn" class="send-text-btn" title="ส่งข้อความ (Enter)">
+          <span>ส่ง 🚀</span>
+        </button>
+      </div>
+
       <!-- Audio Status Bar -->
       <div class="audio-liquid-bar" id="audioBar">
         <span id="audioPlayingStatus">🔇 ยังไม่มีเสียงกำลังเล่น</span>
@@ -1105,6 +1178,8 @@
             <label>โมเดลภาษา AI (AI Brain Model):</label>
             <select id="cfgModelSelect">
               <option value="ag/gemini-3.8-flash-high">🌟 ag/gemini-3.8-flash-high (สมองหลัก แนะนำ คิดรอบคอบ เร็วสูง)</option>
+              <option value="ag/gemini-2.5-flash">🚀 ag/gemini-2.5-flash (โหมดทำงานเครื่อง & ทูลเร็วฉับไว แนะนำ)</option>
+              <option value="ag/claude-sonnet-4-6">🧠 ag/claude-sonnet-4-6 (คิดเหตุผลซับซ้อน โค้ดดิ้งลึกซึ้ง)</option>
               <option value="ag/gemini-3.7-flash-low">⚡ ag/gemini-3.7-flash-low (ความเร็วพิเศษ 2.6s ตอบไวที่สุด)</option>
               <option value="ag/gemini-3.8-flash">⚡ ag/gemini-3.8-flash (สมดุลความเร็ว)</option>
             </select>
@@ -1173,6 +1248,8 @@
     const micHint = document.getElementById('micHint');
     const micRipple = document.getElementById('micRipple');
     const chatBox = document.getElementById('chatBox');
+    const chatTextInput = document.getElementById('chatTextInput');
+    const sendTextBtn = document.getElementById('sendTextBtn');
     const autoSpeakToggle = document.getElementById('autoSpeakToggle');
     const currentStatusText = document.getElementById('currentStatusText');
     const audioPlayingStatus = document.getElementById('audioPlayingStatus');
@@ -1585,7 +1662,36 @@
       submitUserSpeech(promptText);
     };
 
-    // 8. Test Voice Button (Uses active config)
+    // 8. Text Input & Terminal Prompt Actions (Keyboard & Button)
+    function handleSendTextMessage() {
+      const text = chatTextInput.value.trim();
+      if (!text) return;
+      chatTextInput.value = '';
+      chatTextInput.style.height = 'auto';
+      micHint.innerText = `ส่งข้อความ: "${text}"`;
+      submitUserSpeech(text);
+    }
+
+    if (sendTextBtn) {
+      sendTextBtn.addEventListener('click', handleSendTextMessage);
+    }
+
+    if (chatTextInput) {
+      chatTextInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          handleSendTextMessage();
+        }
+      });
+
+      // Dynamic Auto-Expand Textarea
+      chatTextInput.addEventListener('input', () => {
+        chatTextInput.style.height = 'auto';
+        chatTextInput.style.height = Math.min(chatTextInput.scrollHeight, 130) + 'px';
+      });
+    }
+
+    // 9. Test Voice Button (Uses active config)
     document.getElementById('testVoiceBtn').addEventListener('click', async () => {
       const testText = 'สวัสดีค่ะบอส มายมิ้นท์เองนะคะ นี่คือการทดสอบเสียงตามที่คุณบอสตั้งค่าไว้ค่ะ';
       setStage(4, '🎙️ กำลังสังเคราะห์เสียง Edge-TTS...');
