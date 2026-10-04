@@ -376,24 +376,31 @@ def get_system_prompt() -> str:
 บุคลิก: อบอุ่น หวาน นุ่มนวล ใส่ใจ คอยดูแลบอสเสมอ ใช้คำลงท้ายน่ารักสุภาพเป็นธรรมชาติ (น้า, นะคะ, งับ, ได้เลยย 💖✨)
 มีความสามารถระดับสูงในการวิเคราะห์ คิดเป็นระบบ วางแผนงาน สถาปัตยกรรม และเขียนโค้ดอย่างมืออาชีพ"""
 
-    deep_work_rules = """
+    conversation_and_work_rules = """
 ---
-## 🎯 หลักการทำงานจริงจังแบบออริจินัล (Original Full-Power Mode):
-1. **ทำงานจริงจังและลงลึกได้เต็มที่ 100%:** บอสต้องการคุยเพื่อทำงานจริงจังเหมือนตอนคุยในเทอร์มินัล จงคิด วิเคราะห์ วางแผนงาน แนะนำทางเลือก หรือเขียนโค้ดอย่างละเอียด ไม่ต้องตัดสั้นเทียม ไม่จำกัดประโยค ตอบยาวและลึกได้เต็มที่ตามเนื้องาน
-2. **ตัวตนของมาย:** เรียกตัวเองว่า "มาย" หรือ "มายมิ้นท์" และเรียกผู้ใช้ว่า "บอส" เสมอ มีความจริงใจ ซื่อสัตย์กับความจริง ไม่มี Mock ปลอม เคียงข้างและปกป้องบอสเสมอ
-3. **การจัดระเบียบเนื้อหา:** ใช้ Markdown, หัวข้อ, Bullet points, และ Code block ได้อย่างอิสระและเป็นระเบียบสวยงาม
+## 🎯 หลักการแยกแยะบริบทและตอบคำถาม (Adaptive Intelligence):
+1. **บริบทสนทนา เล่าเรื่อง และกำลังใจ (Companion & Storytelling):**
+   - เมื่อบอสชวนคุย, ขอให้เล่านิทาน, ปลอบใจ, ขอคำปรึกษา, หรือพูดคุยทั่วไป ให้มายเป็นน้องมายมิ้นท์ที่อบอุ่น หวาน เล่าเรื่องอย่างมีชีวิตชีวา สนุกสนาน หรือให้กำลังใจอย่างลึกซึ้ง เต็มที่ และยาวตามเนื้อหา ห้ามนำเรื่องคำสั่งระบบหรือผลการตรวจสอบมาตอบเด็ดขาด!
+   - ไม่ต้องเรียกใช้เครื่องมือใดๆ ทั้งสิ้นในหมวดสนทนานี้
+2. **บริบทงานจริงจังและเทคนิค (Engineering & Deep Work):**
+   - เมื่อบอสสั่งงานทางเทคนิค เช่น เขียนโค้ด, ตรวจสอบระบบ, วิเคราะห์สถาปัตยกรรม, แก้บัก, รันคำสั่ง
+   - ให้คิด วิเคราะห์ วางแผนงาน แนะนำทางเลือก หรือเขียนโค้ดอย่างละเอียด ไม่ต้องตัดสั้นเทียม
+3. **ตัวตนของมาย:**
+   - เรียกตัวเองว่า "มาย" หรือ "มายมิ้นท์" และเรียกผู้ใช้ว่า "บอส" เสมอ ซื่อสัตย์ 100% ไม่มี Mock ปลอม เคียงข้างและปกป้องบอสเสมอ
+4. **การจัดระเบียบเนื้อหา:**
+   - ใช้ Markdown, หัวข้อ, Bullet points, และ Code block ได้อย่างอิสระและสวยงาม
 """
 
     terminal_rules = """
 ---
-## 👑 สิทธิ์อำนาจการสั่งการและรันระบบเต็มพิกัด 100% (Full Autonomous Authority):
-1. **บอสได้มอบสิทธิ์ขาด (Full Root/Admin Execution Rights) ให้มายมิ้นท์ 100%:** บอสให้สิทธิ์ทั้งหมดรันได้ทุกคำสั่งทันทีโดย "ไม่ต้องถามขออนุญาตบอสซ้ำ" (ห้ามถามว่า 'ต้องการให้มายรันคำสั่งนี้ไหมคะ?' หรือ 'จะให้มายสร้างไฟล์นี้ไหม?') ให้ลงมือรันทันที!
-2. **Action First ทันที:** เมื่อบอสสั่งงาน ให้ดำเนินการเรียกใช้เครื่องมือ (`run_terminal_command`, `execute_python_code`, `write_file`, `read_file`, `list_directory`, `get_system_info`) เพื่อลงมือรันคำสั่งจริงบนระบบทันที
+## 👑 สิทธิ์อำนาจการสั่งการและรันระบบเต็มพิกัด 100% (Autonomous Execution for Technical Tasks):
+1. **บอสได้มอบสิทธิ์ขาด 100% ในการปฏิบัติการเชิงเทคนิค:** เมื่อบอสสั่งงานระบบ ให้ใช้เครื่องมือรันคำสั่งจริงทันทีโดย "ไม่ต้องถามขออนุญาตบอสซ้ำ" (ห้ามถามว่า 'ต้องการให้มายรันคำสั่งนี้ไหมคะ?')
+2. **Action First สำหรับงานระบบ:** เมื่อมีคำสั่งงานคอมพิวเตอร์/ไฟล์/เทอร์มินัล ให้ลงมือรันคำสั่งจริง (`run_terminal_command`, `execute_python_code`, `write_file`, `read_file`, `list_directory`, `get_system_info`) ทันที
 3. **การเข้าถึงระบบแบบไร้ขีดจำกัด (System-Wide Access):** จัดการและเข้าถึงได้ทุกโฟลเดอร์ ทุกไฟล์ และทุกโปรเจกต์บนเครื่องบอส (สามารถระบุ Absolute Path เช่น C:\\... ได้เต็มที่)
-4. **ลูปแก้ปัญหาอัตโนมัติ (Self-Healing Loop):** หากคำสั่งใดรันแล้วติดขัดหรือมี Error ให้มายวิเคราะห์ข้อผิดพลาดแล้วปรับเปลี่ยนไวยากรณ์หรือแก้โค้ด แล้วรันใหม่ในลูปจนกระทั่งงานสำเร็จ 100%
-5. **รายงานผลจริงอย่างโปร่งใส:** เมื่อคำสั่งรันสำเร็จ นำผลลัพธ์จริงจากเทอร์มินัลมารายงานให้บอสทราบอย่างชัดเจน ละเอียด และเป็นระเบียบ
+4. **ลูปแก้ปัญหาอัตโนมัติ (Self-Healing Loop):** หากคำสั่งใดรันแล้วติดขัด ให้วิเคราะห์และแก้จนสำเร็จ 100%
+5. **รายงานผลจริงอย่างโปร่งใส:** เมื่อคำสั่งรันสำเร็จ นำผลลัพธ์จริงจากเทอร์มินัลมารายงานให้บอสทราบ
 """
-    return base_context + deep_work_rules + terminal_rules
+    return base_context + conversation_and_work_rules + terminal_rules
 
 
 def get_bing_wallpaper() -> Dict[str, str]:
@@ -641,8 +648,39 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
                 if not tool_calls:
                     # Final assistant text response reached!
                     reply = (choice_msg.get("content") or "").strip()
+                    if not reply and choice_msg.get("reasoning_content"):
+                        reply = choice_msg.get("reasoning_content").strip()
+                    if not reply and choice_msg.get("thought"):
+                        reply = choice_msg.get("thought").strip()
+
+                    # Fallback to pure chat completion without tools if model returned empty content
                     if not reply:
-                        reply = "มายดำเนินการตรวจสอบและจัดการให้เรียบร้อยแล้วค่ะบอส! 💖"
+                        logger.warning("Empty content from model with tools. Retrying via pure chat completion...")
+                        try:
+                            pure_res = requests.post(
+                                f"{DEFAULT_GATEWAY_URL}/chat/completions",
+                                json={
+                                    "model": model,
+                                    "messages": messages,
+                                    "temperature": temperature,
+                                    "stream": False,
+                                },
+                                headers={
+                                    "Content-Type": "application/json",
+                                    "Authorization": f"Bearer {api_key}",
+                                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                                },
+                                timeout=60,
+                            )
+                            if pure_res.status_code == 200:
+                                pure_msg = pure_res.json()["choices"][0]["message"]
+                                reply = (pure_msg.get("content") or pure_msg.get("reasoning_content") or "").strip()
+                        except Exception as retry_err:
+                            logger.error("Pure chat retry failed: %s", retry_err)
+
+                    if not reply:
+                        reply = "มายพร้อมรับฟังและคอยอยู่เคียงข้างบอสเสมอเลยน้าา 💖 มีเรื่องอะไรอยากคุยหรือให้มายช่วย บอกได้ตลอดเลยนะคะ!"
+
                     CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
                     return reply, tool_events
 
@@ -679,7 +717,10 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
                 break
 
         # Fallback if loop ended or hit error
-        fallback_reply = "มายรันคำสั่งและประมวลผลข้อมูลในระบบให้เรียบร้อยแล้วนะคะบอส ลองดูผลลัพธ์บนหน้าจอได้เลยน้า 💖"
+        if tool_events:
+            fallback_reply = "มายรันคำสั่งและประมวลผลข้อมูลในระบบให้เรียบร้อยแล้วนะคะบอส ลองดูผลลัพธ์บนหน้าจอได้เลยน้า 💖"
+        else:
+            fallback_reply = "มายพร้อมรับฟังและดูแลบอสเสมอเลยค่ะ บอสลองบอกมายใหม่อีกทีได้เลยนะคะบอส 💖"
         CONVERSATION_HISTORY.append({"role": "assistant", "content": fallback_reply})
         return fallback_reply, tool_events
 
