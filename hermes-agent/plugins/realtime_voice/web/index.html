@@ -3,23 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Maymint Realtime Voice — Hermes Agent</title>
+  <title>Maymint Realtime Voice — Liquid Glass</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-dark: #0a0e17;
-      --card-bg: rgba(13, 20, 36, 0.65);
-      --card-border: rgba(255, 255, 255, 0.12);
-      --card-hover: rgba(255, 255, 255, 0.18);
-      --primary-pink: #ec4899;
-      --primary-purple: #8b5cf6;
-      --primary-cyan: #06b6d4;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --badge-bg: rgba(255, 255, 255, 0.08);
-      --badge-active: #10b981;
+      --glass-bg: rgba(25, 15, 38, 0.35);
+      --glass-card: rgba(22, 14, 35, 0.42);
+      --glass-card-hover: rgba(40, 25, 60, 0.55);
+      --glass-border: rgba(255, 255, 255, 0.22);
+      --glass-border-light: rgba(255, 255, 255, 0.35);
+      --glass-specular: inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 1px 0 rgba(0, 0, 0, 0.3), 0 25px 60px -15px rgba(10, 5, 20, 0.55);
+      --glass-specular-sm: inset 0 1px 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 1px 0 rgba(0, 0, 0, 0.2), 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+      --pink-glow: #f472b6;
+      --pink-core: #ec4899;
+      --rose-accent: #fb7185;
+      --purple-accent: #a855f7;
+      --amber-lantern: #fbbf24;
+      --text-pure: #ffffff;
+      --text-soft: #fdf2f8;
+      --text-muted: #e2e8f0;
+      --text-dim: #cbd5e1;
     }
 
     * {
@@ -31,8 +36,8 @@
     }
 
     body {
-      background-color: var(--bg-dark);
-      color: var(--text-main);
+      background-color: #0f0a17;
+      color: var(--text-pure);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -40,79 +45,90 @@
       overflow-x: hidden;
     }
 
-    /* Bing Nature Wallpaper Dynamic Background */
+    /* User Custom Dreamscape Wallpaper Background */
     .wallpaper-bg {
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
+      background-image: url('/background.jpg');
       background-size: cover;
-      background-position: center;
+      background-position: center 30%;
       background-repeat: no-repeat;
       z-index: -2;
-      transition: background-image 0.8s ease-in-out, transform 10s ease-out;
-      transform: scale(1.02);
+      animation: subtle-pan 25s ease-in-out infinite alternate;
     }
 
+    @keyframes subtle-pan {
+      0% { transform: scale(1.02) translate(0, 0); }
+      100% { transform: scale(1.06) translate(-1%, -1%); }
+    }
+
+    /* Liquid Prismatic Ambient Overlay */
     .wallpaper-overlay {
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: radial-gradient(circle at 50% 30%, rgba(10, 14, 23, 0.65) 0%, rgba(10, 14, 23, 0.92) 100%);
-      backdrop-filter: blur(12px) saturate(140%);
+      background: radial-gradient(circle at 75% 20%, rgba(251, 191, 36, 0.12) 0%, rgba(236, 72, 153, 0.15) 35%, rgba(15, 10, 23, 0.55) 75%, rgba(10, 6, 18, 0.78) 100%);
+      backdrop-filter: blur(2px);
       z-index: -1;
     }
 
-    /* Top Navigation Header */
+    /* Top Glass Header */
     header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 1.2rem 2.5rem;
-      border-bottom: 1px solid var(--card-border);
-      background: rgba(10, 14, 23, 0.4);
-      backdrop-filter: blur(20px);
+      padding: 1.2rem 2.8rem;
+      background: rgba(25, 15, 40, 0.35);
+      border-bottom: 1px solid var(--glass-border);
+      backdrop-filter: blur(32px) saturate(200%);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 0.8rem;
+      gap: 1rem;
     }
 
-    .avatar-glow {
-      width: 44px;
-      height: 44px;
+    .avatar-orb {
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary-pink), var(--primary-purple));
+      background: linear-gradient(135deg, rgba(236, 72, 153, 0.85), rgba(168, 85, 247, 0.85));
+      border: 1.5px solid rgba(255, 255, 255, 0.6);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.4rem;
-      box-shadow: 0 0 20px rgba(236, 72, 153, 0.5);
-      animation: pulse-avatar 3s infinite alternate;
+      font-size: 1.5rem;
+      box-shadow: 0 0 25px rgba(236, 72, 153, 0.6), inset 0 2px 2px rgba(255, 255, 255, 0.8);
+      position: relative;
+      animation: float-avatar 4s ease-in-out infinite;
     }
 
-    @keyframes pulse-avatar {
-      0% { transform: scale(1); box-shadow: 0 0 15px rgba(236, 72, 153, 0.4); }
-      100% { transform: scale(1.05); box-shadow: 0 0 25px rgba(236, 72, 153, 0.8); }
+    @keyframes float-avatar {
+      0%, 100% { transform: translateY(0); box-shadow: 0 0 20px rgba(236, 72, 153, 0.5); }
+      50% { transform: translateY(-3px); box-shadow: 0 0 35px rgba(236, 72, 153, 0.8); }
     }
 
     .brand-text h1 {
-      font-size: 1.15rem;
+      font-size: 1.25rem;
       font-weight: 600;
       letter-spacing: -0.01em;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
       display: flex;
       align-items: center;
-      gap: 0.4rem;
+      gap: 0.5rem;
     }
 
     .brand-text p {
-      font-size: 0.8rem;
-      color: var(--text-muted);
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      text-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
     }
 
     .header-controls {
@@ -121,21 +137,33 @@
       gap: 1.5rem;
     }
 
-    /* Auto Speak Toggle */
+    /* Auto Speak Glass Toggle */
     .toggle-wrapper {
       display: flex;
       align-items: center;
-      gap: 0.6rem;
-      font-size: 0.85rem;
-      color: var(--text-muted);
+      gap: 0.75rem;
+      font-size: 0.88rem;
+      color: var(--text-soft);
       cursor: pointer;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid var(--glass-border);
+      padding: 0.4rem 0.9rem;
+      border-radius: 30px;
+      backdrop-filter: blur(20px);
+      box-shadow: var(--glass-specular-sm);
+      transition: all 0.25s ease;
+    }
+
+    .toggle-wrapper:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: var(--pink-glow);
     }
 
     .switch {
       position: relative;
       display: inline-block;
-      width: 44px;
-      height: 24px;
+      width: 42px;
+      height: 22px;
     }
 
     .switch input { opacity: 0; width: 0; height: 0; }
@@ -144,30 +172,55 @@
       position: absolute;
       cursor: pointer;
       top: 0; left: 0; right: 0; bottom: 0;
-      background-color: rgba(255, 255, 255, 0.15);
+      background-color: rgba(255, 255, 255, 0.25);
       transition: .3s;
-      border-radius: 24px;
-      border: 1px solid var(--card-border);
+      border-radius: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
     }
 
     .slider:before {
       position: absolute;
       content: "";
-      height: 18px;
-      width: 18px;
+      height: 16px;
+      width: 16px;
       left: 2px;
       bottom: 2px;
       background-color: white;
       transition: .3s;
       border-radius: 50%;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
     }
 
     input:checked + .slider {
-      background: linear-gradient(135deg, var(--primary-pink), var(--primary-purple));
+      background: linear-gradient(135deg, var(--pink-core), var(--purple-accent));
     }
 
     input:checked + .slider:before {
       transform: translateX(20px);
+    }
+
+    .glass-btn {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid var(--glass-border);
+      color: var(--text-pure);
+      padding: 0.5rem 1.1rem;
+      border-radius: 24px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      backdrop-filter: blur(20px);
+      box-shadow: var(--glass-specular-sm);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .glass-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+      border-color: rgba(255, 255, 255, 0.5);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px -5px rgba(236, 72, 153, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.6);
     }
 
     /* Main Container */
@@ -176,92 +229,133 @@
       max-width: 1100px;
       width: 100%;
       margin: 0 auto;
-      padding: 2rem 1.5rem;
+      padding: 2.2rem 1.5rem;
       display: flex;
       flex-direction: column;
       gap: 1.8rem;
     }
 
-    /* 5-Stage Live Status Badges Bar */
-    .stages-container {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 16px;
-      padding: 1.2rem 1.5rem;
-      backdrop-filter: blur(24px);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    /* 5-Stage Live Status Badges Bar (Liquid Glass Style) */
+    .stages-glass-container {
+      background: var(--glass-card);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      padding: 1.3rem 1.8rem;
+      backdrop-filter: blur(36px) saturate(210%);
+      box-shadow: var(--glass-specular);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stages-glass-container::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
     }
 
     .stages-title {
-      font-size: 0.82rem;
-      color: var(--text-muted);
-      margin-bottom: 0.8rem;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      margin-bottom: 0.9rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
 
-    .stages-list {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 0.75rem;
+    .status-highlight {
+      color: #f472b6;
+      font-weight: 600;
+      text-shadow: 0 0 12px rgba(244, 114, 182, 0.6);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
     }
 
-    .stage-badge {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-      padding: 0.75rem 0.5rem;
-      border-radius: 12px;
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #f472b6;
+      box-shadow: 0 0 10px #f472b6;
+      animation: pulse-dot 1.5s infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    .stages-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.85rem;
+    }
+
+    .stage-capsule {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 0.85rem 0.6rem;
+      border-radius: 18px;
       text-align: center;
-      transition: all 0.3s ease;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0.3rem;
+      gap: 0.35rem;
       position: relative;
-      opacity: 0.5;
+      opacity: 0.6;
+      backdrop-filter: blur(16px);
     }
 
-    .stage-badge .icon {
-      font-size: 1.2rem;
+    .stage-capsule .icon {
+      font-size: 1.35rem;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
     }
 
-    .stage-badge .label {
-      font-size: 0.8rem;
+    .stage-capsule .label {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-dim);
+    }
+
+    .stage-capsule.active {
+      opacity: 1;
+      background: rgba(236, 72, 153, 0.28);
+      border-color: rgba(255, 255, 255, 0.6);
+      box-shadow: 0 0 25px rgba(236, 72, 153, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.7);
+      transform: translateY(-3px) scale(1.03);
+    }
+
+    .stage-capsule.active .label {
+      color: #ffffff;
+      font-weight: 600;
+      text-shadow: 0 0 10px rgba(236, 72, 153, 0.8);
+    }
+
+    .stage-capsule.done {
+      opacity: 0.9;
+      background: rgba(16, 185, 129, 0.18);
+      border-color: rgba(52, 211, 153, 0.5);
+      box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4);
+    }
+
+    .stage-capsule.done .label {
+      color: #6ee7b7;
       font-weight: 500;
     }
 
-    .stage-badge.active {
-      opacity: 1;
-      background: rgba(236, 72, 153, 0.15);
-      border-color: var(--primary-pink);
-      box-shadow: 0 0 20px rgba(236, 72, 153, 0.3);
-      transform: translateY(-2px);
-    }
-
-    .stage-badge.active .label {
-      color: #f472b6;
-      font-weight: 600;
-    }
-
-    .stage-badge.done {
-      opacity: 0.85;
-      background: rgba(16, 185, 129, 0.1);
-      border-color: rgba(16, 185, 129, 0.4);
-    }
-
-    .stage-badge.done .label {
-      color: #34d399;
-    }
-
-    /* Central Voice Interaction Card */
-    .interaction-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 24px;
-      padding: 2.5rem 2rem;
-      backdrop-filter: blur(28px);
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+    /* Central Liquid Glass Interaction Card */
+    .liquid-main-card {
+      background: var(--glass-card);
+      border: 1px solid var(--glass-border);
+      border-radius: 32px;
+      padding: 2.8rem 2.2rem;
+      backdrop-filter: blur(40px) saturate(210%);
+      box-shadow: var(--glass-specular);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -270,218 +364,250 @@
       position: relative;
     }
 
-    /* Glowing Microphone Button */
-    .mic-zone {
+    .liquid-main-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 10%;
+      right: 10%;
+      height: 1.5px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+    }
+
+    /* Liquid Glowing Center Microphone Orb */
+    .mic-stage {
       position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
+      margin-top: 0.5rem;
     }
 
-    .mic-ripple {
+    .mic-water-ring {
       position: absolute;
-      width: 140px;
-      height: 140px;
+      width: 150px;
+      height: 150px;
       border-radius: 50%;
-      border: 2px solid rgba(236, 72, 153, 0.4);
-      animation: ripple 2s infinite cubic-bezier(0, 0.2, 0.8, 1);
+      border: 2px solid rgba(244, 114, 182, 0.4);
+      animation: water-ripple 2.5s infinite cubic-bezier(0, 0.2, 0.8, 1);
       opacity: 0;
       pointer-events: none;
     }
 
-    .mic-button {
-      width: 100px;
-      height: 100px;
+    @keyframes water-ripple {
+      0% { transform: scale(0.85); opacity: 1; border-color: rgba(244, 114, 182, 0.8); }
+      100% { transform: scale(1.75); opacity: 0; border-color: rgba(236, 72, 153, 0); }
+    }
+
+    .liquid-mic-btn {
+      width: 110px;
+      height: 110px;
       border-radius: 50%;
-      border: none;
-      background: linear-gradient(135deg, #ec4899, #8b5cf6);
+      border: 2px solid rgba(255, 255, 255, 0.65);
+      background: radial-gradient(circle at 35% 25%, #f472b6 0%, #ec4899 40%, #8b5cf6 85%, #6d28d9 100%);
       color: white;
-      font-size: 2.5rem;
+      font-size: 2.8rem;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      box-shadow: 0 0 35px rgba(236, 72, 153, 0.6);
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 15px 45px rgba(236, 72, 153, 0.65), inset 0 3px 6px rgba(255, 255, 255, 0.8), inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
       position: relative;
-      z-index: 2;
+      z-index: 3;
     }
 
-    .mic-button:hover {
-      transform: scale(1.06);
-      box-shadow: 0 0 50px rgba(236, 72, 153, 0.85);
+    .liquid-mic-btn:hover {
+      transform: scale(1.08) translateY(-3px);
+      box-shadow: 0 20px 60px rgba(236, 72, 153, 0.9), inset 0 4px 8px rgba(255, 255, 255, 0.9);
     }
 
-    .mic-button.recording {
-      background: linear-gradient(135deg, #ef4444, #f97316);
-      box-shadow: 0 0 50px rgba(239, 68, 68, 0.9);
-      animation: pulse-recording 1s infinite alternate;
+    .liquid-mic-btn:active {
+      transform: scale(0.96);
     }
 
-    @keyframes pulse-recording {
-      0% { transform: scale(1); }
-      100% { transform: scale(1.08); }
+    .liquid-mic-btn.recording {
+      background: radial-gradient(circle at 35% 25%, #f87171 0%, #ef4444 45%, #ea580c 100%);
+      border-color: rgba(255, 255, 255, 0.85);
+      box-shadow: 0 0 50px rgba(239, 68, 68, 0.9), inset 0 3px 6px rgba(255, 255, 255, 0.8);
+      animation: pulse-liquid-rec 1.2s infinite alternate ease-in-out;
     }
 
-    @keyframes ripple {
-      0% { transform: scale(0.8); opacity: 1; }
-      100% { transform: scale(1.6); opacity: 0; }
+    @keyframes pulse-liquid-rec {
+      0% { transform: scale(1); box-shadow: 0 0 40px rgba(239, 68, 68, 0.8); }
+      100% { transform: scale(1.1); box-shadow: 0 0 65px rgba(239, 68, 68, 1); }
     }
 
-    .mic-hint {
-      font-size: 0.95rem;
-      color: var(--text-muted);
-      margin-top: 0.4rem;
+    .mic-caption {
+      font-size: 1rem;
+      color: var(--text-pure);
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+      margin-top: 0.2rem;
     }
 
-    /* Waveform Visualizer */
-    .visualizer-container {
+    /* Prismatic Waveform Visualizer */
+    .waveform-capsule {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--glass-border);
+      border-radius: 30px;
+      padding: 0.5rem 1.5rem;
+      backdrop-filter: blur(20px);
+      box-shadow: var(--glass-specular-sm);
       display: flex;
       align-items: center;
-      gap: 4px;
-      height: 36px;
-      margin: 0.5rem 0;
+      gap: 5px;
+      height: 44px;
     }
 
-    .wave-bar {
+    .wave-stick {
       width: 4px;
       height: 8px;
-      background: linear-gradient(to top, var(--primary-pink), var(--primary-cyan));
+      background: linear-gradient(to top, var(--pink-core), #fbbf24);
       border-radius: 4px;
-      transition: height 0.15s ease;
+      box-shadow: 0 0 6px rgba(236, 72, 153, 0.5);
+      transition: height 0.12s ease;
     }
 
-    /* Quick Action Chips */
-    .quick-chips {
+    /* Quick Action Liquid Chips */
+    .quick-chips-row {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 0.6rem;
-      max-width: 750px;
+      gap: 0.75rem;
+      max-width: 800px;
     }
 
-    .chip-btn {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid var(--card-border);
-      color: var(--text-main);
-      padding: 0.5rem 1rem;
-      border-radius: 20px;
-      font-size: 0.85rem;
+    .liquid-chip {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--glass-border);
+      color: var(--text-pure);
+      padding: 0.55rem 1.2rem;
+      border-radius: 25px;
+      font-size: 0.88rem;
       cursor: pointer;
-      transition: all 0.2s ease;
+      backdrop-filter: blur(20px);
+      box-shadow: var(--glass-specular-sm);
+      transition: all 0.25s ease;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
     }
 
-    .chip-btn:hover {
-      background: rgba(255, 255, 255, 0.14);
-      border-color: var(--primary-pink);
-      transform: translateY(-1px);
+    .liquid-chip:hover {
+      background: rgba(255, 255, 255, 0.25);
+      border-color: rgba(255, 255, 255, 0.6);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px -3px rgba(236, 72, 153, 0.45);
     }
 
-    /* Chat Transcript Log */
-    .chat-box {
+    /* Chat Transcript Stream in Liquid Glass */
+    .chat-transcript-glass {
       width: 100%;
-      background: rgba(8, 12, 22, 0.6);
-      border: 1px solid var(--card-border);
-      border-radius: 16px;
-      padding: 1.2rem;
-      max-height: 280px;
+      background: rgba(15, 10, 25, 0.45);
+      border: 1px solid var(--glass-border);
+      border-radius: 22px;
+      padding: 1.4rem;
+      max-height: 290px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 0.9rem;
+      gap: 1rem;
       text-align: left;
+      backdrop-filter: blur(24px);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
     }
 
-    .message-row {
+    .chat-transcript-glass::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .chat-transcript-glass::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+    }
+
+    .msg-row {
       display: flex;
-      gap: 0.75rem;
+      gap: 0.8rem;
       align-items: flex-start;
-      animation: fadeIn 0.3s ease;
+      animation: msgPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
+    @keyframes msgPop {
+      from { opacity: 0; transform: translateY(10px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    .message-bubble {
-      padding: 0.8rem 1.1rem;
-      border-radius: 14px;
-      font-size: 0.92rem;
-      line-height: 1.5;
+    .msg-bubble {
+      padding: 0.9rem 1.3rem;
+      border-radius: 18px;
+      font-size: 0.95rem;
+      line-height: 1.55;
       max-width: 85%;
+      box-shadow: var(--glass-specular-sm);
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
     }
 
-    .message-bubble.user {
-      background: rgba(139, 92, 246, 0.2);
-      border: 1px solid rgba(139, 92, 246, 0.35);
-      color: #e2e8f0;
+    .msg-bubble.user {
+      background: rgba(168, 85, 247, 0.3);
+      border: 1px solid rgba(216, 180, 254, 0.4);
+      color: #ffffff;
       margin-left: auto;
-      border-bottom-right-radius: 2px;
+      border-bottom-right-radius: 4px;
     }
 
-    .message-bubble.maymint {
-      background: rgba(236, 72, 153, 0.15);
-      border: 1px solid rgba(236, 72, 153, 0.3);
-      color: #fdf2f8;
-      border-bottom-left-radius: 2px;
+    .msg-bubble.maymint {
+      background: rgba(236, 72, 153, 0.25);
+      border: 1px solid rgba(244, 114, 182, 0.45);
+      color: #ffffff;
+      border-bottom-left-radius: 4px;
     }
 
-    /* Audio Player Control Bar */
-    .audio-bar {
+    /* Audio Playback Liquid Footer Bar */
+    .audio-liquid-bar {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 1.2rem;
       width: 100%;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--card-border);
-      padding: 0.75rem 1.2rem;
-      border-radius: 14px;
-      font-size: 0.85rem;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--glass-border);
+      padding: 0.8rem 1.5rem;
+      border-radius: 20px;
+      font-size: 0.88rem;
+      backdrop-filter: blur(20px);
+      box-shadow: var(--glass-specular-sm);
     }
 
-    .audio-btn {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid var(--card-border);
-      color: white;
-      padding: 0.4rem 0.9rem;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.82rem;
-      transition: background 0.2s;
-    }
-
-    .audio-btn:hover { background: rgba(255, 255, 255, 0.2); }
-
-    .timings-badge {
-      font-size: 0.75rem;
-      color: var(--text-muted);
+    .timing-tag {
+      font-size: 0.78rem;
+      color: var(--text-dim);
       margin-left: auto;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 0.25rem 0.6rem;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
     }
 
-    /* Footer info */
     footer {
       text-align: center;
       padding: 1.2rem;
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      text-shadow: 0 1px 4px rgba(0,0,0,0.6);
     }
   </style>
 </head>
 <body>
 
-  <!-- Dynamic Bing Nature Wallpaper -->
+  <!-- Custom Fairy-tale Mountain Meadow Background -->
   <div class="wallpaper-bg" id="wallpaperBg"></div>
   <div class="wallpaper-overlay"></div>
 
   <!-- Header -->
   <header>
     <div class="brand">
-      <div class="avatar-glow">🌸</div>
+      <div class="avatar-orb">🌸</div>
       <div class="brand-text">
-        <h1>Maymint Voice Assistant 💖</h1>
-        <p id="wallpaperTitle">Microsoft Edge-TTS Studio &middot; 9Router Gateway</p>
+        <h1>Maymint Liquid Voice 💖</h1>
+        <p>Microsoft Edge-TTS Studio (24kHz) &middot; 9Router AI Gateway</p>
       </div>
     </div>
     <div class="header-controls">
@@ -492,89 +618,91 @@
           <span class="slider"></span>
         </label>
       </label>
-      <button class="audio-btn" id="testVoiceBtn">🔊 ทดสอบเสียงมายมิ้นท์</button>
+      <button class="glass-btn" id="testVoiceBtn">🔊 ทดสอบเสียงมายมิ้นท์</button>
     </div>
   </header>
 
-  <!-- Main Interface -->
+  <!-- Main Content -->
   <main>
     <!-- 5-Stage Live Status Badges Bar -->
-    <div class="stages-container">
+    <div class="stages-glass-container">
       <div class="stages-title">
         <span>⚡ ลำดับการประมวลผลเสียงสด (5-Stage Realtime Status):</span>
-        <span id="currentStatusText" style="color: #f472b6; font-weight: 500;">พร้อมรับฟังคำสั่งเสียงบอส</span>
+        <div class="status-highlight">
+          <div class="status-dot"></div>
+          <span id="currentStatusText">พร้อมรับฟังคำสั่งเสียงบอส</span>
+        </div>
       </div>
-      <div class="stages-list">
-        <div class="stage-badge" id="stage-1">
+      <div class="stages-grid">
+        <div class="stage-capsule" id="stage-1">
           <span class="icon">🎙️</span>
           <span class="label">1. ฟังเสียงบอส</span>
         </div>
-        <div class="stage-badge" id="stage-2">
+        <div class="stage-capsule" id="stage-2">
           <span class="icon">✍️</span>
           <span class="label">2. ถอดความเสียง</span>
         </div>
-        <div class="stage-badge" id="stage-3">
+        <div class="stage-capsule" id="stage-3">
           <span class="icon">🧠</span>
           <span class="label">3. คิดคำตอบ AI</span>
         </div>
-        <div class="stage-badge" id="stage-4">
+        <div class="stage-capsule" id="stage-4">
           <span class="icon">🎙️</span>
           <span class="label">4. สร้างเสียงพูด</span>
         </div>
-        <div class="stage-badge" id="stage-5">
+        <div class="stage-capsule" id="stage-5">
           <span class="icon">🔊</span>
           <span class="label">5. มายมิ้นท์กำลังพูด</span>
         </div>
       </div>
     </div>
 
-    <!-- Center Mic Interaction -->
-    <div class="interaction-card">
-      <div class="mic-zone">
-        <div class="mic-ripple" id="micRipple"></div>
-        <button class="mic-button" id="micButton" title="กดเพื่อเริ่มพูด / หยุดพูด">
+    <!-- Center Liquid Glass Interaction Card -->
+    <div class="liquid-main-card">
+      <div class="mic-stage">
+        <div class="mic-water-ring" id="micRipple"></div>
+        <button class="liquid-mic-btn" id="micButton" title="กดเพื่อเริ่มพูด / หยุดพูด">
           🎙️
         </button>
       </div>
-      <p class="mic-hint" id="micHint">คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส</p>
+      <p class="mic-caption" id="micHint">คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส</p>
 
-      <!-- Waveform Animation -->
-      <div class="visualizer-container" id="visualizer">
-        <!-- 24 Wave bars -->
+      <!-- Prismatic Waveform Visualizer -->
+      <div class="waveform-capsule" id="visualizer">
+        <!-- 24 Wave Sticks -->
       </div>
 
-      <!-- Quick Action Chips -->
-      <div class="quick-chips">
-        <button class="chip-btn" onclick="sendQuickPrompt('สวัสดีจ้ามายมิ้นท์ วันนี้เป็นยังไงบ้าง')">👋 สวัสดีจ้ามายมิ้นท์ 💖</button>
-        <button class="chip-btn" onclick="sendQuickPrompt('วันนี้บอสเหนื่อยจังเลย ขอกำลังใจหน่อยนะ')">🥺 บอสเหนื่อยจัง ขอกำลังใจหน่อย</button>
-        <button class="chip-btn" onclick="sendQuickPrompt('ช่วยวางแผนงานวันนี้ให้หน่อยนะบอสต้องทำอะไรบ้าง')">📋 ช่วยวางแผนงานวันนี้หน่อย</button>
-        <button class="chip-btn" onclick="sendQuickPrompt('เล่าเรื่องตลกหรือเรื่องน่ารักๆ ให้บอสฟังหน่อยสิ')">😄 เล่าเรื่องน่ารักๆ ให้ฟังหน่อย</button>
+      <!-- Quick Action Liquid Chips -->
+      <div class="quick-chips-row">
+        <button class="liquid-chip" onclick="sendQuickPrompt('สวัสดีจ้ามายมิ้นท์ วันนี้เป็นยังไงบ้าง')">👋 สวัสดีจ้ามายมิ้นท์ 💖</button>
+        <button class="liquid-chip" onclick="sendQuickPrompt('วันนี้บอสเหนื่อยจังเลย ขอกำลังใจหน่อยนะ')">🥺 บอสเหนื่อยจัง ขอกำลังใจหน่อย</button>
+        <button class="liquid-chip" onclick="sendQuickPrompt('ช่วยวางแผนงานวันนี้ให้หน่อยนะบอสต้องทำอะไรบ้าง')">📋 ช่วยวางแผนงานวันนี้หน่อย</button>
+        <button class="liquid-chip" onclick="sendQuickPrompt('เล่าเรื่องตลกหรือเรื่องน่ารักๆ ให้บอสฟังหน่อยสิ')">😄 เล่าเรื่องน่ารักๆ ให้ฟังหน่อย</button>
       </div>
 
-      <!-- Live Chat Transcript -->
-      <div class="chat-box" id="chatBox">
-        <div class="message-row">
-          <div class="message-bubble maymint">
-            🌸 <strong>มายมิ้นท์:</strong> สวัสดีค่ะบอส! มายมิ้นท์พร้อมดูแลบอสแล้วนะคะ จะพิมพ์คุยหรือกดปุ่มไมโครโฟนพูดคุยกับมายได้ทันทีเลยค่ะบอส 💖✨
+      <!-- Chat Transcript Stream in Liquid Glass -->
+      <div class="chat-transcript-glass" id="chatBox">
+        <div class="msg-row">
+          <div class="msg-bubble maymint">
+            🌸 <strong>มายมิ้นท์:</strong> สวัสดีค่ะบอส! มายมิ้นท์พร้อมดูแลบอสแล้วนะคะ จะพิมพ์คุยหรือกดปุ่มไมค์พูดคุยกับมายได้ทันทีเลยค่ะบอส 💖✨
           </div>
         </div>
       </div>
 
-      <!-- Audio Playback Status Bar -->
-      <div class="audio-bar" id="audioBar">
+      <!-- Audio Status Bar -->
+      <div class="audio-liquid-bar" id="audioBar">
         <span id="audioPlayingStatus">🔇 ยังไม่มีเสียงกำลังเล่น</span>
-        <button class="audio-btn" id="stopAudioBtn" style="display: none;">⏹️ หยุดเสียง</button>
-        <span class="timings-badge" id="timingsBadge">Edge-TTS: 24kHz &middot; Gemini 3.8 Flash High</span>
+        <button class="glass-btn" id="stopAudioBtn" style="display: none; padding: 0.35rem 0.8rem;">⏹️ หยุดเสียง</button>
+        <span class="timing-tag" id="timingsBadge">Edge-TTS Studio: 24kHz &middot; Gemini 3.8 Flash High</span>
       </div>
     </div>
   </main>
 
   <footer>
-    <p>Hermes Agent Realtime Voice &middot; Powered by <strong>Microsoft Edge-TTS (th-TH-PremwadeeNeural)</strong> &amp; <strong>9Router AI Gateway</strong></p>
+    <p>Hermes Agent Realtime Voice &middot; Microsoft Edge-TTS (th-TH-PremwadeeNeural) &middot; 9Router AI Gateway</p>
   </footer>
 
   <script>
-    // State
     let isRecording = false;
     let recognition = null;
     let currentAudio = null;
@@ -589,69 +717,52 @@
     const audioPlayingStatus = document.getElementById('audioPlayingStatus');
     const stopAudioBtn = document.getElementById('stopAudioBtn');
     const timingsBadge = document.getElementById('timingsBadge');
-    const wallpaperBg = document.getElementById('wallpaperBg');
-    const wallpaperTitle = document.getElementById('wallpaperTitle');
 
-    // Create 24 wave bars
+    // Create 24 wave sticks
     const visualizer = document.getElementById('visualizer');
     for (let i = 0; i < 24; i++) {
-      const bar = document.createElement('div');
-      bar.className = 'wave-bar';
-      visualizer.appendChild(bar);
+      const stick = document.createElement('div');
+      stick.className = 'wave-stick';
+      visualizer.appendChild(stick);
     }
-    const waveBars = document.querySelectorAll('.wave-bar');
+    const waveSticks = document.querySelectorAll('.wave-stick');
 
-    // 1. Fetch Bing Nature Wallpaper
-    async function loadBingWallpaper() {
-      try {
-        const res = await fetch('/api/bing-wallpaper');
-        const data = await res.json();
-        if (data.url) {
-          wallpaperBg.style.backgroundImage = `url('${data.url}')`;
-          wallpaperTitle.innerText = `${data.title} · Microsoft Edge-TTS Studio`;
-        }
-      } catch (err) {
-        console.warn('Bing wallpaper error:', err);
-      }
-    }
-    loadBingWallpaper();
-
-    // 2. Stage Management (1 to 5)
+    // 1. Stage Management
     function setStage(stageNum, textDesc) {
       for (let i = 1; i <= 5; i++) {
-        const badge = document.getElementById(`stage-${i}`);
-        badge.classList.remove('active', 'done');
-        if (i < stageNum) badge.classList.add('done');
-        else if (i === stageNum) badge.classList.add('active');
+        const capsule = document.getElementById(`stage-${i}`);
+        capsule.classList.remove('active', 'done');
+        if (i < stageNum) capsule.classList.add('done');
+        else if (i === stageNum) capsule.classList.add('active');
       }
       if (textDesc) currentStatusText.innerText = textDesc;
     }
 
     function resetStages() {
       for (let i = 1; i <= 5; i++) {
-        const badge = document.getElementById(`stage-${i}`);
-        badge.classList.remove('active', 'done');
+        const capsule = document.getElementById(`stage-${i}`);
+        capsule.classList.remove('active', 'done');
       }
       currentStatusText.innerText = "พร้อมรับฟังคำสั่งเสียงบอส";
     }
 
-    // 3. Audio Waveform Animation
+    // 2. Waveform Animation
     function startWaveform() {
       clearInterval(waveInterval);
       waveInterval = setInterval(() => {
-        waveBars.forEach(bar => {
-          const height = Math.floor(Math.random() * 28) + 6;
-          bar.style.height = `${height}px`;
+        waveSticks.forEach(stick => {
+          const h = Math.floor(Math.random() * 26) + 6;
+          stick.style.height = `${h}px`;
         });
-      }, 100);
+      }, 90);
     }
 
     function stopWaveform() {
       clearInterval(waveInterval);
-      waveBars.forEach(bar => { bar.style.height = '8px'; });
+      waveSticks.forEach(stick => { stick.style.height = '8px'; });
     }
 
-    // 4. Web Speech Recognition (Real-time Browser STT)
+    // 3. Web Speech Recognition (Real-time Browser STT)
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       recognition = new SpeechRecognition();
@@ -706,7 +817,7 @@
       micHint.innerText = 'เบราว์เซอร์ไม่รองรับ Web Speech API สามารถพิมพ์หรือกดเลือกหัวข้อด้านล่างได้ค่ะ';
     }
 
-    // Mic Button Toggle
+    // Mic Button Click
     micButton.addEventListener('click', () => {
       if (!recognition) {
         alert('เบราว์เซอร์นี้ไม่รองรับ Web Speech Recognition กรุณาใช้ Chrome หรือ Edge ค่ะบอส');
@@ -720,7 +831,7 @@
       }
     });
 
-    // 5. Submit Speech / Text to Backend
+    // 4. Submit Speech
     async function submitUserSpeech(text) {
       appendChatMessage('user', text);
       setStage(2, '✍️ [สเต็ป 2/5] ถอดความเสียงสำเร็จ กำลังส่งวิเคราะห์...');
@@ -759,7 +870,7 @@
       }, 300);
     }
 
-    // 6. Play Audio
+    // 5. Play Audio
     function playAudioResponse(url) {
       if (currentAudio) currentAudio.pause();
 
@@ -801,13 +912,13 @@
       }
     });
 
-    // 7. Quick Prompts
+    // 6. Quick Prompts
     window.sendQuickPrompt = function(promptText) {
       micHint.innerText = `ส่งคำถาม: "${promptText}"`;
       submitUserSpeech(promptText);
     };
 
-    // 8. Test Voice Button
+    // 7. Test Voice Button
     document.getElementById('testVoiceBtn').addEventListener('click', async () => {
       const testText = 'สวัสดีค่ะบอส มายมิ้นท์เองนะคะ นี่คือเสียงเปรมวดีแท้จาก Microsoft Edge คมชัดระดับสตูดิโอเลยค่ะบอส';
       setStage(4, '🎙️ กำลังดึงเสียงตัวอย่าง Edge-TTS...');
@@ -830,9 +941,9 @@
     // Helper: Append Message
     function appendChatMessage(sender, text) {
       const row = document.createElement('div');
-      row.className = 'message-row';
+      row.className = 'msg-row';
       const bubble = document.createElement('div');
-      bubble.className = `message-bubble ${sender}`;
+      bubble.className = `msg-bubble ${sender}`;
 
       if (sender === 'user') {
         bubble.innerHTML = `👤 <strong>บอส:</strong> ${escapeHtml(text)}`;
