@@ -5,6 +5,14 @@
 
 import sys
 import argparse
+
+# Enable UTF-8 for Windows console output
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 from lib.ai_gateway import MeuuAIGateway
 
 

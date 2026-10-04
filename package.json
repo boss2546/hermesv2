@@ -15,7 +15,10 @@
     "models": "node src/index.js models",
     "py": "python3 src/main.py",
     "py:tts": "python3 src/main.py --tts",
-    "py:models": "python3 src/main.py --models"
+    "py:models": "python3 src/main.py --models",
+    "voice": "python3 hermes-agent/plugins/realtime_voice/web/server.py",
+    "tunnel": "powershell -ExecutionPolicy Bypass -NoProfile -File scripts/run-tunnel.ps1",
+    "tunnel:custom": "powershell -ExecutionPolicy Bypass -NoProfile -File scripts/run-custom-tunnel.ps1"
   },
   "keywords": [
     "hermes",
