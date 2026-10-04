@@ -82,9 +82,24 @@
     4. **สวิตช์เปิด/ปิดคำสั่งระบบ:** ปรับ `ENABLE_TERMINAL_TOOLS=true/false` ได้ง่ายๆ
     5. **แก้ Bug ตอบตัดบท:** แยกบริบทชวนคุย/เล่านิทาน ออกจากการรันเครื่อง และมีระบบ Retry ป้องกันข้อความว่างเปล่า
 
+- [x] **สเต็ป 13: แก้ไขปัญหา Pylance Import Warning ใน VSCode (PASS 100%)**
+  - จัดการสร้าง `.vscode/settings.json` กำหนด `extraPaths` ให้ตัวตรวจจับโค้ดของ IDE เข้าใจโครงสร้างโฟลเดอร์ปลั๊กอิน
+  - ปรับการ import ใน `server.py` ด้วย `try...except` และ `# type: ignore` ลบจุดแดงแจ้งเตือน `1 problem in this file` หายเรียบร้อย
+- [x] **สเต็ป 14: ปิดการใช้อีโมจิในโหมดคุยสดเรียลไทม์ (No-Emoji for Clean Speech - PASS 100%)**
+  - **คำสั่งจากบอส:** ห้ามมีอีโมจิในข้อความตอบกลับของโหมดคุยสด เพราะระบบสร้างเสียง (Edge-TTS) จะอ่านออกเสียงชื่ออีโมจิออกมาด้วย
+  - ปรับ `config.txt` และ System Prompt กำหนดกติกาเด็ดขาดห้ามตอบด้วยอีโมจิ
+  - เพิ่มฟังก์ชัน `strip_emojis()` ด้วย Regex กรองอีโมจิและสัญลักษณ์ภาพทุกตัวออกทั้งจาก `reply_text` และข้อความที่ส่งเข้า TTS
+- [x] **สเต็ป 15: ติดตั้ง Production Custom Subdomain `https://may.meuu.live` (PASS 100%)**
+  - ตั้งค่า Cloudflare DNS: ชี้ A Record `may` -> `168.222.28.67` (Proxied 🟠)
+  - ตั้งค่า Cloudflare Origin Rules: ชี้ `may.meuu.live` ไปยัง Port `9229`
+  - เปิดพอร์ต `9229` (TCP) ใน Windows Defender Firewall
+  - ปรับโหมด SSL/TLS บน Cloudflare เป็น `Flexible` เพื่อเชื่อมต่อกับ Origin Port 9229 แบบไร้รอยต่อ
+
 ---
 
 ## 🌐 ลิงก์ระบบที่เปิดใช้งานอยู่
-- 🌸 **Maymint Voice Web Dashboard (Public HTTPS Tunnel):** `https://blair-king-michel-calendar.trycloudflare.com/`
+- 🌸 **Maymint Production Subdomain:** `https://may.meuu.live/` (เข้าใช้งานได้จากทุกที่ทั่วโลก)
+- 🌸 **Maymint Voice Web Dashboard (Quick Tunnel):** `https://blair-king-michel-calendar.trycloudflare.com/`
 - 🌸 **Maymint Voice Web Dashboard (Local):** `http://127.0.0.1:9229/`
 - 🖥️ **Hermes Standard Dashboard:** `http://127.0.0.1:9119/`
+
