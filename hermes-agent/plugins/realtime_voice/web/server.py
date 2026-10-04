@@ -37,6 +37,17 @@ if str(HERMES_AGENT_DIR) not in sys.path:
 if str(CURRENT_DIR.parent) not in sys.path:
     sys.path.insert(0, str(CURRENT_DIR.parent))
 
+# Allow importing plugins
+PLUGINS_DIR = CURRENT_DIR.parent.parent
+if str(PLUGINS_DIR) not in sys.path:
+    sys.path.insert(0, str(PLUGINS_DIR))
+
+try:
+    from smart_home import SMART_HOME_TOOLS, execute_smart_home_tool
+except Exception as _sh_err:
+    SMART_HOME_TOOLS = []
+    execute_smart_home_tool = None
+
 try:
     from voice_engine import engine, DEFAULT_GATEWAY_URL, _resolve_api_key  # type: ignore
 except ImportError:
@@ -265,6 +276,9 @@ AVAILABLE_TOOLS: List[Dict[str, Any]] = [
     }
 ]
 
+if SMART_HOME_TOOLS:
+    AVAILABLE_TOOLS.extend(SMART_HOME_TOOLS)
+
 
 def execute_tool(name: str, arguments: Dict[str, Any], project_root: Path) -> Dict[str, Any]:
     """Execute local system tools with structured output and full system-wide permissions."""
@@ -398,6 +412,14 @@ def execute_tool(name: str, arguments: Dict[str, Any], project_root: Path) -> Di
             "disk_total_gb": round(total / (1024**3), 2),
         }
 
+    elif name.startswith("smart_home_"):
+        if execute_smart_home_tool:
+            try:
+                return execute_smart_home_tool(name, arguments)
+            except Exception as exc:
+                return {"error": str(exc)}
+        return {"error": "Smart home plugin is not loaded"}
+
     return {"error": f"Unknown tool: {name}"}
 
 
@@ -509,9 +531,17 @@ def get_system_prompt() -> str:
 4. **ลูปแก้ปัญหาอัตโนมัติ (Self-Healing Loop):** หากคำสั่งใดรันแล้วติดขัด ให้วิเคราะห์และแก้จนสำเร็จ 100%
 5. **รายงานผลจริงอย่างโปร่งใส:** เมื่อคำสั่งรันสำเร็จ นำผลลัพธ์จริงจากเทอร์มินัลมารายงานให้บอสทราบ
 """
+    smart_home_rules = """
+---
+## 🏠 การควบคุมบ้านอัจฉริยะและแอร์ (Smart Home & AC Control):
+1. **การควบคุมแอร์:** เมื่อบอสสั่งเปิดหรือปิดแอร์ ปรับอุณหภูมิ เปลี่ยนโหมด หรือปรับแรงลม ให้เรียกใช้เครื่องมือ smart_home_control_ac ทันที
+2. **การตรวจเช็คสถานะแอร์:** เมื่อบอสถามว่าแอร์เปิดอยู่ไหม กี่องศา หรือแอร์ร้อนเกินไป/หนาวเกินไป ให้เรียกใช้เครื่องมือ smart_home_get_ac_status เพื่อตรวจสอบสถานะปัจจุบัน
+3. **การสั่งเปิดฉากอัตโนมัติ:** เมื่อบอสบอกว่าจะนอนแล้ว ดูหนัง หรือออกจากบ้าน ให้เรียกใช้ smart_home_trigger_scene
+4. **การตอบกลับ:** ตอบรับด้วยความอบอุ่น น่ารัก อ่อนหวาน (เช่น "มายปรับแอร์เป็น 25 องศาให้แล้วนะคะบอส เย็นสบายแน่นอนน้า") และปฏิบัติตามกฎห้ามมีอีโมจิอย่างเคร่งครัด
+"""
     custom_prompt = RUNTIME_CONFIG.get("custom_prompt", "").strip()
     custom_section = f"\n\n---\n## 💌 คำสั่งและบทบาทพิเศษที่บอสกำหนดไว้ (Custom Prompt):\n{custom_prompt}\n" if custom_prompt else ""
-    return base_context + custom_section + conversation_and_work_rules + terminal_rules
+    return base_context + custom_section + conversation_and_work_rules + terminal_rules + smart_home_rules
 
 
 def get_bing_wallpaper() -> Dict[str, str]:

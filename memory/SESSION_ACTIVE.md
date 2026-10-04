@@ -95,6 +95,21 @@
   - ตั้งค่า Cloudflare Origin Rules: ชี้ `may.meuu.live` ไปยัง Port `9229`
   - เปิดพอร์ต `9229` (TCP) ใน Windows Defender Firewall
   - ปรับโหมด SSL/TLS บน Cloudflare เป็น `Flexible` เพื่อเชื่อมต่อกับ Origin Port 9229 แบบไร้รอยต่อ
+- [x] **สเต็ป 16: ติดตั้งระบบควบคุมบ้านอัจฉริยะ Smart Home (Tuya Smart IR Gateway & AC Control - PASS 100%)**
+  - **โครงสร้าง 3 ชั้นแบบ Decoupled:**
+    1. **Microservice Gateway (`gateway/tuya-smart-ir-gateway/`):** โคลนจาก GitHub `boss2546/tuya-smart-ir-gateway` รันด้วย Node.js บนพอร์ต 3000 เชื่อมต่อ Tuya Cloud ควบคุมแอร์จริง (`Air (แอร์จริงในบ้าน)`) และฉากอัตโนมัติ
+    2. **Smart Home Plugin (`hermes-agent/plugins/smart_home/`):** พัฒนาขึ้นใหม่ประกอบด้วย:
+       - `config.txt`: ไฟล์ตั้งค่า Gateway URL (`http://localhost:3000`), Default AC ID (`a35a4e0b12b02aa750ceh4`), Timeout
+       - `client.py`: Python REST client รองรับ `control_ac()`, `get_devices()`, `get_status()`, `trigger_scene()`
+       - `tools.py`: สร้าง 3 เครื่องมือมาตรฐาน OpenAI Tool Calling: `smart_home_control_ac`, `smart_home_get_ac_status`, `smart_home_trigger_scene`
+       - `__init__.py`: Export tools สะอาด ปลอดภัย ไม่กระทบไฟล์อื่น
+    3. **Agent Skill (`.agents/skills/smart-home/SKILL.md`):** คู่มือและแนวทางการสนทนาภาษาไทยสำหรับน้องมายมิ้นท์ในการควบคุมแอร์และฉากอัตโนมัติ พร้อมกฎ No-Emoji เคร่งครัด
+  - **การเชื่อมต่อ Voice Server (`server.py`):** เสียบ Tools เข้ากับ `AVAILABLE_TOOLS` และ `execute_tool()` อย่างปลอดภัยด้วย try-except หากไม่มีเกตเวย์จะไม่กระทบส่วนอื่น
+  - **ผลการทดสอบผ่านฉลุย 100%:**
+    - ✅ **Direct Test (`scripts/test_smart_home_direct.py`):** ยิงตรงเข้า Gateway ควบคุมแอร์สำเร็จ อ่านสถานะได้ 26°C โหมด Cool
+    - ✅ **End-to-End Voice & Chat Test (`scripts/test_smart_home_end_to_end.py`):**
+      - สั่งเช็คสถานะแอร์: AI เรียกใช้ `smart_home_get_ac_status` ดึงสถานะแอร์จริงมารายงานอย่างอบอุ่น ไม่มีอีโมจิ
+      - สั่งปรับแอร์ 25 องศา: AI เรียกใช้ `smart_home_control_ac(temperature=25)` สั่งปรับแอร์จริงสำเร็จและตอบกลับอย่างหวานเป็นธรรมชาติ
 
 ---
 
@@ -102,5 +117,6 @@
 - 🌸 **Maymint Production Subdomain:** `https://may.meuu.live/` (เข้าใช้งานได้จากทุกที่ทั่วโลก)
 - 🌸 **Maymint Voice Web Dashboard (Quick Tunnel):** `https://blair-king-michel-calendar.trycloudflare.com/`
 - 🌸 **Maymint Voice Web Dashboard (Local):** `http://127.0.0.1:9229/`
+- 🏠 **Tuya Smart IR Gateway Dashboard (Local):** `http://localhost:3000/`
 - 🖥️ **Hermes Standard Dashboard:** `http://127.0.0.1:9119/`
 
