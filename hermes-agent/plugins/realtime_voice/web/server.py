@@ -13,19 +13,17 @@ from __future__ import annotations
 import base64
 import json
 import logging
-import mimetypes
 import os
 import platform
 import re
 import shutil
 import subprocess
 import sys
-import threading
 import time
 import urllib.request
-from http.server import HTTPServer, ThreadingHTTPServer, SimpleHTTPRequestHandler
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import requests
 
@@ -36,9 +34,13 @@ if str(HERMES_AGENT_DIR) not in sys.path:
     sys.path.insert(0, str(HERMES_AGENT_DIR))
 
 # Also allow direct import from sibling directory
-sys.path.insert(0, str(CURRENT_DIR.parent))
+if str(CURRENT_DIR.parent) not in sys.path:
+    sys.path.insert(0, str(CURRENT_DIR.parent))
 
-from voice_engine import engine, DEFAULT_GATEWAY_URL, _resolve_api_key
+try:
+    from voice_engine import engine, DEFAULT_GATEWAY_URL, _resolve_api_key  # type: ignore
+except ImportError:
+    from ..voice_engine import engine, DEFAULT_GATEWAY_URL, _resolve_api_key  # type: ignore
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("voice-server")
@@ -591,7 +593,6 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         if self.path == "/api/chat":
             self._handle_chat(payload)
         elif self.path == "/api/clear-history":
-            global CONVERSATION_HISTORY
             CONVERSATION_HISTORY.clear()
             self._send_json({"success": True, "message": "Conversation history cleared"})
         elif self.path == "/api/config":
