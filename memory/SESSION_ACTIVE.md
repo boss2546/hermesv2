@@ -1,6 +1,6 @@
 - **วันที่:** 2026-10-04
-- **Branch ปัจจุบัน:** 🌿 `feature/realtime-voice-chat` (Tracking กับ `origin/feature/realtime-voice-chat`)
-- **สถานะ:** 🟢 พัฒนา Realtime Voice Chat Plugin เสร็จสมบูรณ์ 100% ครบ 5 สเต็ป พร้อม Web Dashboard
+- **Branch ปัจจุบัน:** 🌿 `main` (รวมโค้ดและซิงค์กับ `origin/main` และ `origin/feature/realtime-voice-chat` เรียบร้อย)
+- **สถานะ:** 🟢 รวมโค้ดเข้าสู่ Main Branch สำเร็จสมบูรณ์ 100% พร้อม Liquid Glass Config Modal และภาพพื้นหลัง Dreamscape
 - **โปรเจกต์:** Hermes v2 (`/Users/meuu/Desktop/รวมโปรเจ็ค/hermesv2`)
 
 ---
@@ -25,13 +25,17 @@
   - Hook `post_llm_call`: พูดตอบข้อความอัตโนมัติ (กรองบล็อกโค้ดเพื่อให้อ่านเป็นธรรมชาติ)
   - Slash Command `/voice`: คำสั่งแชตสำหรับเช็กสถานะ, สลับเสียง, และเปิด/ปิด Auto-Speak
 - [x] **สเต็ป 4: Web Voice Dashboard (`web/`)**
-  - `index.html`: ดีไซน์ Dark Glassmorphism, 5-Stage Live Status Badges, คลื่นเสียง Visualizer, ปุ่มไมโครโฟนเรืองแสง
-  - `server.py`: เว็บเซิร์ฟเวอร์รันบนพอร์ต `9229` ให้บริการ End-to-End Voice Chat API
-  - หมุนเวียนภาพพื้นหลัง Bing Daily Nature Wallpaper อัตโนมัติ
-- [x] **สเต็ป 5: End-to-End Verification**
+  - `index.html`: ดีไซน์ Liquid Glass โปร่งแสงระดับพรีเมียม, ภาพพื้นหลัง Dreamscape Alpine Cottage Sunset, 5-Stage Live Status Badges, คลื่นเสียง Visualizer
+  - **⚙️ Settings & Configuration Modal:** ปุ่มไอคอนฟันเฟืองมุมขวาบน เปิดหน้าต่างตั้งค่าปรับแต่ง:
+    - เสียงและโมเดล: สลับเสียง Premwadee/Niwat, ปรับความเร็วเสียง (Rate Slider), ปรับระดับเสียงแหลม-ทุ้ม (Pitch Slider)
+    - ปัญญาประดิษฐ์: เลือกรุ่น Gemini (`ag/gemini-3.8-flash-high`, `ag/gemini-3.7-flash-low`), ปรับ Temperature
+    - การแสดงผล: ปรับระดับความเบลอของกระจก (Glass Blur), ความโปร่งแสง (Opacity), สลับโหมด Wallpaper (Dreamscape / Bing Daily / Deep Dark) แบบเรียลไทม์
+  - `server.py`: เว็บเซิร์ฟเวอร์รันบนพอร์ต `9229` ให้บริการ End-to-End Voice Chat API และ `/api/config` GET/POST
+- [x] **สเต็ป 5: End-to-End Verification & Git Merge**
   - ทดสอบ Edge-TTS เสียงเปรมวดี 24kHz เสียงหวานใสเป็นธรรมชาติ
   - ทดสอบ STT ถอดภาษาไทยแม่นยำ 100%
   - ทดสอบ Web Dashboard และบันทึกภาพหน้าจอเรียบร้อย
+  - รวมโค้ด (Fast-forward Merge) เข้าสู่ Branch `main` และ Push ขึ้น GitHub (`origin/main`) เรียบร้อย 100%
 
 ---
 
