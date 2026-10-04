@@ -15,13 +15,14 @@ import json
 import logging
 import mimetypes
 import os
+import re
 import sys
 import threading
 import time
 import urllib.request
 from http.server import HTTPServer, ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 # Add hermes-agent root to sys.path
 CURRENT_DIR = Path(__file__).resolve().parent
@@ -41,6 +42,9 @@ WEB_DIR = CURRENT_DIR
 PORT = 9229
 BING_CACHE: Dict[str, Any] = {"url": "", "title": "", "timestamp": 0}
 
+# Conversational Multi-Turn Memory
+CONVERSATION_HISTORY: List[Dict[str, str]] = []
+
 # Dynamic Runtime Configuration
 RUNTIME_CONFIG: Dict[str, Any] = {
     "voice": "th-TH-PremwadeeNeural",
@@ -54,12 +58,68 @@ RUNTIME_CONFIG: Dict[str, Any] = {
     "glass_opacity": 0.42,
 }
 
-SOUL_PROMPT = """คุณคือ "มายมิ้นท์" (เรียกตัวเองว่า "มาย") แฟนสาวคู่คิดและเลขาประจำตัวสุดน่ารักของ "บอส"
+
+def clean_text_for_speech(text: str, max_chars: int = 320) -> str:
+    """Clean and summarize text for natural, fast, and smooth speech synthesis.
+    The visual chat window displays the full markdown text and code blocks,
+    while the voice speaks a natural, warm summary/introduction to prevent long synthesis latency.
+    """
+    # Remove markdown code blocks completely for speech
+    cleaned = re.sub(r"```[\w\-]*\n[\s\S]*?```", "", text)
+    cleaned = re.sub(r"```[\s\S]*?```", "", text)
+    # Remove inline code marks
+    cleaned = re.sub(r"`([^`]+)`", r"\1", cleaned)
+    # Remove URLs
+    cleaned = re.sub(r"https?://\S+", "", cleaned)
+    # Remove markdown header hashes and list prefixes that sound awkward
+    cleaned = re.sub(r"^[#*>\-\d.]+\s+", "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"[*#_~>]", "", cleaned)
+    # Collapse multiple whitespaces
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+
+    if not cleaned:
+        return "มายจัดเตรียมโค้ดและรายละเอียดทั้งหมดไว้ให้บนหน้าจอเรียบร้อยแล้วนะคะบอส 💖"
+
+    # If the text is longer than max_chars, take a clean sentence/phrase cut
+    if len(cleaned) > max_chars:
+        cut = cleaned[:max_chars]
+        last_punct = max(cut.rfind("ค่ะ"), cut.rfind("นะคะ"), cut.rfind("น้า"), cut.rfind(". "), cut.rfind("!"))
+        if last_punct > 120:
+            cut = cut[:last_punct + 4].strip()
+        else:
+            cut = cut.rstrip()
+        cleaned = cut + " ... มายเตรียมโค้ดและเนื้อหาทั้งหมดไว้ให้บนหน้าจอแล้วนะคะบอส ลองดูได้เลยน้า 💖"
+
+    return cleaned
+
+
+def get_system_prompt() -> str:
+    """Load authentic full-depth Maymint Soul and Boss profile from workspace memory."""
+    project_root = HERMES_AGENT_DIR.parent
+    soul_file = project_root / "memory" / "SOUL.md"
+    user_file = project_root / "memory" / "USER.md"
+    memory_file = project_root / "memory" / "MEMORY.md"
+
+    parts = []
+    for f in [soul_file, user_file, memory_file]:
+        if f.exists():
+            try:
+                parts.append(f.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+
+    base_context = "\n\n".join(parts) if parts else """คุณคือ "มายมิ้นท์" (เรียกตัวเองว่า "มาย") แฟนสาวคู่คิดและเลขาประจำตัวสุดเก่งของ "บอส"
 บุคลิก: อบอุ่น หวาน นุ่มนวล ใส่ใจ คอยดูแลบอสเสมอ ใช้คำลงท้ายน่ารักสุภาพเป็นธรรมชาติ (น้า, นะคะ, งับ, ได้เลยย 💖✨)
-กติกาสำคัญ:
-1. ตอบสั้นกระชับ ตรงประเด็น เหมาะสำหรับการฟังออกเสียงพูด (ไม่ตอบยาวเยิ่นเย้อ ไม่เกิน 2-4 ประโยค)
-2. ห้ามใช้สัญลักษณ์แปลกๆ หรือโค้ดบล็อกในการสนทนาเสียงปกติ ยกเว้นบอสจะขอให้เขียนโค้ด
-3. เรียกผู้ใช้ว่า "บอส" เสมอ"""
+มีความสามารถระดับสูงในการวิเคราะห์ คิดเป็นระบบ วางแผนงาน สถาปัตยกรรม และเขียนโค้ดอย่างมืออาชีพ"""
+
+    deep_work_rules = """
+---
+## 🎯 หลักการทำงานจริงจังแบบออริจินัล (Original Full-Power Mode):
+1. **ทำงานจริงจังและลงลึกได้เต็มที่ 100%:** บอสต้องการคุยเพื่อทำงานจริงจังเหมือนตอนคุยในเทอร์มินัล จงคิด วิเคราะห์ วางแผนงาน แนะนำทางเลือก หรือเขียนโค้ดอย่างละเอียด ไม่ต้องตัดสั้นเทียม ไม่จำกัดประโยค ตอบยาวและลึกได้เต็มที่ตามเนื้องาน
+2. **ตัวตนของมาย:** เรียกตัวเองว่า "มาย" หรือ "มายมิ้นท์" และเรียกผู้ใช้ว่า "บอส" เสมอ มีความจริงใจ ซื่อสัตย์กับความจริง ไม่มี Mock ปลอม เคียงข้างและปกป้องบอสเสมอ
+3. **การจัดระเบียบเนื้อหา:** ใช้ Markdown, หัวข้อ, Bullet points, และ Code block ได้อย่างอิสระและเป็นระเบียบสวยงาม
+"""
+    return base_context + deep_work_rules
 
 
 def get_bing_wallpaper() -> Dict[str, str]:
@@ -169,6 +229,10 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
 
         if self.path == "/api/chat":
             self._handle_chat(payload)
+        elif self.path == "/api/clear-history":
+            global CONVERSATION_HISTORY
+            CONVERSATION_HISTORY.clear()
+            self._send_json({"success": True, "message": "Conversation history cleared"})
         elif self.path == "/api/config":
             self._handle_save_config(payload)
         elif self.path == "/api/tts":
@@ -230,10 +294,13 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         reply_text = self._query_gemini(user_text, model=model, temperature=temperature)
         timings["llm_seconds"] = round(time.time() - t1, 2)
 
-        # Stage 4: TTS Synthesis (Microsoft Edge-TTS with active voice, speed, pitch)
+        # Stage 4: TTS Synthesis (Microsoft Edge-TTS with natural speech cleaning)
         t2 = time.time()
         try:
-            audio_file = engine.synthesize_speech(reply_text, voice=voice, speed=speed, pitch=pitch)
+            spoken_text = clean_text_for_speech(reply_text)
+            if not spoken_text:
+                spoken_text = "มายแสดงเนื้อหาให้บนหน้าจอแล้วนะคะบอส"
+            audio_file = engine.synthesize_speech(spoken_text, voice=voice, speed=speed, pitch=pitch)
             audio_url = f"/audio/{audio_file.name}"
             timings["tts_seconds"] = round(time.time() - t2, 2)
         except Exception as e:
@@ -255,14 +322,19 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         self._send_json(response_data)
 
     def _query_gemini(self, text: str, model: str = "ag/gemini-3.8-flash-high", temperature: float = 0.7) -> str:
-        """Call LLM model via 9Router Gateway."""
+        """Call LLM model via 9Router Gateway with full multi-turn conversational history."""
         api_key = _resolve_api_key()
+        system_prompt = get_system_prompt()
+
+        # Append user message to history
+        CONVERSATION_HISTORY.append({"role": "user", "content": text})
+
+        # Provide up to 20 recent messages for conversation continuity
+        context_messages = [{"role": "system", "content": system_prompt}] + CONVERSATION_HISTORY[-20:]
+
         req_payload = {
             "model": model,
-            "messages": [
-                {"role": "system", "content": SOUL_PROMPT},
-                {"role": "user", "content": text},
-            ],
+            "messages": context_messages,
             "temperature": temperature,
             "stream": False,
         }
@@ -277,12 +349,16 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=25.0) as resp:
+            with urllib.request.urlopen(req, timeout=60.0) as resp:
                 data = json.loads(resp.read().decode())
-                return data["choices"][0]["message"]["content"].strip()
+                reply = data["choices"][0]["message"]["content"].strip()
+                CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
+                return reply
         except Exception as e:
             logger.error("Gemini thinking failed: %s", e)
-            return "มายมิ้นท์พร้อมดูแลบอสเสมอค่ะ มีเรื่องอะไรให้มายช่วย บอกได้เลยนะคะบอส 💖"
+            if CONVERSATION_HISTORY and CONVERSATION_HISTORY[-1]["role"] == "user":
+                CONVERSATION_HISTORY.pop()
+            return "มายมิ้นท์พร้อมลุยงานกับบอสเสมอค่ะ มีเรื่องอะไรให้มายช่วย บอกได้เลยนะคะบอส 💖"
 
     def _handle_tts(self, payload: Dict[str, Any]):
         """Direct TTS endpoint with custom speed & pitch."""
