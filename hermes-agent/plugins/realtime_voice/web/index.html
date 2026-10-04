@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maymint Realtime Voice — Hermes Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0a0e17;
+      --card-bg: rgba(13, 20, 36, 0.65);
+      --card-border: rgba(255, 255, 255, 0.12);
+      --card-hover: rgba(255, 255, 255, 0.18);
+      --primary-pink: #ec4899;
+      --primary-purple: #8b5cf6;
+      --primary-cyan: #06b6d4;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --badge-bg: rgba(255, 255, 255, 0.08);
+      --badge-active: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Prompt', 'Outfit', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Bing Nature Wallpaper Dynamic Background */
+    .wallpaper-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      z-index: -2;
+      transition: background-image 0.8s ease-in-out, transform 10s ease-out;
+      transform: scale(1.02);
+    }
+
+    .wallpaper-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: radial-gradient(circle at 50% 30%, rgba(10, 14, 23, 0.65) 0%, rgba(10, 14, 23, 0.92) 100%);
+      backdrop-filter: blur(12px) saturate(140%);
+      z-index: -1;
+    }
+
+    /* Top Navigation Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.2rem 2.5rem;
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(10, 14, 23, 0.4);
+      backdrop-filter: blur(20px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .avatar-glow {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary-pink), var(--primary-purple));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      box-shadow: 0 0 20px rgba(236, 72, 153, 0.5);
+      animation: pulse-avatar 3s infinite alternate;
+    }
+
+    @keyframes pulse-avatar {
+      0% { transform: scale(1); box-shadow: 0 0 15px rgba(236, 72, 153, 0.4); }
+      100% { transform: scale(1.05); box-shadow: 0 0 25px rgba(236, 72, 153, 0.8); }
+    }
+
+    .brand-text h1 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .brand-text p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    /* Auto Speak Toggle */
+    .toggle-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .switch input { opacity: 0; width: 0; height: 0; }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255, 255, 255, 0.15);
+      transition: .3s;
+      border-radius: 24px;
+      border: 1px solid var(--card-border);
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background: linear-gradient(135deg, var(--primary-pink), var(--primary-purple));
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.8rem;
+    }
+
+    /* 5-Stage Live Status Badges Bar */
+    .stages-container {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.2rem 1.5rem;
+      backdrop-filter: blur(24px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .stages-title {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-bottom: 0.8rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .stages-list {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.75rem;
+    }
+
+    .stage-badge {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      padding: 0.75rem 0.5rem;
+      border-radius: 12px;
+      text-align: center;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+      position: relative;
+      opacity: 0.5;
+    }
+
+    .stage-badge .icon {
+      font-size: 1.2rem;
+    }
+
+    .stage-badge .label {
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .stage-badge.active {
+      opacity: 1;
+      background: rgba(236, 72, 153, 0.15);
+      border-color: var(--primary-pink);
+      box-shadow: 0 0 20px rgba(236, 72, 153, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .stage-badge.active .label {
+      color: #f472b6;
+      font-weight: 600;
+    }
+
+    .stage-badge.done {
+      opacity: 0.85;
+      background: rgba(16, 185, 129, 0.1);
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+
+    .stage-badge.done .label {
+      color: #34d399;
+    }
+
+    /* Central Voice Interaction Card */
+    .interaction-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 2.5rem 2rem;
+      backdrop-filter: blur(28px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.8rem;
+      text-align: center;
+      position: relative;
+    }
+
+    /* Glowing Microphone Button */
+    .mic-zone {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mic-ripple {
+      position: absolute;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      border: 2px solid rgba(236, 72, 153, 0.4);
+      animation: ripple 2s infinite cubic-bezier(0, 0.2, 0.8, 1);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .mic-button {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(135deg, #ec4899, #8b5cf6);
+      color: white;
+      font-size: 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 0 35px rgba(236, 72, 153, 0.6);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      z-index: 2;
+    }
+
+    .mic-button:hover {
+      transform: scale(1.06);
+      box-shadow: 0 0 50px rgba(236, 72, 153, 0.85);
+    }
+
+    .mic-button.recording {
+      background: linear-gradient(135deg, #ef4444, #f97316);
+      box-shadow: 0 0 50px rgba(239, 68, 68, 0.9);
+      animation: pulse-recording 1s infinite alternate;
+    }
+
+    @keyframes pulse-recording {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.08); }
+    }
+
+    @keyframes ripple {
+      0% { transform: scale(0.8); opacity: 1; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
+
+    .mic-hint {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-top: 0.4rem;
+    }
+
+    /* Waveform Visualizer */
+    .visualizer-container {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      height: 36px;
+      margin: 0.5rem 0;
+    }
+
+    .wave-bar {
+      width: 4px;
+      height: 8px;
+      background: linear-gradient(to top, var(--primary-pink), var(--primary-cyan));
+      border-radius: 4px;
+      transition: height 0.15s ease;
+    }
+
+    /* Quick Action Chips */
+    .quick-chips {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.6rem;
+      max-width: 750px;
+    }
+
+    .chip-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .chip-btn:hover {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: var(--primary-pink);
+      transform: translateY(-1px);
+    }
+
+    /* Chat Transcript Log */
+    .chat-box {
+      width: 100%;
+      background: rgba(8, 12, 22, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.2rem;
+      max-height: 280px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+      text-align: left;
+    }
+
+    .message-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message-bubble {
+      padding: 0.8rem 1.1rem;
+      border-radius: 14px;
+      font-size: 0.92rem;
+      line-height: 1.5;
+      max-width: 85%;
+    }
+
+    .message-bubble.user {
+      background: rgba(139, 92, 246, 0.2);
+      border: 1px solid rgba(139, 92, 246, 0.35);
+      color: #e2e8f0;
+      margin-left: auto;
+      border-bottom-right-radius: 2px;
+    }
+
+    .message-bubble.maymint {
+      background: rgba(236, 72, 153, 0.15);
+      border: 1px solid rgba(236, 72, 153, 0.3);
+      color: #fdf2f8;
+      border-bottom-left-radius: 2px;
+    }
+
+    /* Audio Player Control Bar */
+    .audio-bar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      padding: 0.75rem 1.2rem;
+      border-radius: 14px;
+      font-size: 0.85rem;
+    }
+
+    .audio-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--card-border);
+      color: white;
+      padding: 0.4rem 0.9rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      transition: background 0.2s;
+    }
+
+    .audio-btn:hover { background: rgba(255, 255, 255, 0.2); }
+
+    .timings-badge {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
+    /* Footer info */
+    footer {
+      text-align: center;
+      padding: 1.2rem;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Dynamic Bing Nature Wallpaper -->
+  <div class="wallpaper-bg" id="wallpaperBg"></div>
+  <div class="wallpaper-overlay"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="avatar-glow">🌸</div>
+      <div class="brand-text">
+        <h1>Maymint Voice Assistant 💖</h1>
+        <p id="wallpaperTitle">Microsoft Edge-TTS Studio &middot; 9Router Gateway</p>
+      </div>
+    </div>
+    <div class="header-controls">
+      <label class="toggle-wrapper" title="เปิด/ปิดการพูดตอบกลับอัตโนมัติ">
+        <span>Auto-Speak</span>
+        <label class="switch">
+          <input type="checkbox" id="autoSpeakToggle" checked>
+          <span class="slider"></span>
+        </label>
+      </label>
+      <button class="audio-btn" id="testVoiceBtn">🔊 ทดสอบเสียงมายมิ้นท์</button>
+    </div>
+  </header>
+
+  <!-- Main Interface -->
+  <main>
+    <!-- 5-Stage Live Status Badges Bar -->
+    <div class="stages-container">
+      <div class="stages-title">
+        <span>⚡ ลำดับการประมวลผลเสียงสด (5-Stage Realtime Status):</span>
+        <span id="currentStatusText" style="color: #f472b6; font-weight: 500;">พร้อมรับฟังคำสั่งเสียงบอส</span>
+      </div>
+      <div class="stages-list">
+        <div class="stage-badge" id="stage-1">
+          <span class="icon">🎙️</span>
+          <span class="label">1. ฟังเสียงบอส</span>
+        </div>
+        <div class="stage-badge" id="stage-2">
+          <span class="icon">✍️</span>
+          <span class="label">2. ถอดความเสียง</span>
+        </div>
+        <div class="stage-badge" id="stage-3">
+          <span class="icon">🧠</span>
+          <span class="label">3. คิดคำตอบ AI</span>
+        </div>
+        <div class="stage-badge" id="stage-4">
+          <span class="icon">🎙️</span>
+          <span class="label">4. สร้างเสียงพูด</span>
+        </div>
+        <div class="stage-badge" id="stage-5">
+          <span class="icon">🔊</span>
+          <span class="label">5. มายมิ้นท์กำลังพูด</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center Mic Interaction -->
+    <div class="interaction-card">
+      <div class="mic-zone">
+        <div class="mic-ripple" id="micRipple"></div>
+        <button class="mic-button" id="micButton" title="กดเพื่อเริ่มพูด / หยุดพูด">
+          🎙️
+        </button>
+      </div>
+      <p class="mic-hint" id="micHint">คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส</p>
+
+      <!-- Waveform Animation -->
+      <div class="visualizer-container" id="visualizer">
+        <!-- 24 Wave bars -->
+      </div>
+
+      <!-- Quick Action Chips -->
+      <div class="quick-chips">
+        <button class="chip-btn" onclick="sendQuickPrompt('สวัสดีจ้ามายมิ้นท์ วันนี้เป็นยังไงบ้าง')">👋 สวัสดีจ้ามายมิ้นท์ 💖</button>
+        <button class="chip-btn" onclick="sendQuickPrompt('วันนี้บอสเหนื่อยจังเลย ขอกำลังใจหน่อยนะ')">🥺 บอสเหนื่อยจัง ขอกำลังใจหน่อย</button>
+        <button class="chip-btn" onclick="sendQuickPrompt('ช่วยวางแผนงานวันนี้ให้หน่อยนะบอสต้องทำอะไรบ้าง')">📋 ช่วยวางแผนงานวันนี้หน่อย</button>
+        <button class="chip-btn" onclick="sendQuickPrompt('เล่าเรื่องตลกหรือเรื่องน่ารักๆ ให้บอสฟังหน่อยสิ')">😄 เล่าเรื่องน่ารักๆ ให้ฟังหน่อย</button>
+      </div>
+
+      <!-- Live Chat Transcript -->
+      <div class="chat-box" id="chatBox">
+        <div class="message-row">
+          <div class="message-bubble maymint">
+            🌸 <strong>มายมิ้นท์:</strong> สวัสดีค่ะบอส! มายมิ้นท์พร้อมดูแลบอสแล้วนะคะ จะพิมพ์คุยหรือกดปุ่มไมโครโฟนพูดคุยกับมายได้ทันทีเลยค่ะบอส 💖✨
+          </div>
+        </div>
+      </div>
+
+      <!-- Audio Playback Status Bar -->
+      <div class="audio-bar" id="audioBar">
+        <span id="audioPlayingStatus">🔇 ยังไม่มีเสียงกำลังเล่น</span>
+        <button class="audio-btn" id="stopAudioBtn" style="display: none;">⏹️ หยุดเสียง</button>
+        <span class="timings-badge" id="timingsBadge">Edge-TTS: 24kHz &middot; Gemini 3.8 Flash High</span>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>Hermes Agent Realtime Voice &middot; Powered by <strong>Microsoft Edge-TTS (th-TH-PremwadeeNeural)</strong> &amp; <strong>9Router AI Gateway</strong></p>
+  </footer>
+
+  <script>
+    // State
+    let isRecording = false;
+    let recognition = null;
+    let currentAudio = null;
+    let waveInterval = null;
+
+    const micButton = document.getElementById('micButton');
+    const micHint = document.getElementById('micHint');
+    const micRipple = document.getElementById('micRipple');
+    const chatBox = document.getElementById('chatBox');
+    const autoSpeakToggle = document.getElementById('autoSpeakToggle');
+    const currentStatusText = document.getElementById('currentStatusText');
+    const audioPlayingStatus = document.getElementById('audioPlayingStatus');
+    const stopAudioBtn = document.getElementById('stopAudioBtn');
+    const timingsBadge = document.getElementById('timingsBadge');
+    const wallpaperBg = document.getElementById('wallpaperBg');
+    const wallpaperTitle = document.getElementById('wallpaperTitle');
+
+    // Create 24 wave bars
+    const visualizer = document.getElementById('visualizer');
+    for (let i = 0; i < 24; i++) {
+      const bar = document.createElement('div');
+      bar.className = 'wave-bar';
+      visualizer.appendChild(bar);
+    }
+    const waveBars = document.querySelectorAll('.wave-bar');
+
+    // 1. Fetch Bing Nature Wallpaper
+    async function loadBingWallpaper() {
+      try {
+        const res = await fetch('/api/bing-wallpaper');
+        const data = await res.json();
+        if (data.url) {
+          wallpaperBg.style.backgroundImage = `url('${data.url}')`;
+          wallpaperTitle.innerText = `${data.title} · Microsoft Edge-TTS Studio`;
+        }
+      } catch (err) {
+        console.warn('Bing wallpaper error:', err);
+      }
+    }
+    loadBingWallpaper();
+
+    // 2. Stage Management (1 to 5)
+    function setStage(stageNum, textDesc) {
+      for (let i = 1; i <= 5; i++) {
+        const badge = document.getElementById(`stage-${i}`);
+        badge.classList.remove('active', 'done');
+        if (i < stageNum) badge.classList.add('done');
+        else if (i === stageNum) badge.classList.add('active');
+      }
+      if (textDesc) currentStatusText.innerText = textDesc;
+    }
+
+    function resetStages() {
+      for (let i = 1; i <= 5; i++) {
+        const badge = document.getElementById(`stage-${i}`);
+        badge.classList.remove('active', 'done');
+      }
+      currentStatusText.innerText = "พร้อมรับฟังคำสั่งเสียงบอส";
+    }
+
+    // 3. Audio Waveform Animation
+    function startWaveform() {
+      clearInterval(waveInterval);
+      waveInterval = setInterval(() => {
+        waveBars.forEach(bar => {
+          const height = Math.floor(Math.random() * 28) + 6;
+          bar.style.height = `${height}px`;
+        });
+      }, 100);
+    }
+
+    function stopWaveform() {
+      clearInterval(waveInterval);
+      waveBars.forEach(bar => { bar.style.height = '8px'; });
+    }
+
+    // 4. Web Speech Recognition (Real-time Browser STT)
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'th-TH';
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        isRecording = true;
+        micButton.classList.add('recording');
+        micRipple.style.opacity = '1';
+        micHint.innerText = 'กำลังฟังเสียงบอส... (พูดจบแล้วระบบจะประมวลผลทันทีค่ะ)';
+        setStage(1, '🎙️ [สเต็ป 1/5] กำลังฟังเสียงบอส...');
+        startWaveform();
+      };
+
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          transcript += event.results[i][0].transcript;
+        }
+        if (transcript) {
+          micHint.innerText = `ได้ยิน: "${transcript}"`;
+        }
+      };
+
+      recognition.onend = () => {
+        isRecording = false;
+        micButton.classList.remove('recording');
+        micRipple.style.opacity = '0';
+        stopWaveform();
+
+        const finalText = micHint.innerText.replace('ได้ยิน: "', '').replace('"', '').trim();
+        if (finalText && !finalText.startsWith('คลิกปุ่มไมค์') && !finalText.startsWith('กำลังฟัง')) {
+          submitUserSpeech(finalText);
+        } else {
+          resetStages();
+          micHint.innerText = 'คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส';
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.warn('Speech recognition error:', event.error);
+        isRecording = false;
+        micButton.classList.remove('recording');
+        micRipple.style.opacity = '0';
+        stopWaveform();
+        resetStages();
+        micHint.innerText = 'ไม่สามารถจับเสียงได้ชัดเจน กรุณาลองใหม่อีกครั้งค่ะบอส';
+      };
+    } else {
+      micHint.innerText = 'เบราว์เซอร์ไม่รองรับ Web Speech API สามารถพิมพ์หรือกดเลือกหัวข้อด้านล่างได้ค่ะ';
+    }
+
+    // Mic Button Toggle
+    micButton.addEventListener('click', () => {
+      if (!recognition) {
+        alert('เบราว์เซอร์นี้ไม่รองรับ Web Speech Recognition กรุณาใช้ Chrome หรือ Edge ค่ะบอส');
+        return;
+      }
+      if (isRecording) {
+        recognition.stop();
+      } else {
+        if (currentAudio) currentAudio.pause();
+        recognition.start();
+      }
+    });
+
+    // 5. Submit Speech / Text to Backend
+    async function submitUserSpeech(text) {
+      appendChatMessage('user', text);
+      setStage(2, '✍️ [สเต็ป 2/5] ถอดความเสียงสำเร็จ กำลังส่งวิเคราะห์...');
+
+      setTimeout(async () => {
+        setStage(3, '🧠 [สเต็ป 3/5] สมอง Gemini 3.8 Flash High กำลังคิดคำตอบ...');
+
+        try {
+          const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text })
+          });
+          const data = await res.json();
+
+          if (data.reply_text) {
+            appendChatMessage('maymint', data.reply_text);
+
+            if (data.timings) {
+              timingsBadge.innerText = `⏱️ LLM: ${data.timings.llm_seconds}s | TTS: ${data.timings.tts_seconds}s | รวม: ${data.timings.total_seconds}s`;
+            }
+
+            if (autoSpeakToggle.checked && data.audio_url) {
+              setStage(4, '🎙️ [สเต็ป 4/5] สร้างเสียงพูด Edge-TTS เสร็จสิ้น...');
+              playAudioResponse(data.audio_url);
+            } else {
+              setStage(5, '✅ ตอบคำถามเรียบร้อยแล้วค่ะ');
+              setTimeout(resetStages, 3000);
+            }
+          }
+        } catch (err) {
+          console.error('Chat error:', err);
+          appendChatMessage('maymint', 'ขอโทษด้วยนะคะบอส มีข้อผิดพลาดในการเชื่อมต่อเครือข่ายค่ะ 🥺');
+          resetStages();
+        }
+      }, 300);
+    }
+
+    // 6. Play Audio
+    function playAudioResponse(url) {
+      if (currentAudio) currentAudio.pause();
+
+      currentAudio = new Audio(url);
+      setStage(5, '🔊 [สเต็ป 5/5] มายมิ้นท์กำลังพูดออกเสียง...');
+      audioPlayingStatus.innerText = '🔊 กำลังพูดเสียงเปรมวดี (th-TH-PremwadeeNeural)';
+      stopAudioBtn.style.display = 'inline-block';
+      startWaveform();
+
+      currentAudio.onended = () => {
+        stopWaveform();
+        audioPlayingStatus.innerText = '✅ พูดเสร็จเรียบร้อยแล้วค่ะ';
+        stopAudioBtn.style.display = 'none';
+        setTimeout(resetStages, 2000);
+      };
+
+      currentAudio.onerror = (err) => {
+        console.error('Audio play error:', err);
+        stopWaveform();
+        audioPlayingStatus.innerText = '⚠️ ไม่สามารถเล่นเสียงได้';
+        stopAudioBtn.style.display = 'none';
+        resetStages();
+      };
+
+      currentAudio.play().catch(e => {
+        console.warn('Autoplay prevented:', e);
+        stopWaveform();
+      });
+    }
+
+    stopAudioBtn.addEventListener('click', () => {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        stopWaveform();
+        audioPlayingStatus.innerText = '⏹️ หยุดเสียงแล้ว';
+        stopAudioBtn.style.display = 'none';
+        resetStages();
+      }
+    });
+
+    // 7. Quick Prompts
+    window.sendQuickPrompt = function(promptText) {
+      micHint.innerText = `ส่งคำถาม: "${promptText}"`;
+      submitUserSpeech(promptText);
+    };
+
+    // 8. Test Voice Button
+    document.getElementById('testVoiceBtn').addEventListener('click', async () => {
+      const testText = 'สวัสดีค่ะบอส มายมิ้นท์เองนะคะ นี่คือเสียงเปรมวดีแท้จาก Microsoft Edge คมชัดระดับสตูดิโอเลยค่ะบอส';
+      setStage(4, '🎙️ กำลังดึงเสียงตัวอย่าง Edge-TTS...');
+      try {
+        const res = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: testText, voice: 'th-TH-PremwadeeNeural' })
+        });
+        const data = await res.json();
+        if (data.audio_url) {
+          playAudioResponse(data.audio_url);
+        }
+      } catch (err) {
+        alert('เกิดข้อผิดพลาดในการทดสอบเสียง: ' + err);
+        resetStages();
+      }
+    });
+
+    // Helper: Append Message
+    function appendChatMessage(sender, text) {
+      const row = document.createElement('div');
+      row.className = 'message-row';
+      const bubble = document.createElement('div');
+      bubble.className = `message-bubble ${sender}`;
+
+      if (sender === 'user') {
+        bubble.innerHTML = `👤 <strong>บอส:</strong> ${escapeHtml(text)}`;
+      } else {
+        bubble.innerHTML = `🌸 <strong>มายมิ้นท์:</strong> ${escapeHtml(text)}`;
+      }
+
+      row.appendChild(bubble);
+      chatBox.appendChild(row);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function escapeHtml(string) {
+      return String(string).replace(/[&<>"']/g, function (s) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s];
+      });
+    }
+  </script>
+</body>
+</html>
