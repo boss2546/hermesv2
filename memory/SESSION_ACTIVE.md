@@ -35,11 +35,20 @@
 - [x] **สเต็ป 6: Windows Setup & Production Readiness (c:\Users\Administrator\Desktop\hermes2)**
   - ติดตั้ง `edge-tts` และ `requests` บน Python 3.14 สำเร็จสมบูรณ์
   - ติดตั้ง `python3` command shim ให้รันคำสั่งได้ตรงตามมาตรฐานสากล
-  - อัปเกรด `server.py` รองรับ `do_HEAD` สำหรับการสตรีมเสียงบน Web Audio และเบราว์เซอร์
-  - รัน Voice Web Dashboard เป็นแบ็กกราวด์เซอร์วิสพร้อมใช้งานทันทีที่พอร์ต 9229
+- [x] **สเต็ป 7: Cloudflare Public Tunnel (HTTPS Free 100%)**
+  - ติดตั้งและรัน Cloudflare Tunnel เชื่อมต่อไปยังพอร์ต 9229 สำเร็จสมบูรณ์
+  - บอสสามารถเปิดใช้งานผ่านมือถือหรือคอมเครื่องอื่นได้ทันทีผ่าน HTTPS ปลอดภัย
+- [x] **สเต็ป 8: ปลดล็อก Original Full-Power Mode & Multi-Turn Memory (PASS 100%)**
+  - **สาเหตุเดิม:** เซิร์ฟเวอร์ตัวเก่ามีการจำกัด Prompt เทียม ("ตอบไม่เกิน 2-4 ประโยค ห้ามใช้โค้ดบล็อก") และไม่มี Memory จดจำบทสนทนาก่อนหน้า
+  - **ปลดล็อกเต็มรูปแบบ:** โหลด Soul มายมิ้นท์ + โปรไฟล์บอสจาก `memory/` แบบ Dynamic 100% ตอบยาว ลึก ทำงานจริงจัง และเขียนโค้ดได้เต็มที่ไม่จำกัด
+  - **ระบบความจำต่อเนื่อง (Multi-Turn):** เพิ่ม `CONVERSATION_HISTORY` จดจำ 20 ข้อความล่าสุด คุยต่อเนื่องเข้าใจบริบทงานทันที
+  - **การเรนเดอร์ Markdown & Code:** นำเข้า `marked.js` แสดงผลโค้ด กล่องข้อความ และตารางสวยงามคมชัดบนหน้าจอ
+  - **ปุ่มเริ่มคุยใหม่:** เพิ่มปุ่ม `🧹 เริ่มคุยใหม่` รีเซ็ต Context ผ่าน `/api/clear-history`
+  - **ระบบเสียงสองมิติ (Dual-Voice Latency Optimization):** เสียง Edge-TTS อ่านเกริ่นนำและสรุปใจความอย่างเป็นธรรมชาติ ไม่ดีเลย์ พร้อมส่งโค้ดเต็ม 3,000+ ตัวอักษรขึ้นหน้าจอให้อ่านได้ทันที
 
 ---
 
 ## 🌐 ลิงก์ระบบที่เปิดใช้งานอยู่
-- 🌸 **Maymint Voice Web Dashboard:** `http://127.0.0.1:9229/`
+- 🌸 **Maymint Voice Web Dashboard (Public HTTPS Tunnel):** `https://blair-king-michel-calendar.trycloudflare.com/`
+- 🌸 **Maymint Voice Web Dashboard (Local):** `http://127.0.0.1:9229/`
 - 🖥️ **Hermes Standard Dashboard:** `http://127.0.0.1:9119/`
