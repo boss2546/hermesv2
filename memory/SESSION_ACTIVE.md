@@ -1,15 +1,12 @@
 - **วันที่:** 2026-10-04
-- **Branch ปัจจุบัน:** 🌿 `main` (รวมโค้ดและซิงค์กับ `origin/main` และ `origin/feature/realtime-voice-chat` เรียบร้อย)
-- **สถานะ:** 🟢 รวมโค้ดเข้าสู่ Main Branch สำเร็จสมบูรณ์ 100% พร้อม Liquid Glass Config Modal และภาพพื้นหลัง Dreamscape
-- **โปรเจกต์:** Hermes v2 (`/Users/meuu/Desktop/รวมโปรเจ็ค/hermesv2`)
+- **Branch ปัจจุบัน:** 🌿 `feature/realtime-voice-upgrade` (แตกกิ่งใหม่เพื่อปรับปรุงระบบคุยเรียลไทม์)
+- **สถานะ:** 🟢 ซิงก์ Main ล่าสุดขึ้น GitHub และแตก Branch ใหม่เรียบร้อย พร้อมลุยปรับปรุงระบบเสียง
+- **โปรเจกต์:** Hermes v2 (`c:\Users\Administrator\Desktop\hermes2`)
 
 ---
 
-## 🎯 เป้าหมายหลัก (Current Goal)
-พัฒนาปลั๊กอิน **Realtime Voice Chat** ให้กับ Hermes Agent สนทนาโต้ตอบเสียงไทยสดได้ 100%:
-1. **TTS:** Microsoft Edge-TTS คุณภาพสตูดิโอ 24kHz (`th-TH-PremwadeeNeural` เสียงมายมิ้นท์ 💖)
-2. **STT:** 9Router AI Gateway (`https://api.meuu.club/v1`) โมเดล `ag/gemini-3.8-flash-high`
-3. **Web Dashboard:** Minimalist Glassmorphism + Bing Nature Wallpaper + 5-Stage Status Badges
+## 🎯 เป้าหมายรอบนี้ (Current Goal)
+ปรับปรุงและยกระดับระบบ **Realtime Voice Chat** ให้ทรงพลังและลื่นไหลยิ่งขึ้นร่วมกับบอส
 
 ---
 
