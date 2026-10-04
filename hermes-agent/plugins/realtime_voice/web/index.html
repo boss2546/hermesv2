@@ -625,6 +625,66 @@
       color: inherit;
     }
 
+    /* Terminal Execution Box inside Message Bubble */
+    .terminal-events-list {
+      margin: 0.6rem 0 0.8rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .terminal-event-box {
+      background: rgba(10, 15, 28, 0.85);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 12px;
+      overflow: hidden;
+      font-family: 'Consolas', 'Fira Code', 'Courier New', monospace;
+      font-size: 0.84rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .terminal-event-header {
+      background: rgba(56, 189, 248, 0.15);
+      border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 0.45rem 0.8rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #38bdf8;
+      font-weight: 600;
+    }
+
+    .terminal-event-badge {
+      font-size: 0.75rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+
+    .terminal-event-badge.success {
+      background: rgba(34, 197, 94, 0.25);
+      color: #4ade80;
+      border: 1px solid rgba(74, 222, 128, 0.4);
+    }
+
+    .terminal-event-badge.error {
+      background: rgba(239, 68, 68, 0.25);
+      color: #f87171;
+      border: 1px solid rgba(248, 113, 113, 0.4);
+    }
+
+    .terminal-event-body {
+      padding: 0.6rem 0.8rem;
+      margin: 0;
+      background: transparent;
+      border: none;
+      color: #e2e8f0;
+      max-height: 220px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
     .msg-bubble blockquote {
       border-left: 3px solid var(--pink-glow);
       padding-left: 0.9rem;
@@ -1455,7 +1515,7 @@
           const data = await res.json();
 
           if (data.reply_text) {
-            appendChatMessage('maymint', data.reply_text);
+            appendChatMessage('maymint', data.reply_text, data.tool_events);
 
             if (data.timings) {
               timingsBadge.innerText = `⏱️ LLM: ${data.timings.llm_seconds}s | TTS: ${data.timings.tts_seconds}s | รวม: ${data.timings.total_seconds}s`;
@@ -1569,8 +1629,8 @@
       }
     });
 
-    // Helper: Append Message with Rich Markdown Rendering
-    function appendChatMessage(sender, text) {
+    // Helper: Append Message with Rich Markdown Rendering & Terminal Events
+    function appendChatMessage(sender, text, toolEvents = null) {
       const row = document.createElement('div');
       row.className = 'msg-row';
       const bubble = document.createElement('div');
@@ -1589,7 +1649,33 @@
             .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
             .replace(/\n/g, '<br>');
         }
-        bubble.innerHTML = `🌸 <strong>มายมิ้นท์:</strong> <div class="markdown-body">${contentHtml}</div>`;
+
+        let toolsHtml = '';
+        if (toolEvents && toolEvents.length > 0) {
+          toolsHtml += '<div class="terminal-events-list">';
+          for (const ev of toolEvents) {
+            const toolName = ev.tool || 'tool';
+            const cmd = ev.args?.command || ev.args?.file_path || ev.tool;
+            const res = ev.result || {};
+            const isSuccess = res.exit_code === 0 || res.status === 'success' || !res.error;
+            const badgeClass = isSuccess ? 'success' : 'error';
+            const badgeText = res.exit_code !== undefined ? `Exit: ${res.exit_code} (${res.duration_seconds || 0}s)` : (isSuccess ? 'Success' : 'Error');
+            const outContent = res.stdout || res.stderr || res.content || (res.error ? `Error: ${res.error}` : JSON.stringify(res, null, 2));
+
+            toolsHtml += `
+              <div class="terminal-event-box">
+                <div class="terminal-event-header">
+                  <span>⚡ <strong>${escapeHtml(toolName)}:</strong> <code>${escapeHtml(cmd)}</code></span>
+                  <span class="terminal-event-badge ${badgeClass}">${escapeHtml(badgeText)}</span>
+                </div>
+                <pre class="terminal-event-body"><code>${escapeHtml(outContent)}</code></pre>
+              </div>
+            `;
+          }
+          toolsHtml += '</div>';
+        }
+
+        bubble.innerHTML = `🌸 <strong>มายมิ้นท์:</strong> ${toolsHtml}<div class="markdown-body">${contentHtml}</div>`;
       }
 
       row.appendChild(bubble);

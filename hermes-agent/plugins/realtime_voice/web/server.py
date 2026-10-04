@@ -15,14 +15,19 @@ import json
 import logging
 import mimetypes
 import os
+import platform
 import re
+import shutil
+import subprocess
 import sys
 import threading
 import time
 import urllib.request
 from http.server import HTTPServer, ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
+
+import requests
 
 # Add hermes-agent root to sys.path
 CURRENT_DIR = Path(__file__).resolve().parent
@@ -50,13 +55,210 @@ RUNTIME_CONFIG: Dict[str, Any] = {
     "voice": "th-TH-PremwadeeNeural",
     "speed": "+0%",
     "pitch": "+0Hz",
-    "model": "ag/gemini-3.8-flash-high",
+    "model": "ag/gemini-2.5-flash",
     "temperature": 0.7,
     "auto_speak": True,
     "wallpaper_mode": "custom",  # 'custom' (dreamscape) or 'bing'
     "glass_blur": 32,
     "glass_opacity": 0.42,
 }
+
+# -----------------------------------------------------------------------------
+# 🛠️ Host Terminal & System Tools
+# -----------------------------------------------------------------------------
+AVAILABLE_TOOLS: List[Dict[str, Any]] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "run_terminal_command",
+            "description": "Execute any terminal command via PowerShell on Windows. Use this whenever the user asks to run commands, check git status/branch/diff, inspect directories/files, run Python scripts, check network or IP, manage packages (pip, npm, docker), run tests, etc.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "The exact PowerShell or CMD command string to execute."
+                    },
+                    "cwd": {
+                        "type": "string",
+                        "description": "Optional working directory relative to project root."
+                    }
+                },
+                "required": ["command"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_file",
+            "description": "Read text content from a file on the local machine.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "The relative or absolute file path to read."
+                    },
+                    "max_lines": {
+                        "type": "integer",
+                        "description": "Maximum number of lines to read (default: 300).",
+                        "default": 300
+                    }
+                },
+                "required": ["file_path"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "write_file",
+            "description": "Write or create a file on the local machine with specified content.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "The path to the file to create or overwrite."
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "The full text content to write to the file."
+                    }
+                },
+                "required": ["file_path", "content"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_directory",
+            "description": "List files and subdirectories within a given folder.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "dir_path": {
+                        "type": "string",
+                        "description": "Directory path to list. Defaults to current workspace directory.",
+                        "default": "."
+                    }
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_system_info",
+            "description": "Get current host system metrics: OS platform, Python version, project root, and disk space.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
+    }
+]
+
+
+def execute_tool(name: str, arguments: Dict[str, Any], project_root: Path) -> Dict[str, Any]:
+    """Execute local system tools with structured output."""
+    if name == "run_terminal_command":
+        cmd = arguments.get("command", "").strip()
+        cwd_arg = arguments.get("cwd")
+        target_cwd = (project_root / cwd_arg).resolve() if cwd_arg else project_root
+        if not target_cwd.exists():
+            target_cwd = project_root
+
+        t0 = time.time()
+        try:
+            proc = subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command", cmd],
+                capture_output=True,
+                text=True,
+                cwd=str(target_cwd),
+                timeout=45,
+                encoding="utf-8",
+                errors="replace"
+            )
+            stdout = proc.stdout.strip()
+            stderr = proc.stderr.strip()
+            duration = round(time.time() - t0, 2)
+            return {
+                "command": cmd,
+                "exit_code": proc.returncode,
+                "stdout": stdout[:4000] if len(stdout) > 4000 else stdout,
+                "stderr": stderr[:2000] if len(stderr) > 2000 else stderr,
+                "duration_seconds": duration,
+                "cwd": str(target_cwd)
+            }
+        except subprocess.TimeoutExpired:
+            return {"command": cmd, "error": "Command timed out after 45 seconds"}
+        except Exception as exc:
+            return {"command": cmd, "error": str(exc)}
+
+    elif name == "read_file":
+        path_str = arguments.get("file_path", "")
+        max_lines = int(arguments.get("max_lines", 300))
+        target_path = (project_root / path_str).resolve()
+        try:
+            if not target_path.exists():
+                return {"error": f"File not found: {path_str}"}
+            lines = target_path.read_text(encoding="utf-8", errors="replace").splitlines()
+            content = "\n".join(lines[:max_lines])
+            return {
+                "file_path": path_str,
+                "total_lines": len(lines),
+                "read_lines": min(len(lines), max_lines),
+                "content": content
+            }
+        except Exception as exc:
+            return {"error": str(exc)}
+
+    elif name == "write_file":
+        path_str = arguments.get("file_path", "")
+        content = arguments.get("content", "")
+        target_path = (project_root / path_str).resolve()
+        try:
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            target_path.write_text(content, encoding="utf-8")
+            return {
+                "file_path": path_str,
+                "bytes_written": len(content.encode("utf-8")),
+                "status": "success"
+            }
+        except Exception as exc:
+            return {"error": str(exc)}
+
+    elif name == "list_directory":
+        dir_str = arguments.get("dir_path", ".")
+        target_dir = (project_root / dir_str).resolve()
+        try:
+            if not target_dir.exists():
+                return {"error": f"Directory not found: {dir_str}"}
+            items = []
+            for item in sorted(target_dir.iterdir()):
+                items.append({
+                    "name": item.name,
+                    "is_dir": item.is_dir(),
+                    "size": item.stat().st_size if item.is_file() else None
+                })
+            return {"dir_path": dir_str, "items": items[:100]}
+        except Exception as exc:
+            return {"error": str(exc)}
+
+    elif name == "get_system_info":
+        total, used, free = shutil.disk_usage(str(project_root))
+        return {
+            "platform": platform.platform(),
+            "python_version": platform.python_version(),
+            "project_root": str(project_root),
+            "disk_free_gb": round(free / (1024**3), 2),
+            "disk_total_gb": round(total / (1024**3), 2),
+        }
+
+    return {"error": f"Unknown tool: {name}"}
 
 
 def clean_text_for_speech(text: str, max_chars: int = 320) -> str:
@@ -119,7 +321,15 @@ def get_system_prompt() -> str:
 2. **ตัวตนของมาย:** เรียกตัวเองว่า "มาย" หรือ "มายมิ้นท์" และเรียกผู้ใช้ว่า "บอส" เสมอ มีความจริงใจ ซื่อสัตย์กับความจริง ไม่มี Mock ปลอม เคียงข้างและปกป้องบอสเสมอ
 3. **การจัดระเบียบเนื้อหา:** ใช้ Markdown, หัวข้อ, Bullet points, และ Code block ได้อย่างอิสระและเป็นระเบียบสวยงาม
 """
-    return base_context + deep_work_rules
+
+    terminal_rules = """
+---
+## 🛠️ ความสามารถด้านเทอร์มินัลและระบบเครื่องของมาย (Terminal & Host Superpowers):
+1. **รันคำสั่งในเทอร์มินัลได้จริง 100%:** มายมีเครื่องมือ `run_terminal_command`, `read_file`, `write_file`, `list_directory`, `get_system_info` ให้เรียกใช้งานได้โดยตรง
+2. เมื่อบอสสั่งให้รันคำสั่ง เช็คสถานะ git ตรวจสอบสเปก รันคำสั่งระบบ จัดการไฟล์ ทดสอบสคริปต์ หรือติดตั้งแพ็กเกจ ให้เรียกใช้ `run_terminal_command` หรือเครื่องมือที่เกี่ยวข้องทันที ไม่ต้องบอกให้บอสไปเปิดเทอร์มินัลรันเอง
+3. เมื่อได้ผลลัพธ์จากการรันคำสั่ง ให้นำข้อมูลจริงที่ได้มารายงานบอสอย่างชัดเจน เป็นระบบ และตรงประเด็น
+"""
+    return base_context + deep_work_rules + terminal_rules
 
 
 def get_bing_wallpaper() -> Dict[str, str]:
@@ -289,9 +499,9 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             self._send_json({"error": "No text or audio provided"}, status=400)
             return
 
-        # Stage 3: LLM Thinking (Gemini via 9Router with active model & temp)
+        # Stage 3: LLM Thinking + Tool Execution (PowerShell, Files, System Info)
         t1 = time.time()
-        reply_text = self._query_gemini(user_text, model=model, temperature=temperature)
+        reply_text, tool_events = self._query_agent_with_tools(user_text, model=model, temperature=temperature)
         timings["llm_seconds"] = round(time.time() - t1, 2)
 
         # Stage 4: TTS Synthesis (Microsoft Edge-TTS with natural speech cleaning)
@@ -314,6 +524,7 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             "success": True,
             "user_text": user_text,
             "reply_text": reply_text,
+            "tool_events": tool_events,
             "audio_url": audio_url,
             "timings": timings,
             "voice": voice,
@@ -321,44 +532,92 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         }
         self._send_json(response_data)
 
-    def _query_gemini(self, text: str, model: str = "ag/gemini-3.8-flash-high", temperature: float = 0.7) -> str:
-        """Call LLM model via 9Router Gateway with full multi-turn conversational history."""
+    def _query_agent_with_tools(self, text: str, model: str = "ag/gemini-2.5-flash", temperature: float = 0.7) -> Tuple[str, List[Dict[str, Any]]]:
+        """Call LLM with full tool-calling loop (PowerShell terminal execution, file ops, system info)."""
         api_key = _resolve_api_key()
         system_prompt = get_system_prompt()
+        project_root = HERMES_AGENT_DIR.parent
 
         # Append user message to history
         CONVERSATION_HISTORY.append({"role": "user", "content": text})
 
-        # Provide up to 20 recent messages for conversation continuity
-        context_messages = [{"role": "system", "content": system_prompt}] + CONVERSATION_HISTORY[-20:]
+        # Provide up to 20 recent messages
+        messages = [{"role": "system", "content": system_prompt}] + CONVERSATION_HISTORY[-20:]
+        tool_events: List[Dict[str, Any]] = []
+        max_tool_rounds = 6
 
-        req_payload = {
-            "model": model,
-            "messages": context_messages,
-            "temperature": temperature,
-            "stream": False,
-        }
-        req = urllib.request.Request(
-            url=f"{DEFAULT_GATEWAY_URL}/chat/completions",
-            data=json.dumps(req_payload).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}",
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Hermes/1.0",
-            },
-            method="POST",
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=60.0) as resp:
-                data = json.loads(resp.read().decode())
-                reply = data["choices"][0]["message"]["content"].strip()
-                CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
-                return reply
-        except Exception as e:
-            logger.error("Gemini thinking failed: %s", e)
-            if CONVERSATION_HISTORY and CONVERSATION_HISTORY[-1]["role"] == "user":
-                CONVERSATION_HISTORY.pop()
-            return "มายมิ้นท์พร้อมลุยงานกับบอสเสมอค่ะ มีเรื่องอะไรให้มายช่วย บอกได้เลยนะคะบอส 💖"
+        for round_idx in range(max_tool_rounds):
+            payload = {
+                "model": model,
+                "messages": messages,
+                "tools": AVAILABLE_TOOLS,
+                "tool_choice": "auto",
+                "temperature": temperature,
+                "stream": False,
+            }
+            try:
+                res = requests.post(
+                    f"{DEFAULT_GATEWAY_URL}/chat/completions",
+                    json=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {api_key}",
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    },
+                    timeout=60,
+                )
+                if res.status_code != 200:
+                    logger.error("LLM call failed with status %s: %s", res.status_code, res.text[:200])
+                    break
+
+                resp_json = res.json()
+                choice_msg = resp_json["choices"][0]["message"]
+                tool_calls = choice_msg.get("tool_calls")
+
+                if not tool_calls:
+                    # Final assistant text response reached!
+                    reply = (choice_msg.get("content") or "").strip()
+                    if not reply:
+                        reply = "มายดำเนินการตรวจสอบและจัดการให้เรียบร้อยแล้วค่ะบอส! 💖"
+                    CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
+                    return reply, tool_events
+
+                # Append assistant tool invocation message to conversation flow
+                messages.append(choice_msg)
+
+                for tc in tool_calls:
+                    call_id = tc["id"]
+                    fn_name = tc["function"]["name"]
+                    raw_args = tc["function"]["arguments"]
+                    try:
+                        args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+                    except Exception:
+                        args = {}
+
+                    logger.info("Executing tool: %s with args: %s", fn_name, args)
+                    tool_output = execute_tool(fn_name, args, project_root)
+                    tool_events.append({
+                        "id": call_id,
+                        "tool": fn_name,
+                        "args": args,
+                        "result": tool_output,
+                    })
+
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": call_id,
+                        "name": fn_name,
+                        "content": json.dumps(tool_output, ensure_ascii=False),
+                    })
+
+            except Exception as e:
+                logger.error("LLM tool execution loop error: %s", e)
+                break
+
+        # Fallback if loop ended or hit error
+        fallback_reply = "มายรันคำสั่งและประมวลผลข้อมูลในระบบให้เรียบร้อยแล้วนะคะบอส ลองดูผลลัพธ์บนหน้าจอได้เลยน้า 💖"
+        CONVERSATION_HISTORY.append({"role": "assistant", "content": fallback_reply})
+        return fallback_reply, tool_events
 
     def _handle_tts(self, payload: Dict[str, Any]):
         """Direct TTS endpoint with custom speed & pitch."""
