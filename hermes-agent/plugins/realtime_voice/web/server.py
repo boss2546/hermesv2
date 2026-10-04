@@ -142,6 +142,22 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
 
         super().do_GET()
 
+    def do_HEAD(self):
+        if self.path.startswith("/audio/"):
+            fname = os.path.basename(self.path)
+            audio_path = engine._temp_dir / fname
+            if audio_path.exists():
+                self.send_response(200)
+                self.send_header("Content-Type", "audio/mpeg")
+                self.send_header("Content-Length", str(audio_path.stat().st_size))
+                self.send_header("Cache-Control", "no-cache")
+                self.end_headers()
+                return
+            else:
+                self.send_error(404, "Audio file not found")
+                return
+        super().do_HEAD()
+
     def do_POST(self):
         content_len = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(content_len)
