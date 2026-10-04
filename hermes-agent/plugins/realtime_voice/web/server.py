@@ -50,18 +50,48 @@ BING_CACHE: Dict[str, Any] = {"url": "", "title": "", "timestamp": 0}
 # Conversational Multi-Turn Memory
 CONVERSATION_HISTORY: List[Dict[str, str]] = []
 
-# Dynamic Runtime Configuration
-RUNTIME_CONFIG: Dict[str, Any] = {
+# Dynamic Runtime Configuration with persistent config.json support
+CONFIG_PATH = HERMES_AGENT_DIR.parent / "config.json"
+
+DEFAULT_CONFIG: Dict[str, Any] = {
     "voice": "th-TH-PremwadeeNeural",
     "speed": "+0%",
     "pitch": "+0Hz",
     "model": "ag/gemini-2.5-flash",
     "temperature": 0.7,
     "auto_speak": True,
-    "wallpaper_mode": "custom",  # 'custom' (dreamscape) or 'bing'
+    "wallpaper_mode": "custom",
     "glass_blur": 32,
     "glass_opacity": 0.42,
 }
+
+def load_stored_config() -> Dict[str, Any]:
+    cfg = dict(DEFAULT_CONFIG)
+    if CONFIG_PATH.exists():
+        try:
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                for k, v in data.items():
+                    if not k.startswith("comment_"):
+                        cfg[k] = v
+        except Exception as e:
+            logger.warning("Could not read config.json: %s", e)
+    return cfg
+
+def save_stored_config(cfg: Dict[str, Any]):
+    try:
+        current = {}
+        if CONFIG_PATH.exists():
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                current = json.load(f)
+        for k, v in cfg.items():
+            current[k] = v
+        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(current, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error("Could not save config.json: %s", e)
+
+RUNTIME_CONFIG: Dict[str, Any] = load_stored_config()
 
 # -----------------------------------------------------------------------------
 # 🛠️ Host Terminal & System Tools
@@ -434,6 +464,7 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(WEB_DIR), **kwargs)
 
     def do_GET(self):
+        global RUNTIME_CONFIG
         if self.path == "/" or self.path.startswith("/?"):
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -452,6 +483,7 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             return
 
         elif self.path == "/api/config":
+            RUNTIME_CONFIG = load_stored_config()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
@@ -524,7 +556,7 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             self.send_error(404, "Unknown API endpoint")
 
     def _handle_save_config(self, payload: Dict[str, Any]):
-        """Update runtime configuration dynamically."""
+        """Update runtime configuration dynamically and persist to config.json."""
         for key in ["voice", "speed", "pitch", "model", "temperature", "auto_speak", "wallpaper_mode", "glass_blur", "glass_opacity"]:
             if key in payload:
                 RUNTIME_CONFIG[key] = payload[key]
@@ -539,6 +571,7 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         if "auto_speak" in payload:
             engine.set_auto_speak(bool(payload["auto_speak"]))
 
+        save_stored_config(RUNTIME_CONFIG)
         self._send_json({"success": True, "updated_config": RUNTIME_CONFIG})
 
     def _handle_chat(self, payload: Dict[str, Any]):
@@ -551,7 +584,7 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         voice = payload.get("voice") or RUNTIME_CONFIG.get("voice", "th-TH-PremwadeeNeural")
         speed = payload.get("speed") or RUNTIME_CONFIG.get("speed", "+0%")
         pitch = payload.get("pitch") or RUNTIME_CONFIG.get("pitch", "+0Hz")
-        model = payload.get("model") or RUNTIME_CONFIG.get("model", "ag/gemini-3.8-flash-high")
+        model = payload.get("model") or RUNTIME_CONFIG.get("model", "ag/gemini-2.5-flash")
         temperature = float(payload.get("temperature", RUNTIME_CONFIG.get("temperature", 0.7)))
 
         # Stage 1 & 2: STT (if audio provided)
