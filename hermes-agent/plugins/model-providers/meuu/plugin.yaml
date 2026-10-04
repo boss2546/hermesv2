@@ -1,0 +1,5 @@
+name: meuu-provider
+kind: model-provider
+version: 1.0.0
+description: "Meuu AI Gateway (api.meuu.club) native model provider for Hermes Agent."
+author: "Boss (ratchanon2003), Hermes Agent"
