@@ -140,3 +140,25 @@ class SmartHomeClient:
     def trigger_scene(self, scene_id: str) -> Dict[str, Any]:
         """Trigger an automated scene."""
         return self._post(f"/api/scenes/{scene_id}/trigger")
+
+    def sync_tuya(self) -> Dict[str, Any]:
+        """Sync and fetch all newly added remotes from Tuya Cloud."""
+        return self._post("/api/sync-tuya", {})
+
+    def find_remote(self, query: Optional[str] = None, device_type: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Find a remote by ID, name substring, or device type."""
+        devices = self.get_devices()
+        if not devices.get("success"):
+            return None
+        remotes = devices.get("remotes", [])
+        if query:
+            q = query.lower().strip()
+            for r in remotes:
+                if r.get("id") == query or q in r.get("name", "").lower():
+                    return r
+        if device_type:
+            dt = device_type.lower().strip()
+            for r in remotes:
+                if r.get("type") == dt or dt in r.get("category", "").lower():
+                    return r
+        return None

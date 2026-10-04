@@ -22,6 +22,10 @@ SMART_HOME_CONTROL_AC_SCHEMA: Dict[str, Any] = {
         "parameters": {
             "type": "object",
             "properties": {
+                "device_name": {
+                    "type": "string",
+                    "description": "ชื่อหรือห้องของแอร์ที่ต้องการสั่ง เช่น 'Air', 'ห้องนอน', 'ห้องนั่งเล่น' (หากไม่ระบุจะสั่งแอร์ตัวหลัก)"
+                },
                 "power": {
                     "type": "boolean",
                     "description": "เปิดแอร์ (true) หรือ ปิดแอร์ (false)"
@@ -64,7 +68,12 @@ SMART_HOME_GET_AC_STATUS_SCHEMA: Dict[str, Any] = {
         "description": "ตรวจสอบสถานะปัจจุบันของแอร์ (เปิดหรือปิดอยู่ อุณหภูมิกี่องศา โหมดอะไร แรงลมระดับไหน)",
         "parameters": {
             "type": "object",
-            "properties": {}
+            "properties": {
+                "device_name": {
+                    "type": "string",
+                    "description": "ชื่อหรือห้องของแอร์ที่ต้องการตรวจสอบ เช่น 'ห้องนอน', 'ห้องนั่งเล่น' (หากไม่ระบุจะตรวจแอร์ตัวหลัก)"
+                }
+            }
         }
     }
 }
@@ -91,10 +100,26 @@ SMART_HOME_TRIGGER_SCENE_SCHEMA: Dict[str, Any] = {
     }
 }
 
+# ------------------------------------------------------------------------------
+# 4. smart_home_sync_devices Tool Schema
+# ------------------------------------------------------------------------------
+SMART_HOME_SYNC_DEVICES_SCHEMA: Dict[str, Any] = {
+    "type": "function",
+    "function": {
+        "name": "smart_home_sync_devices",
+        "description": "ซิงก์และดึงข้อมูลอุปกรณ์หรือรีโมทใหม่ล่าสุดจากบัญชี Tuya Cloud เข้าสู่ระบบทันที (ใช้เมื่อบอสมีการจับคู่อุปกรณ์ใหม่ในแอป Tuya)",
+        "parameters": {
+            "type": "object",
+            "properties": {}
+        }
+    }
+}
+
 SMART_HOME_TOOLS = [
     SMART_HOME_CONTROL_AC_SCHEMA,
     SMART_HOME_GET_AC_STATUS_SCHEMA,
-    SMART_HOME_TRIGGER_SCENE_SCHEMA
+    SMART_HOME_TRIGGER_SCENE_SCHEMA,
+    SMART_HOME_SYNC_DEVICES_SCHEMA
 ]
 
 
@@ -103,6 +128,13 @@ def execute_smart_home_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
     client = SmartHomeClient()
     try:
         if name == "smart_home_control_ac":
+            device_query = args.get("device_name")
+            target_remote_id = None
+            if device_query:
+                found = client.find_remote(query=device_query, device_type="ac")
+                if found:
+                    target_remote_id = found.get("id")
+
             power = args.get("power")
             temp = args.get("temperature")
             mode = args.get("mode")
@@ -110,6 +142,7 @@ def execute_smart_home_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
             swing = args.get("swing")
             eco = args.get("eco")
             return client.control_ac(
+                remote_id=target_remote_id,
                 power=power,
                 temperature=temp,
                 mode=mode,
@@ -119,6 +152,22 @@ def execute_smart_home_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
             )
 
         elif name == "smart_home_get_ac_status":
+            device_query = args.get("device_name")
+            if device_query:
+                target = client.find_remote(query=device_query, device_type="ac")
+                if target:
+                    return {
+                        "success": True,
+                        "device_name": target.get("name"),
+                        "power": target.get("power"),
+                        "temperature": target.get("temperature"),
+                        "mode": target.get("mode"),
+                        "windSpeed": target.get("windSpeed"),
+                        "swing": target.get("swing"),
+                        "eco": target.get("eco"),
+                        "lastUpdated": target.get("lastUpdated")
+                    }
+
             devices_res = client.get_devices()
             if not devices_res.get("success"):
                 return devices_res
@@ -143,6 +192,9 @@ def execute_smart_home_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
             if not scene_id:
                 return {"success": False, "error": "จำเป็นต้องระบุ scene_id"}
             return client.trigger_scene(scene_id)
+
+        elif name == "smart_home_sync_devices":
+            return client.sync_tuya()
 
         else:
             return {"success": False, "error": f"Unknown smart home tool: {name}"}
