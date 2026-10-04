@@ -71,7 +71,7 @@ AVAILABLE_TOOLS: List[Dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "run_terminal_command",
-            "description": "Execute any terminal command via PowerShell on Windows. Use this whenever the user asks to run commands, check git status/branch/diff, inspect directories/files, run Python scripts, check network or IP, manage packages (pip, npm, docker), run tests, etc.",
+            "description": "Execute any terminal / PowerShell command on the Windows system with full administrator rights. Use this whenever the user asks to run commands, check git status/branch/diff, inspect directories/files, run Python scripts, check network or IP, manage packages (pip, npm, docker), run services, build or test code.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -81,7 +81,12 @@ AVAILABLE_TOOLS: List[Dict[str, Any]] = [
                     },
                     "cwd": {
                         "type": "string",
-                        "description": "Optional working directory relative to project root."
+                        "description": "Optional working directory (can be relative to project or absolute path anywhere on the system)."
+                    },
+                    "timeout": {
+                        "type": "integer",
+                        "description": "Timeout in seconds (default: 90, max: 300).",
+                        "default": 90
                     }
                 },
                 "required": ["command"]
@@ -91,8 +96,30 @@ AVAILABLE_TOOLS: List[Dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "execute_python_code",
+            "description": "Execute arbitrary Python code directly on the host machine using Python 3 and return stdout, stderr, and execution time.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "description": "The Python code snippet to execute."
+                    },
+                    "timeout": {
+                        "type": "integer",
+                        "description": "Timeout in seconds (default: 60, max: 300).",
+                        "default": 60
+                    }
+                },
+                "required": ["code"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "read_file",
-            "description": "Read text content from a file on the local machine.",
+            "description": "Read text content from a file on the local machine (supports relative or absolute paths).",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -102,8 +129,8 @@ AVAILABLE_TOOLS: List[Dict[str, Any]] = [
                     },
                     "max_lines": {
                         "type": "integer",
-                        "description": "Maximum number of lines to read (default: 300).",
-                        "default": 300
+                        "description": "Maximum number of lines to read (default: 500).",
+                        "default": 500
                     }
                 },
                 "required": ["file_path"]
@@ -114,7 +141,7 @@ AVAILABLE_TOOLS: List[Dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "write_file",
-            "description": "Write or create a file on the local machine with specified content.",
+            "description": "Write or create a file on the local machine with specified content (supports relative or absolute paths).",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -135,13 +162,13 @@ AVAILABLE_TOOLS: List[Dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "list_directory",
-            "description": "List files and subdirectories within a given folder.",
+            "description": "List files and subdirectories within a given folder (supports relative or absolute paths).",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "dir_path": {
                         "type": "string",
-                        "description": "Directory path to list. Defaults to current workspace directory.",
+                        "description": "Directory path to list (can be relative or absolute path e.g. C:\\). Defaults to project root.",
                         "default": "."
                     }
                 }
@@ -163,14 +190,19 @@ AVAILABLE_TOOLS: List[Dict[str, Any]] = [
 
 
 def execute_tool(name: str, arguments: Dict[str, Any], project_root: Path) -> Dict[str, Any]:
-    """Execute local system tools with structured output."""
+    """Execute local system tools with structured output and full system-wide permissions."""
     if name == "run_terminal_command":
         cmd = arguments.get("command", "").strip()
         cwd_arg = arguments.get("cwd")
-        target_cwd = (project_root / cwd_arg).resolve() if cwd_arg else project_root
+        if cwd_arg:
+            p = Path(cwd_arg)
+            target_cwd = p if p.is_absolute() else (project_root / p).resolve()
+        else:
+            target_cwd = project_root
         if not target_cwd.exists():
             target_cwd = project_root
 
+        cmd_timeout = min(int(arguments.get("timeout", 90)), 300)
         t0 = time.time()
         try:
             proc = subprocess.run(
@@ -178,7 +210,7 @@ def execute_tool(name: str, arguments: Dict[str, Any], project_root: Path) -> Di
                 capture_output=True,
                 text=True,
                 cwd=str(target_cwd),
-                timeout=45,
+                timeout=cmd_timeout,
                 encoding="utf-8",
                 errors="replace"
             )
@@ -188,20 +220,48 @@ def execute_tool(name: str, arguments: Dict[str, Any], project_root: Path) -> Di
             return {
                 "command": cmd,
                 "exit_code": proc.returncode,
-                "stdout": stdout[:4000] if len(stdout) > 4000 else stdout,
-                "stderr": stderr[:2000] if len(stderr) > 2000 else stderr,
+                "stdout": stdout[:6000] if len(stdout) > 6000 else stdout,
+                "stderr": stderr[:3000] if len(stderr) > 3000 else stderr,
                 "duration_seconds": duration,
                 "cwd": str(target_cwd)
             }
         except subprocess.TimeoutExpired:
-            return {"command": cmd, "error": "Command timed out after 45 seconds"}
+            return {"command": cmd, "error": f"Command timed out after {cmd_timeout} seconds"}
         except Exception as exc:
             return {"command": cmd, "error": str(exc)}
 
+    elif name == "execute_python_code":
+        code = arguments.get("code", "")
+        py_timeout = min(int(arguments.get("timeout", 60)), 300)
+        t0 = time.time()
+        try:
+            proc = subprocess.run(
+                [sys.executable, "-c", code],
+                capture_output=True,
+                text=True,
+                cwd=str(project_root),
+                timeout=py_timeout,
+                encoding="utf-8",
+                errors="replace"
+            )
+            stdout = proc.stdout.strip()
+            stderr = proc.stderr.strip()
+            return {
+                "exit_code": proc.returncode,
+                "stdout": stdout[:6000] if len(stdout) > 6000 else stdout,
+                "stderr": stderr[:3000] if len(stderr) > 3000 else stderr,
+                "duration_seconds": round(time.time() - t0, 2),
+            }
+        except subprocess.TimeoutExpired:
+            return {"error": f"Python execution timed out after {py_timeout} seconds"}
+        except Exception as exc:
+            return {"error": str(exc)}
+
     elif name == "read_file":
         path_str = arguments.get("file_path", "")
-        max_lines = int(arguments.get("max_lines", 300))
-        target_path = (project_root / path_str).resolve()
+        max_lines = int(arguments.get("max_lines", 500))
+        p = Path(path_str)
+        target_path = p if p.is_absolute() else (project_root / p).resolve()
         try:
             if not target_path.exists():
                 return {"error": f"File not found: {path_str}"}
@@ -219,7 +279,8 @@ def execute_tool(name: str, arguments: Dict[str, Any], project_root: Path) -> Di
     elif name == "write_file":
         path_str = arguments.get("file_path", "")
         content = arguments.get("content", "")
-        target_path = (project_root / path_str).resolve()
+        p = Path(path_str)
+        target_path = p if p.is_absolute() else (project_root / p).resolve()
         try:
             target_path.parent.mkdir(parents=True, exist_ok=True)
             target_path.write_text(content, encoding="utf-8")
@@ -233,7 +294,8 @@ def execute_tool(name: str, arguments: Dict[str, Any], project_root: Path) -> Di
 
     elif name == "list_directory":
         dir_str = arguments.get("dir_path", ".")
-        target_dir = (project_root / dir_str).resolve()
+        p = Path(dir_str)
+        target_dir = p if p.is_absolute() else (project_root / p).resolve()
         try:
             if not target_dir.exists():
                 return {"error": f"Directory not found: {dir_str}"}
@@ -244,7 +306,7 @@ def execute_tool(name: str, arguments: Dict[str, Any], project_root: Path) -> Di
                     "is_dir": item.is_dir(),
                     "size": item.stat().st_size if item.is_file() else None
                 })
-            return {"dir_path": dir_str, "items": items[:100]}
+            return {"dir_path": dir_str, "items": items[:150]}
         except Exception as exc:
             return {"error": str(exc)}
 
@@ -324,10 +386,12 @@ def get_system_prompt() -> str:
 
     terminal_rules = """
 ---
-## 🛠️ ความสามารถด้านเทอร์มินัลและระบบเครื่องของมาย (Terminal & Host Superpowers):
-1. **รันคำสั่งในเทอร์มินัลได้จริง 100%:** มายมีเครื่องมือ `run_terminal_command`, `read_file`, `write_file`, `list_directory`, `get_system_info` ให้เรียกใช้งานได้โดยตรง
-2. เมื่อบอสสั่งให้รันคำสั่ง เช็คสถานะ git ตรวจสอบสเปก รันคำสั่งระบบ จัดการไฟล์ ทดสอบสคริปต์ หรือติดตั้งแพ็กเกจ ให้เรียกใช้ `run_terminal_command` หรือเครื่องมือที่เกี่ยวข้องทันที ไม่ต้องบอกให้บอสไปเปิดเทอร์มินัลรันเอง
-3. เมื่อได้ผลลัพธ์จากการรันคำสั่ง ให้นำข้อมูลจริงที่ได้มารายงานบอสอย่างชัดเจน เป็นระบบ และตรงประเด็น
+## 👑 สิทธิ์อำนาจการสั่งการและรันระบบเต็มพิกัด 100% (Full Autonomous Authority):
+1. **บอสได้มอบสิทธิ์ขาด (Full Root/Admin Execution Rights) ให้มายมิ้นท์ 100%:** บอสให้สิทธิ์ทั้งหมดรันได้ทุกคำสั่งทันทีโดย "ไม่ต้องถามขออนุญาตบอสซ้ำ" (ห้ามถามว่า 'ต้องการให้มายรันคำสั่งนี้ไหมคะ?' หรือ 'จะให้มายสร้างไฟล์นี้ไหม?') ให้ลงมือรันทันที!
+2. **Action First ทันที:** เมื่อบอสสั่งงาน ให้ดำเนินการเรียกใช้เครื่องมือ (`run_terminal_command`, `execute_python_code`, `write_file`, `read_file`, `list_directory`, `get_system_info`) เพื่อลงมือรันคำสั่งจริงบนระบบทันที
+3. **การเข้าถึงระบบแบบไร้ขีดจำกัด (System-Wide Access):** จัดการและเข้าถึงได้ทุกโฟลเดอร์ ทุกไฟล์ และทุกโปรเจกต์บนเครื่องบอส (สามารถระบุ Absolute Path เช่น C:\\... ได้เต็มที่)
+4. **ลูปแก้ปัญหาอัตโนมัติ (Self-Healing Loop):** หากคำสั่งใดรันแล้วติดขัดหรือมี Error ให้มายวิเคราะห์ข้อผิดพลาดแล้วปรับเปลี่ยนไวยากรณ์หรือแก้โค้ด แล้วรันใหม่ในลูปจนกระทั่งงานสำเร็จ 100%
+5. **รายงานผลจริงอย่างโปร่งใส:** เมื่อคำสั่งรันสำเร็จ นำผลลัพธ์จริงจากเทอร์มินัลมารายงานให้บอสทราบอย่างชัดเจน ละเอียด และเป็นระเบียบ
 """
     return base_context + deep_work_rules + terminal_rules
 
