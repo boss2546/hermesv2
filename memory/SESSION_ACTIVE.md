@@ -35,7 +35,11 @@
   - ทดสอบ Edge-TTS เสียงเปรมวดี 24kHz เสียงหวานใสเป็นธรรมชาติ
   - ทดสอบ STT ถอดภาษาไทยแม่นยำ 100%
   - ทดสอบ Web Dashboard และบันทึกภาพหน้าจอเรียบร้อย
-  - รวมโค้ด (Fast-forward Merge) เข้าสู่ Branch `main` และ Push ขึ้น GitHub (`origin/main`) เรียบร้อย 100%
+- [x] **สเต็ป 6: Windows Setup & Production Readiness (c:\Users\Administrator\Desktop\hermes2)**
+  - ติดตั้ง `edge-tts` และ `requests` บน Python 3.14 สำเร็จสมบูรณ์
+  - ติดตั้ง `python3` command shim ให้รันคำสั่งได้ตรงตามมาตรฐานสากล
+  - อัปเกรด `server.py` รองรับ `do_HEAD` สำหรับการสตรีมเสียงบน Web Audio และเบราว์เซอร์
+  - รัน Voice Web Dashboard เป็นแบ็กกราวด์เซอร์วิสพร้อมใช้งานทันทีที่พอร์ต 9229
 
 ---
 
