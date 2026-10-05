@@ -1,0 +1,11 @@
+name: google_workspace
+version: 1.0.0
+description: "Full Google Workspace integration: Gmail, Google Drive, Calendar, Docs, and Sheets."
+author: Maymint & Boss
+enabled: true
+entrypoint: tools.py
+tools:
+  - google_workspace_gmail
+  - google_workspace_drive
+  - google_workspace_calendar
+  - google_workspace_sheets_docs

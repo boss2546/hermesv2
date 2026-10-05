@@ -14,10 +14,16 @@ All scripts under ``google-workspace/scripts/`` should import from here
 instead of duplicating the ``HERMES_HOME = Path(os.getenv(...))`` pattern.
 """
 
-from __future__ import annotations
-
 import os
+import sys
 from pathlib import Path
+
+# Search parent dirs for hermes_constants.py
+for p in Path(__file__).resolve().parents:
+    if (p / "hermes_constants.py").is_file():
+        if str(p) not in sys.path:
+            sys.path.insert(0, str(p))
+        break
 
 try:
     from hermes_constants import display_hermes_home as display_hermes_home

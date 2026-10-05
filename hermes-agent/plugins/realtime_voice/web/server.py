@@ -53,6 +53,15 @@ except Exception:
         execute_smart_home_tool = None
 
 try:
+    from google_workspace import GOOGLE_WORKSPACE_TOOLS, execute_google_workspace_tool  # type: ignore
+except Exception:
+    try:
+        from plugins.google_workspace import GOOGLE_WORKSPACE_TOOLS, execute_google_workspace_tool  # type: ignore
+    except Exception:
+        GOOGLE_WORKSPACE_TOOLS = []
+        execute_google_workspace_tool = None
+
+try:
     from voice_engine import engine, DEFAULT_GATEWAY_URL, _resolve_api_key  # type: ignore
 except ImportError:
     from ..voice_engine import engine, DEFAULT_GATEWAY_URL, _resolve_api_key  # type: ignore
@@ -398,6 +407,9 @@ AVAILABLE_TOOLS: List[Dict[str, Any]] = [
 if SMART_HOME_TOOLS:
     AVAILABLE_TOOLS.extend(SMART_HOME_TOOLS)
 
+if GOOGLE_WORKSPACE_TOOLS:
+    AVAILABLE_TOOLS.extend(GOOGLE_WORKSPACE_TOOLS)
+
 
 def execute_tool(name: str, arguments: Dict[str, Any], project_root: Path) -> Dict[str, Any]:
     """Execute local system tools with structured output and full system-wide permissions."""
@@ -538,6 +550,14 @@ def execute_tool(name: str, arguments: Dict[str, Any], project_root: Path) -> Di
             except Exception as exc:
                 return {"error": str(exc)}
         return {"error": "Smart home plugin is not loaded"}
+
+    elif name.startswith("google_workspace_"):
+        if execute_google_workspace_tool:
+            try:
+                return execute_google_workspace_tool(name, arguments)
+            except Exception as exc:
+                return {"error": str(exc)}
+        return {"error": "Google Workspace plugin is not loaded"}
 
     return {"error": f"Unknown tool: {name}"}
 

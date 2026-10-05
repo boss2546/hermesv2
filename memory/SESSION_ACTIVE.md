@@ -159,6 +159,26 @@
     - ✅ สลับเซสชั่นไปมาได้ลื่นไหล ไม่เกิด Deadlock
     - ✅ ข้อความและประวัติเสียง TTS กลับมาครบถ้วน
 
+- [x] **สเต็ป 18: ติดตั้งและเชื่อมต่อ Google Workspace เต็มรูปแบบ (Gmail, Google Drive, Calendar, Docs, Sheets - PASS 100%)**
+  - **คำขอจากบอส:** "ตอนนี้มันมีพังชันที่ต่อกับ google เว็อกสเปดไหม ที่จัดการบวกเมลได้เขียนเมลได้ส่งเมลได้ลบได้ และอื่นๆ จัดการพวก google ไดร์ได้"
+  - **การเตรียมระบบและการยืนยันตัวตน (OAuth2):**
+    - ติดตั้งแพ็กเกจ `google-api-python-client`, `google-auth-oauthlib`, `google-auth-httplib2`
+    - พาบอสสร้าง OAuth Client ID ใน Google Cloud Console (My First Project / `bossok2546@gmail.com`)
+    - แก้ไขปัญหา Error 403 access_denied โดยเพิ่มบอสเข้าสู่ Test Users
+    - ดำเนินการแลกเปลี่ยน Auth Code และบันทึก Token สำเร็จสมบูรณ์ พร้อมระบบ Auto-Refresh ถาวร
+  - **การสร้างปลั๊กอินและเชื่อมต่อกับน้องมายมิ้นท์ (`hermes-agent/plugins/google_workspace/`):**
+    - สร้าง `tools.py`, `__init__.py`, `plugin.yaml` ครอบคลุม 4 เครื่องมือหลัก:
+      1. `google_workspace_gmail`: ค้นหา, อ่านเนื้อหาตัวเต็ม, ส่งเมล, ตอบกลับ, ย้ายลงถังขยะ
+      2. `google_workspace_drive`: ค้นหาไฟล์, อัปโหลด, ดาวน์โหลด, สร้างโฟลเดอร์, แชร์, ลบไฟล์
+      3. `google_workspace_calendar`: ดูตารางนัดหมาย, สร้างนัดหมาย, ลบนัดหมาย
+      4. `google_workspace_sheets_docs`: อ่าน/อัปเดตสเปรดชีต และอ่าน/เขียน Google Docs
+    - สร้างคู่มือสกิลที่ `.agents/skills/google-workspace/SKILL.md`
+    - เชื่อมต่อเข้าสู่ `server.py` และลงทะเบียนเข้า `AVAILABLE_TOOLS` ให้สั่งการด้วยเสียงพูดคุยสดและแชตหน้าเว็บได้ทันที
+  - **ผลการทดสอบสดจากระบบจริง (Live End-to-End PASS 100%):**
+    - ✅ **Gmail Search & Read:** ดึงรายการอีเมลจริงจากกล่องจดหมายของบอส (พบเมลแจ้งเตือน CI Run failed จาก GitHub Actions และแจ้งเตือนล็อกอินจาก Link)
+    - ✅ **Google Drive Search:** ค้นหาและดึงไฟล์จริงบน Drive ของบอส (พบ Google Colab, ใบคำร้องขอฝึกงานวิชาชีพ.pdf, ราคาปั้ม GTA V Online)
+    - ✅ **Full Voice Assistant Flow:** ทดสอบสั่งเสียง "มาย ช่วยเช็คอีเมลล่าสุด 1 ฉบับให้หน่อย" -> มายมิ้นท์เรียก `google_workspace_gmail(action="search")` ต่อด้วย `action="get"` แล้วสรุปผลรายงานให้บอสฟังเป็นเสียงภาษาไทยหวานละมุนอย่างชัดเจน
+
 ---
 
 ## 🌐 ลิงก์ระบบที่เปิดใช้งานอยู่
