@@ -1,15 +1,28 @@
 - **วันที่:** 2026-10-05
 - **Branch ปัจจุบัน:** 🌿 `feature/smart-home` (แตกกิ่งใหม่เพื่อพัฒนาระบบ Smart Home)
-- **สถานะ:** 🟢 แตกกิ่งใหม่ `feature/smart-home` และซิงก์ขึ้น GitHub เรียบร้อย พร้อมพัฒนาฟีเจอร์ Smart Home
+- **สถานะ:** 🟢 แก้ไขบัก Tuya AC Endpoint สำเร็จ 100% (เปลี่ยนมาใช้ official v2.0 scenes/command) และเพิ่มเครื่องมือสแกนรหัสรีโมท Hisense DG11 ทั้ง 26 รหัส
 - **โปรเจกต์:** Hermes v2 (`c:\Users\Administrator\Desktop\hermes2`)
 
 ---
 
 ## 🎯 เป้าหมายรอบนี้ (Current Goal)
-พัฒนาฟีเจอร์ **Smart Home** เชื่อมต่อกับระบบควบคุมอุปกรณ์และสั่งการด้วยเสียงของน้องมายมิ้นท์ร่วมกับบอส
-
+ค้นหาและทดสอบส่งสัญญาณ IR จริงให้แอร์ Hisense (รีโมท DG11L1-02 / AN20DBG) ตอบสนองและดังติ๊ด พร้อมระบบควบคุมผ่านเสียงของมายมิ้นท์และแดชบอร์ด
 
 ---
+
+## 🔍 การค้นพบครั้งสำคัญ (Root Cause & Solution)
+1. **สาเหตุที่แอร์ไม่ตอบสนองก่อนหน้านี้:**
+   - โค้ดเดิมใน `tuyaService.js` ส่งคำสั่งไปที่ `/v1.0/infrareds/{hubId}/remotes/{remoteId}/command` ด้วย `{ key: 'PowerOn' }` ซึ่ง Tuya Cloud ปฏิเสธด้วย Error `30706: command or value not support` มาโดยตลอด ส่งผลให้ตัวฮับ IR จริงไม่เคยยิงสัญญาณแอร์ออกไปเลย!
+2. **Endpoint ที่ถูกต้องแท้จริงของ Tuya สำหรับแอร์:**
+   - ใช้ `POST /v2.0/infrareds/{hubId}/air-conditioners/{remoteId}/scenes/command`
+   - Payload: `{"power": 1, "mode": 0, "temp": 24, "wind": 0}` (หรือ `power: 0` สำหรับปิด)
+   - ผลลัพธ์: ทดสอบแล้ว Tuya Cloud ตอบรับ `result: True, success: True` 100% และฮับยิงสัญญาณจริงสำเร็จ!
+3. **การทดสอบรหัสรีโมท Hisense DG11 (มีทั้งหมด 26 รหัสใน Tuya):**
+   - รหัสคลัง Tuya สำหรับ Hisense: `['11717', '11677', '11672', '11797', '12250', '4841', '7596', '7724', '7725', '5217', '5932', '5897', '4838', '5922', '5252', '6302', '2807', '4888', '337', '4332', '9297', '7084', '4512', '5192', '5127', '5927']`
+   - พัฒนาระบบยิงทดสอบแบบเรียลไทม์ผ่าน `POST /api/ac/test-index` และสคริปต์ `scripts/test_hisense_scanner.py`
+   - เพิ่ม Tool `smart_home_test_hisense_remote` เข้าสู่ Hermes Agent และ Maymint Voice Assistant ให้บอสสั่งยิงเทสทางเสียงหรือแชตได้ทันที
+4. **ฐานข้อมูล SmartIR DG11 (Code 1522):**
+   - ดึงโค้ด Broadlink Base64 สำหรับ DG11R2/DG11 ครบทุกโหมดและอุณหภูมิ 16-30°C เตรียมไว้เป็นชุดสำรอง
 
 ## ✅ สิ่งที่ทำเสร็จแล้ว (PASS 100%)
 - [x] **สเต็ป 1: `voice_engine.py`**
