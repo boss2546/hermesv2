@@ -1,12 +1,13 @@
 - **วันที่:** 2026-10-05
-- **Branch ปัจจุบัน:** 🌿 `feature/smart-home` (แตกกิ่งใหม่เพื่อพัฒนาระบบ Smart Home)
-- **สถานะ:** 🟢 แก้ไขบัก Tuya AC Endpoint สำเร็จ 100% (เปลี่ยนมาใช้ official v2.0 scenes/command) และเพิ่มเครื่องมือสแกนรหัสรีโมท Hisense DG11 ทั้ง 26 รหัส
+- **Branch ปัจจุบัน:** 🌿 `feature/smart-home` (พัฒนาระบบ Smart Home สำเร็จสมบูรณ์)
+- **สถานะ:** 🟢 ควบคุมแอร์ Hisense DG11L1-02 (AN20DBG) สำเร็จ 100% แอร์ตอบสนองและดังติ๊ดจริงแล้ว!
 - **โปรเจกต์:** Hermes v2 (`c:\Users\Administrator\Desktop\hermes2`)
 
 ---
 
-## 🎯 เป้าหมายรอบนี้ (Current Goal)
+## 🎯 เป้าหมายรอบนี้ (Current Goal) - [PASS 100% ✅]
 ค้นหาและทดสอบส่งสัญญาณ IR จริงให้แอร์ Hisense (รีโมท DG11L1-02 / AN20DBG) ตอบสนองและดังติ๊ด พร้อมระบบควบคุมผ่านเสียงของมายมิ้นท์และแดชบอร์ด
+- **ผลลัพธ์:** บอสยืนยัน "ดังแล้ว" แอร์ตอบสนองและรับคำสั่งเปิด 24°C ผ่านฮับ Tuya Smart IR และ Endpoint `/v2.0/infrareds/{hubId}/air-conditioners/{remoteId}/scenes/command` สำเร็จสมบูรณ์!
 
 ---
 
