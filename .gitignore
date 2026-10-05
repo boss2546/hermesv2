@@ -55,6 +55,9 @@ temp/
 *.ogg
 TUNNEL_URL.txt
 chat_history.json
+**/sessions/*.json
+!**/sessions/.gitkeep
+**/current_session_id.txt
 
 
 # IDE specific cache (but keep team rules)

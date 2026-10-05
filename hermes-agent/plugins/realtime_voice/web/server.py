@@ -100,6 +100,88 @@ for msg in RICH_CHAT_HISTORY:
     if content:
         CONVERSATION_HISTORY.append({"role": role, "content": content})
 
+# Multi-Session Management (Permanent Session Archiving & Switching)
+SESSIONS_DIR = CURRENT_DIR.parent / "sessions"
+SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+CURRENT_SESSION_FILE = CURRENT_DIR.parent / "current_session_id.txt"
+
+def get_active_session_id() -> str:
+    if CURRENT_SESSION_FILE.exists():
+        try:
+            sid = CURRENT_SESSION_FILE.read_text(encoding="utf-8").strip()
+            if sid:
+                return sid
+        except Exception:
+            pass
+    # Default to recovered session if available, else new timestamp
+    default_id = "session_20261005_190640" if (SESSIONS_DIR / "session_20261005_190640.json").exists() else f"session_{int(time.time())}"
+    try:
+        CURRENT_SESSION_FILE.write_text(default_id, encoding="utf-8")
+    except Exception:
+        pass
+    return default_id
+
+ACTIVE_SESSION_ID = get_active_session_id()
+
+def save_session_data(session_id: str, messages: List[Dict[str, Any]], title: str = None):
+    """Save session to sessions/{session_id}.json with auto-generated title."""
+    with _history_lock:
+        session_file = SESSIONS_DIR / f"{session_id}.json"
+        existing = {}
+        if session_file.exists():
+            try:
+                with open(session_file, "r", encoding="utf-8") as f:
+                    existing = json.load(f)
+            except Exception:
+                pass
+
+        if not title:
+            if existing.get("title"):
+                title = existing["title"]
+            else:
+                first_user_msg = next((m.get("text") for m in messages if m.get("sender") == "user"), None)
+                if first_user_msg:
+                    title = first_user_msg[:35] + ("..." if len(first_user_msg) > 35 else "")
+                else:
+                    title = f"เซสชั่น {time.strftime('%d/%m/%Y %H:%M', time.localtime())}"
+
+        created_at = existing.get("created_at", int(time.time()))
+        session_data = {
+            "id": session_id,
+            "title": title,
+            "created_at": created_at,
+            "updated_at": int(time.time()),
+            "message_count": len(messages),
+            "messages": messages[-150:]
+        }
+        try:
+            tmp = session_file.with_suffix(".tmp")
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(session_data, f, ensure_ascii=False, indent=2)
+            tmp.replace(session_file)
+        except Exception as e:
+            logger.error("Could not save session file: %s", e)
+
+def list_all_sessions() -> List[Dict[str, Any]]:
+    """List all available chat sessions sorted by updated_at descending."""
+    with _history_lock:
+        sessions = []
+        for p in SESSIONS_DIR.glob("session_*.json"):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    sessions.append({
+                        "id": data.get("id", p.stem),
+                        "title": data.get("title", "บทสนทนา"),
+                        "created_at": data.get("created_at", int(p.stat().st_mtime)),
+                        "updated_at": data.get("updated_at", int(p.stat().st_mtime)),
+                        "message_count": data.get("message_count", len(data.get("messages", [])))
+                    })
+            except Exception:
+                pass
+        sessions.sort(key=lambda x: x.get("updated_at", 0), reverse=True)
+        return sessions
+
 # Dynamic Runtime Configuration with persistent config.txt & config.json support
 CONFIG_TXT_PATH = CURRENT_DIR.parent / "config.txt"
 CONFIG_PATH = HERMES_AGENT_DIR.parent / "config.json"
@@ -658,6 +740,34 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({"success": True, "history": history_snapshot}, ensure_ascii=False).encode("utf-8"))
             return
 
+        elif self.path == "/api/sessions":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "success": True,
+                "active_session_id": ACTIVE_SESSION_ID,
+                "sessions": list_all_sessions()
+            }, ensure_ascii=False).encode("utf-8"))
+            return
+
+        elif self.path.startswith("/api/sessions/"):
+            sid = self.path.replace("/api/sessions/", "").split("?")[0].strip()
+            session_file = SESSIONS_DIR / f"{sid}.json"
+            if not session_file.exists():
+                self.send_error(404, "Session not found")
+                return
+            try:
+                data = json.loads(session_file.read_text(encoding="utf-8"))
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "session": data}, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_error(500, f"Error reading session: {e}")
+            return
+
         elif self.path.startswith("/audio/"):
             self._serve_audio(is_head=False)
             return
@@ -714,6 +824,7 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             self.wfile.write(audio_path.read_bytes())
 
     def do_POST(self):
+        global ACTIVE_SESSION_ID
         content_len = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(content_len)
 
@@ -724,12 +835,93 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
 
         if self.path == "/api/chat":
             self._handle_chat(payload)
-        elif self.path == "/api/clear-history":
+        elif self.path == "/api/sessions/new":
             with _history_lock:
+                if RICH_CHAT_HISTORY:
+                    save_session_data(ACTIVE_SESSION_ID, RICH_CHAT_HISTORY)
+                ACTIVE_SESSION_ID = f"session_{int(time.time())}"
+                try:
+                    CURRENT_SESSION_FILE.write_text(ACTIVE_SESSION_ID, encoding="utf-8")
+                except Exception:
+                    pass
                 RICH_CHAT_HISTORY.clear()
                 CONVERSATION_HISTORY.clear()
                 save_chat_history(RICH_CHAT_HISTORY)
-            self._send_json({"success": True, "message": "Conversation history cleared"})
+            self._send_json({
+                "success": True,
+                "active_session_id": ACTIVE_SESSION_ID,
+                "sessions": list_all_sessions()
+            })
+        elif self.path == "/api/sessions/switch":
+            sid = payload.get("session_id", "").strip()
+            session_file = SESSIONS_DIR / f"{sid}.json"
+            if not session_file.exists():
+                self._send_json({"error": "Session not found"}, status=404)
+                return
+            with _history_lock:
+                if RICH_CHAT_HISTORY:
+                    save_session_data(ACTIVE_SESSION_ID, RICH_CHAT_HISTORY)
+                try:
+                    session_data = json.loads(session_file.read_text(encoding="utf-8"))
+                except Exception as e:
+                    self._send_json({"error": f"Failed to load session: {e}"}, status=500)
+                    return
+                ACTIVE_SESSION_ID = sid
+                try:
+                    CURRENT_SESSION_FILE.write_text(ACTIVE_SESSION_ID, encoding="utf-8")
+                except Exception:
+                    pass
+                RICH_CHAT_HISTORY.clear()
+                RICH_CHAT_HISTORY.extend(session_data.get("messages", []))
+                CONVERSATION_HISTORY.clear()
+                for msg in RICH_CHAT_HISTORY[-20:]:
+                    role = "user" if msg.get("sender") == "user" else "assistant"
+                    content = msg.get("text", "")
+                    if content:
+                        CONVERSATION_HISTORY.append({"role": role, "content": content})
+                save_chat_history(RICH_CHAT_HISTORY)
+            self._send_json({
+                "success": True,
+                "active_session_id": ACTIVE_SESSION_ID,
+                "session": session_data,
+                "history": RICH_CHAT_HISTORY
+            })
+        elif self.path == "/api/sessions/delete":
+            sid = payload.get("session_id", "").strip()
+            session_file = SESSIONS_DIR / f"{sid}.json"
+            with _history_lock:
+                if session_file.exists():
+                    try:
+                        session_file.unlink()
+                    except Exception:
+                        pass
+                if sid == ACTIVE_SESSION_ID:
+                    ACTIVE_SESSION_ID = f"session_{int(time.time())}"
+                    try:
+                        CURRENT_SESSION_FILE.write_text(ACTIVE_SESSION_ID, encoding="utf-8")
+                    except Exception:
+                        pass
+                    RICH_CHAT_HISTORY.clear()
+                    CONVERSATION_HISTORY.clear()
+                    save_chat_history(RICH_CHAT_HISTORY)
+            self._send_json({
+                "success": True,
+                "active_session_id": ACTIVE_SESSION_ID,
+                "sessions": list_all_sessions()
+            })
+        elif self.path == "/api/clear-history":
+            with _history_lock:
+                if RICH_CHAT_HISTORY:
+                    save_session_data(ACTIVE_SESSION_ID, RICH_CHAT_HISTORY)
+                ACTIVE_SESSION_ID = f"session_{int(time.time())}"
+                try:
+                    CURRENT_SESSION_FILE.write_text(ACTIVE_SESSION_ID, encoding="utf-8")
+                except Exception:
+                    pass
+                RICH_CHAT_HISTORY.clear()
+                CONVERSATION_HISTORY.clear()
+                save_chat_history(RICH_CHAT_HISTORY)
+            self._send_json({"success": True, "message": "Previous session safely archived, new session started."})
         elif self.path == "/api/config":
             self._handle_save_config(payload)
         elif self.path == "/api/tts":
@@ -836,6 +1028,7 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             RICH_CHAT_HISTORY.append(user_msg)
             RICH_CHAT_HISTORY.append(asst_msg)
             save_chat_history(RICH_CHAT_HISTORY)
+            save_session_data(ACTIVE_SESSION_ID, RICH_CHAT_HISTORY)
         response_data = {
             "success": True,
             "user_text": user_text,
