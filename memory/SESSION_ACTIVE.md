@@ -1,6 +1,6 @@
 - **วันที่:** 2026-10-05
 - **Branch ปัจจุบัน:** 🌟 `main` (รวมโค้ดและพุชขึ้น GitHub เรียบร้อยสมบูรณ์ 100%)
-- **สถานะ:** 🟢 ควบคุมแอร์ Hisense DG11L1-02 สำเร็จ 100% พร้อมชุดคำสั่งอัตโนมัติ 5s, ควบคุมผ่านเสียง, รวมโค้ดเข้าสู่ main สำเร็จ, แก้ไข Lint/Unused Variable ใน server.py สะอาดหมดจด 100%
+- **สถานะ:** 🟢 ควบคุมแอร์ Hisense สำเร็จ 100%, แก้ไข Lint server.py สะอาดหมดจด, ยกระดับระบบเสียงและหน้าเว็บรองรับโทรศัพท์มือถือ (iOS Safari / Android Chrome) แบบเต็มรูปแบบ 100% (HTTP 206 Partial Content Range Streaming, Touch-Unlocked Audio Context, Mobile Media Queries & Replay Buttons)
 - **โปรเจกต์:** Hermes v2 (`c:\Users\Administrator\Desktop\hermes2`)
 
 ---
