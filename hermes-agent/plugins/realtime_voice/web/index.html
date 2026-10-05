@@ -1674,11 +1674,11 @@
 
       chatBox.innerHTML = '';
       for (const m of messages) {
-        appendChatMessage(m.sender, m.text, m.tool_events, m.audio_url);
+        appendChatMessage(m.sender, m.text, m.tool_events, m.audio_url, false);
       }
       setTimeout(() => {
         chatBox.scrollTop = chatBox.scrollHeight;
-      }, 50);
+      }, 30);
     }
 
     async function loadChatHistory() {
@@ -1913,12 +1913,15 @@
         startWaveform();
       };
 
+      let lastRecognizedTranscript = '';
+
       recognition.onresult = (event) => {
         let transcript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           transcript += event.results[i][0].transcript;
         }
         if (transcript) {
+          lastRecognizedTranscript = transcript;
           micHint.innerText = `ได้ยิน: "${transcript}"`;
         }
       };
@@ -1929,8 +1932,9 @@
         micRipple.style.opacity = '0';
         stopWaveform();
 
-        const finalText = micHint.innerText.replace('ได้ยิน: "', '').replace('"', '').trim();
-        if (finalText && !finalText.startsWith('คลิกปุ่มไมค์') && !finalText.startsWith('กำลังฟัง')) {
+        const finalText = (lastRecognizedTranscript || '').trim();
+        lastRecognizedTranscript = '';
+        if (finalText) {
           submitUserSpeech(finalText);
         } else {
           resetStages();
@@ -1969,51 +1973,70 @@
     });
 
     // 5. Submit Speech / Text
+    let isProcessing = false;
+
     async function submitUserSpeech(text) {
+      if (isProcessing || !text || !text.trim()) return;
+      isProcessing = true;
+
+      if (sendTextBtn) {
+        sendTextBtn.disabled = true;
+        sendTextBtn.style.opacity = '0.6';
+        sendTextBtn.innerHTML = '<span>กำลังคิด... 🧠</span>';
+      }
+
       appendChatMessage('user', text);
       recordHistoryMessage('user', text);
       setStage(2, '✍️ [สเต็ป 2/5] ถอดความเสียงสำเร็จ กำลังส่งวิเคราะห์...');
 
-      setTimeout(async () => {
+      try {
         setStage(3, `🧠 [สเต็ป 3/5] สมอง ${cfgModelSelect.value} กำลังคิดคำตอบ...`);
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            text: text,
+            voice: cfgVoiceSelect.value,
+            speed: (parseInt(cfgSpeedSlider.value) >= 0 ? '+' : '') + parseInt(cfgSpeedSlider.value) + '%',
+            pitch: (parseInt(cfgPitchSlider.value) >= 0 ? '+' : '') + parseInt(cfgPitchSlider.value) + 'Hz',
+            model: cfgModelSelect.value,
+            temperature: parseFloat(cfgTempSlider.value)
+          })
+        });
+        const data = await res.json();
 
-        try {
-          const res = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              text: text,
-              voice: cfgVoiceSelect.value,
-              speed: (parseInt(cfgSpeedSlider.value) >= 0 ? '+' : '') + parseInt(cfgSpeedSlider.value) + '%',
-              pitch: (parseInt(cfgPitchSlider.value) >= 0 ? '+' : '') + parseInt(cfgPitchSlider.value) + 'Hz',
-              model: cfgModelSelect.value,
-              temperature: parseFloat(cfgTempSlider.value)
-            })
-          });
-          const data = await res.json();
+        if (data.reply_text) {
+          appendChatMessage('maymint', data.reply_text, data.tool_events, data.audio_url);
+          recordHistoryMessage('maymint', data.reply_text, data.tool_events, data.audio_url);
 
-          if (data.reply_text) {
-            appendChatMessage('maymint', data.reply_text, data.tool_events, data.audio_url);
-            recordHistoryMessage('maymint', data.reply_text, data.tool_events, data.audio_url);
-
-            if (data.timings) {
-              timingsBadge.innerText = `⏱️ LLM: ${data.timings.llm_seconds}s | TTS: ${data.timings.tts_seconds}s | รวม: ${data.timings.total_seconds}s`;
-            }
-
-            if (autoSpeakToggle.checked && data.audio_url) {
-              setStage(4, '🎙️ [สเต็ป 4/5] สร้างเสียงพูด Edge-TTS เสร็จสิ้น...');
-              playAudioResponse(data.audio_url);
-            } else {
-              setStage(5, '✅ ตอบคำถามเรียบร้อยแล้วค่ะ');
-              setTimeout(resetStages, 3000);
-            }
+          if (data.timings) {
+            timingsBadge.innerText = `⏱️ LLM: ${data.timings.llm_seconds}s | TTS: ${data.timings.tts_seconds}s | รวม: ${data.timings.total_seconds}s`;
           }
-        } catch (err) {
-          console.error('Chat error:', err);
-          appendChatMessage('maymint', 'ขอโทษด้วยนะคะบอส มีข้อผิดพลาดในการเชื่อมต่อเครือข่ายค่ะ 🥺');
+
+          if (autoSpeakToggle.checked && data.audio_url) {
+            setStage(4, '🎙️ [สเต็ป 4/5] สร้างเสียงพูด Edge-TTS เสร็จสิ้น...');
+            playAudioResponse(data.audio_url);
+          } else {
+            setStage(5, '✅ ตอบคำถามเรียบร้อยแล้วค่ะ');
+            setTimeout(resetStages, 3000);
+          }
+        } else {
+          const errMsg = data.error || 'ขอโทษด้วยนะคะบอส มายไม่ได้รับข้อความตอบกลับจากระบบค่ะ 🥺';
+          appendChatMessage('maymint', errMsg);
           resetStages();
         }
-      }, 300);
+      } catch (err) {
+        console.error('Chat error:', err);
+        appendChatMessage('maymint', 'ขอโทษด้วยนะคะบอส มีข้อผิดพลาดในการเชื่อมต่อเครือข่ายค่ะ 🥺');
+        resetStages();
+      } finally {
+        isProcessing = false;
+        if (sendTextBtn) {
+          sendTextBtn.disabled = false;
+          sendTextBtn.style.opacity = '1';
+          sendTextBtn.innerHTML = '<span>ส่ง 🚀</span>';
+        }
+      }
     }
 
     // 6. Play Audio (Mobile & Desktop Safari/Chrome Friendly)
@@ -2046,7 +2069,7 @@
       maymintAudioPlayer.onerror = (err) => {
         console.error('Audio play error:', err);
         stopWaveform();
-        audioPlayingStatus.innerText = '⚠️ ไม่สามารถเล่นเสียงได้';
+        audioPlayingStatus.innerText = '⚠️ ไม่สามารถเล่นเสียงได้ (ไฟล์เสียงอาจหมดอายุแล้วค่ะ)';
         stopAudioBtn.style.display = 'none';
         hideMobileAudioPrompt();
         resetStages();
@@ -2183,7 +2206,7 @@
     });
 
     // Helper: Append Message with Rich Markdown Rendering & Terminal Events
-    function appendChatMessage(sender, text, toolEvents = null, audioUrl = null) {
+    function appendChatMessage(sender, text, toolEvents = null, audioUrl = null, autoScroll = true) {
       const row = document.createElement('div');
       row.className = 'msg-row';
       const bubble = document.createElement('div');
@@ -2229,7 +2252,7 @@
         }
 
         const replayBtnHtml = (audioUrl && sender !== 'user') 
-          ? `<button class="play-bubble-audio-btn" onclick="playAudioResponse('${escapeHtml(audioUrl)}')" title="กดฟังเสียงคำตอบนี้">🔊 ฟังเสียงคำตอบนี้</button>` 
+          ? `<button class="play-bubble-audio-btn" data-audio-url="${escapeHtml(audioUrl)}" onclick="playAudioResponse(this.getAttribute('data-audio-url'))" title="กดฟังเสียงคำตอบนี้">🔊 ฟังเสียงคำตอบนี้</button>` 
           : '';
 
         bubble.innerHTML = `🌸 <strong>มายมิ้นท์:</strong> ${toolsHtml}<div class="markdown-body">${contentHtml}</div>${replayBtnHtml}`;
@@ -2237,7 +2260,9 @@
 
       row.appendChild(bubble);
       chatBox.appendChild(row);
-      chatBox.scrollTop = chatBox.scrollHeight;
+      if (autoScroll) {
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
     }
 
     function escapeHtml(string) {

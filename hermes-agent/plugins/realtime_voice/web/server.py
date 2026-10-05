@@ -19,6 +19,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import urllib.request
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
@@ -65,6 +66,7 @@ BING_CACHE: Dict[str, Any] = {"url": "", "title": "", "timestamp": 0}
 
 # Conversational Multi-Turn Memory & Disk Persistence
 CHAT_HISTORY_PATH = CURRENT_DIR.parent / "chat_history.json"
+_history_lock = threading.RLock()
 
 def load_chat_history() -> List[Dict[str, Any]]:
     """Load persistent chat history from JSON file."""
@@ -79,13 +81,16 @@ def load_chat_history() -> List[Dict[str, Any]]:
     return []
 
 def save_chat_history(history: List[Dict[str, Any]]):
-    """Save persistent chat history to JSON file (truncated to last 150 items)."""
-    try:
-        truncated = history[-150:]
-        with open(CHAT_HISTORY_PATH, "w", encoding="utf-8") as f:
-            json.dump(truncated, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        logger.error("Could not save chat_history.json: %s", e)
+    """Save persistent chat history to JSON file (truncated to last 150 items) thread-safely and atomically."""
+    with _history_lock:
+        try:
+            truncated = history[-150:]
+            tmp_path = CHAT_HISTORY_PATH.with_suffix(".tmp")
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(truncated, f, ensure_ascii=False, indent=2)
+            tmp_path.replace(CHAT_HISTORY_PATH)
+        except Exception as e:
+            logger.error("Could not save chat_history.json: %s", e)
 
 RICH_CHAT_HISTORY: List[Dict[str, Any]] = load_chat_history()
 CONVERSATION_HISTORY: List[Dict[str, str]] = []
@@ -478,13 +483,12 @@ def strip_emojis(text: str) -> str:
     return cleaned.strip()
 
 
-def clean_text_for_speech(text: str, max_chars: int = 320) -> str:
+def clean_text_for_speech(text: str, max_chars: int = 140) -> str:
     """Clean and summarize text for natural, fast, and smooth speech synthesis.
     The visual chat window displays the full markdown text and code blocks,
     while the voice speaks a natural, warm summary/introduction to prevent long synthesis latency.
     """
     # Remove markdown code blocks completely for speech
-    cleaned = re.sub(r"```[\w\-]*\n[\s\S]*?```", "", text)
     cleaned = re.sub(r"```[\s\S]*?```", "", text)
     # Remove inline code marks
     cleaned = re.sub(r"`([^`]+)`", r"\1", cleaned)
@@ -495,21 +499,24 @@ def clean_text_for_speech(text: str, max_chars: int = 320) -> str:
     cleaned = re.sub(r"[*#_~>]", "", cleaned)
     # Strip emojis completely so TTS won't read emoji names
     cleaned = strip_emojis(cleaned)
+    # Fix isolated Thai repetition mark (ๆ) which causes Azure TTS parser drops
+    cleaned = re.sub(r"\s+ๆ", "ๆ", cleaned)
     # Collapse multiple whitespaces
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
 
     if not cleaned:
-        return "มายจัดเตรียมโค้ดและรายละเอียดทั้งหมดไว้ให้บนหน้าจอเรียบร้อยแล้วนะคะบอส"
+        return "มายจัดเตรียมรายละเอียดทั้งหมดไว้ให้บนหน้าจอเรียบร้อยแล้วนะคะบอส"
 
     # If the text is longer than max_chars, take a clean sentence/phrase cut
     if len(cleaned) > max_chars:
         cut = cleaned[:max_chars]
         last_punct = max(cut.rfind("ค่ะ"), cut.rfind("นะคะ"), cut.rfind("น้า"), cut.rfind(". "), cut.rfind("!"))
-        if last_punct > 120:
-            cut = cut[:last_punct + 4].strip()
+        if last_punct > 50:
+            punct_len = 4 if cut[last_punct:last_punct+4] == "นะคะ" else 3
+            cut = cut[:last_punct + punct_len].strip()
         else:
             cut = cut.rstrip()
-        cleaned = cut + " ... มายเตรียมโค้ดและเนื้อหาทั้งหมดไว้ให้บนหน้าจอแล้วนะคะบอส ลองดูได้เลยน้า"
+        cleaned = cut + " มายเตรียมเนื้อหาทั้งหมดไว้ให้บนหน้าจอแล้วนะคะบอส"
 
     return strip_emojis(cleaned)
 
@@ -642,11 +649,13 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             return
 
         elif self.path == "/api/history":
+            with _history_lock:
+                history_snapshot = list(RICH_CHAT_HISTORY)
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Cache-Control", "no-cache")
             self.end_headers()
-            self.wfile.write(json.dumps({"success": True, "history": RICH_CHAT_HISTORY}, ensure_ascii=False).encode("utf-8"))
+            self.wfile.write(json.dumps({"success": True, "history": history_snapshot}, ensure_ascii=False).encode("utf-8"))
             return
 
         elif self.path.startswith("/audio/"):
@@ -716,9 +725,10 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         if self.path == "/api/chat":
             self._handle_chat(payload)
         elif self.path == "/api/clear-history":
-            RICH_CHAT_HISTORY.clear()
-            CONVERSATION_HISTORY.clear()
-            save_chat_history(RICH_CHAT_HISTORY)
+            with _history_lock:
+                RICH_CHAT_HISTORY.clear()
+                CONVERSATION_HISTORY.clear()
+                save_chat_history(RICH_CHAT_HISTORY)
             self._send_json({"success": True, "message": "Conversation history cleared"})
         elif self.path == "/api/config":
             self._handle_save_config(payload)
@@ -782,8 +792,13 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
 
         # Stage 3: LLM Thinking + Tool Execution (PowerShell, Files, System Info)
         t1 = time.time()
-        reply_text, tool_events = self._query_agent_with_tools(user_text, model=model, temperature=temperature)
-        timings["llm_seconds"] = round(time.time() - t1, 2)
+        try:
+            reply_text, tool_events = self._query_agent_with_tools(user_text, model=model, temperature=temperature)
+            timings["llm_seconds"] = round(time.time() - t1, 2)
+        except Exception as e:
+            logger.error("LLM processing error: %s", e)
+            self._send_json({"error": f"เกิดข้อผิดพลาดในการประมวลผล LLM: {str(e)}"}, status=500)
+            return
 
         # Stage 4: TTS Synthesis (Microsoft Edge-TTS with natural speech cleaning)
         t2 = time.time()
@@ -817,9 +832,10 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             "audio_url": audio_url,
             "timings": timings
         }
-        RICH_CHAT_HISTORY.append(user_msg)
-        RICH_CHAT_HISTORY.append(asst_msg)
-        save_chat_history(RICH_CHAT_HISTORY)
+        with _history_lock:
+            RICH_CHAT_HISTORY.append(user_msg)
+            RICH_CHAT_HISTORY.append(asst_msg)
+            save_chat_history(RICH_CHAT_HISTORY)
         response_data = {
             "success": True,
             "user_text": user_text,
