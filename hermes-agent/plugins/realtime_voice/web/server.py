@@ -43,10 +43,13 @@ if str(PLUGINS_DIR) not in sys.path:
     sys.path.insert(0, str(PLUGINS_DIR))
 
 try:
-    from smart_home import SMART_HOME_TOOLS, execute_smart_home_tool
-except Exception as _sh_err:
-    SMART_HOME_TOOLS = []
-    execute_smart_home_tool = None
+    from smart_home import SMART_HOME_TOOLS, execute_smart_home_tool  # type: ignore
+except Exception:
+    try:
+        from plugins.smart_home import SMART_HOME_TOOLS, execute_smart_home_tool  # type: ignore
+    except Exception:
+        SMART_HOME_TOOLS = []
+        execute_smart_home_tool = None
 
 try:
     from voice_engine import engine, DEFAULT_GATEWAY_URL, _resolve_api_key  # type: ignore

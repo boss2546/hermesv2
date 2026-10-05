@@ -2,13 +2,17 @@
   "python.defaultInterpreterPath": "C:\\Python314\\python.exe",
   "python.analysis.extraPaths": [
     "${workspaceFolder}/hermes-agent",
+    "${workspaceFolder}/hermes-agent/plugins",
     "${workspaceFolder}/hermes-agent/plugins/realtime_voice",
-    "${workspaceFolder}/hermes-agent/plugins/realtime_voice/web"
+    "${workspaceFolder}/hermes-agent/plugins/realtime_voice/web",
+    "${workspaceFolder}/hermes-agent/plugins/smart_home"
   ],
   "python.autoComplete.extraPaths": [
     "${workspaceFolder}/hermes-agent",
+    "${workspaceFolder}/hermes-agent/plugins",
     "${workspaceFolder}/hermes-agent/plugins/realtime_voice",
-    "${workspaceFolder}/hermes-agent/plugins/realtime_voice/web"
+    "${workspaceFolder}/hermes-agent/plugins/realtime_voice/web",
+    "${workspaceFolder}/hermes-agent/plugins/smart_home"
   ],
   "python.analysis.diagnosticSeverityOverrides": {
     "reportMissingImports": "none"
