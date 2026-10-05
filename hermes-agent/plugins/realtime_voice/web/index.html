@@ -1656,6 +1656,82 @@
     }
     loadConfig();
 
+    // -------------------------------------------------------------------------
+    // 💬 Persistent Chat History Engine (Server + LocalStorage Hybrid)
+    // -------------------------------------------------------------------------
+    let currentChatHistory = [];
+
+    function renderHistoryMessages(messages) {
+      if (!messages || messages.length === 0) {
+        chatBox.innerHTML = `
+          <div class="msg-row">
+            <div class="msg-bubble maymint">
+              🌸 <strong>มายมิ้นท์:</strong> สวัสดีค่ะบอส! มายมิ้นท์พร้อมดูแลบอสแล้วนะคะ จะพิมพ์คุยหรือกดปุ่มไมค์พูดคุยกับมายได้ทันทีเลยค่ะบอส 💖✨
+            </div>
+          </div>`;
+        return;
+      }
+
+      chatBox.innerHTML = '';
+      for (const m of messages) {
+        appendChatMessage(m.sender, m.text, m.tool_events, m.audio_url);
+      }
+      setTimeout(() => {
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }, 50);
+    }
+
+    async function loadChatHistory() {
+      // 1. Instant cache load from localStorage (0ms display on refresh)
+      try {
+        const cached = localStorage.getItem('maymint_chat_history');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            currentChatHistory = parsed;
+            renderHistoryMessages(currentChatHistory);
+          }
+        }
+      } catch (err) {
+        console.warn('LocalStorage history load error:', err);
+      }
+
+      // 2. Fetch fresh history from server
+      try {
+        const res = await fetch('/api/history');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.history)) {
+            currentChatHistory = data.history;
+            try {
+              localStorage.setItem('maymint_chat_history', JSON.stringify(currentChatHistory));
+            } catch(e) {}
+            renderHistoryMessages(currentChatHistory);
+          }
+        }
+      } catch (err) {
+        console.warn('Server history fetch error:', err);
+      }
+    }
+
+    function recordHistoryMessage(sender, text, toolEvents = null, audioUrl = null) {
+      const item = {
+        id: `msg_${Date.now()}_${sender === 'user' ? 'u' : 'a'}`,
+        timestamp: Math.floor(Date.now() / 1000),
+        sender: sender,
+        text: text,
+        tool_events: toolEvents,
+        audio_url: audioUrl
+      };
+      currentChatHistory.push(item);
+      try {
+        localStorage.setItem('maymint_chat_history', JSON.stringify(currentChatHistory));
+      } catch(e) {}
+    }
+
+    // Trigger initial history load
+    loadChatHistory();
+
     // Sliders Live Feedback
     cfgSpeedSlider.addEventListener('input', (e) => {
       const val = parseInt(e.target.value);
@@ -1895,6 +1971,7 @@
     // 5. Submit Speech / Text
     async function submitUserSpeech(text) {
       appendChatMessage('user', text);
+      recordHistoryMessage('user', text);
       setStage(2, '✍️ [สเต็ป 2/5] ถอดความเสียงสำเร็จ กำลังส่งวิเคราะห์...');
 
       setTimeout(async () => {
@@ -1917,6 +1994,7 @@
 
           if (data.reply_text) {
             appendChatMessage('maymint', data.reply_text, data.tool_events, data.audio_url);
+            recordHistoryMessage('maymint', data.reply_text, data.tool_events, data.audio_url);
 
             if (data.timings) {
               timingsBadge.innerText = `⏱️ LLM: ${data.timings.llm_seconds}s | TTS: ${data.timings.tts_seconds}s | รวม: ${data.timings.total_seconds}s`;
@@ -2093,12 +2171,11 @@
     document.getElementById('clearChatBtn').addEventListener('click', async () => {
       try {
         await fetch('/api/clear-history', { method: 'POST' });
-        chatBox.innerHTML = `
-          <div class="msg-row">
-            <div class="msg-bubble maymint">
-              🌸 <strong>มายมิ้นท์:</strong> มายเริ่มแชตใหม่ให้เรียบร้อยแล้วค่ะบอส! พร้อมลุยงานจริงจัง คิด วางแผน หรือเขียนโค้ดเรื่องใหม่ได้เต็มที่เลยน้าา 💖✨
-            </div>
-          </div>`;
+        currentChatHistory = [];
+        try {
+          localStorage.removeItem('maymint_chat_history');
+        } catch(e) {}
+        renderHistoryMessages([]);
         showToast('🧹 ล้างประวัติการคุยเรียบร้อยแล้วค่ะ');
       } catch (err) {
         console.error('Clear chat error:', err);

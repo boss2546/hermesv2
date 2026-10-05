@@ -54,6 +54,7 @@ temp/
 *.wav
 *.ogg
 TUNNEL_URL.txt
+chat_history.json
 
 
 # IDE specific cache (but keep team rules)

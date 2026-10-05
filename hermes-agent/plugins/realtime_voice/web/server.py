@@ -63,8 +63,37 @@ WEB_DIR = CURRENT_DIR
 PORT = 9229
 BING_CACHE: Dict[str, Any] = {"url": "", "title": "", "timestamp": 0}
 
-# Conversational Multi-Turn Memory
+# Conversational Multi-Turn Memory & Disk Persistence
+CHAT_HISTORY_PATH = CURRENT_DIR.parent / "chat_history.json"
+
+def load_chat_history() -> List[Dict[str, Any]]:
+    """Load persistent chat history from JSON file."""
+    if CHAT_HISTORY_PATH.exists():
+        try:
+            with open(CHAT_HISTORY_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return data
+        except Exception as e:
+            logger.warning("Could not read chat_history.json: %s", e)
+    return []
+
+def save_chat_history(history: List[Dict[str, Any]]):
+    """Save persistent chat history to JSON file (truncated to last 150 items)."""
+    try:
+        truncated = history[-150:]
+        with open(CHAT_HISTORY_PATH, "w", encoding="utf-8") as f:
+            json.dump(truncated, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error("Could not save chat_history.json: %s", e)
+
+RICH_CHAT_HISTORY: List[Dict[str, Any]] = load_chat_history()
 CONVERSATION_HISTORY: List[Dict[str, str]] = []
+for msg in RICH_CHAT_HISTORY:
+    role = "user" if msg.get("sender") == "user" else "assistant"
+    content = msg.get("text", "")
+    if content:
+        CONVERSATION_HISTORY.append({"role": role, "content": content})
 
 # Dynamic Runtime Configuration with persistent config.txt & config.json support
 CONFIG_TXT_PATH = CURRENT_DIR.parent / "config.txt"
@@ -612,6 +641,14 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(wallpaper).encode())
             return
 
+        elif self.path == "/api/history":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": True, "history": RICH_CHAT_HISTORY}, ensure_ascii=False).encode("utf-8"))
+            return
+
         elif self.path.startswith("/audio/"):
             self._serve_audio(is_head=False)
             return
@@ -679,7 +716,9 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         if self.path == "/api/chat":
             self._handle_chat(payload)
         elif self.path == "/api/clear-history":
+            RICH_CHAT_HISTORY.clear()
             CONVERSATION_HISTORY.clear()
+            save_chat_history(RICH_CHAT_HISTORY)
             self._send_json({"success": True, "message": "Conversation history cleared"})
         elif self.path == "/api/config":
             self._handle_save_config(payload)
@@ -762,6 +801,25 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
 
         timings["total_seconds"] = round(time.time() - t_start, 2)
 
+        # Persist rich conversation history to disk
+        user_msg = {
+            "id": f"msg_{int(t_start * 1000)}_u",
+            "timestamp": int(t_start),
+            "sender": "user",
+            "text": user_text
+        }
+        asst_msg = {
+            "id": f"msg_{int(time.time() * 1000)}_a",
+            "timestamp": int(time.time()),
+            "sender": "maymint",
+            "text": reply_text,
+            "tool_events": tool_events,
+            "audio_url": audio_url,
+            "timings": timings
+        }
+        RICH_CHAT_HISTORY.append(user_msg)
+        RICH_CHAT_HISTORY.append(asst_msg)
+        save_chat_history(RICH_CHAT_HISTORY)
         response_data = {
             "success": True,
             "user_text": user_text,
