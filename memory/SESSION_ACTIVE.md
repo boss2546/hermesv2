@@ -1,15 +1,14 @@
 - **วันที่:** 2026-10-05
-- **Branch ปัจจุบัน:** 🌿 `feature/realtime-voice-upgrade` (แตกกิ่งใหม่พร้อมลุยอัปเกรดระบบคุยเรียลไทม์)
-- **สถานะ:** 🚀 เริ่มต้นการอัปเกรดระบบสนทนาเรียลไทม์ (Realtime Voice & Conversation Upgrade)
+- **Branch ปัจจุบัน:** 🌿 `feature/realtime-voice-upgrade`
+- **สถานะ:** 🟢 ระบบบันทึกประวัติการคุยทุกขั้นตอน (Chat History Persistence) สำเร็จ 100% (Dual-Persistence: LocalStorage + Server Disk chat_history.json) รีเฟรชหน้าเว็บข้อมูลไม่หาย เก็บครบทั้งข้อความ Markdown, ผลลัพธ์กล่องรันคำสั่ง Terminal / Smart Home และปุ่มกดฟังเสียงซ้ำ
 - **โปรเจกต์:** Hermes v2 (`c:\Users\Administrator\Desktop\hermes2`)
 
 ---
 
 ## 🎯 เป้าหมายรอบนี้ (Current Goal)
 อัปเกรดระบบการสนทนาเรียลไทม์ของ "มายมิ้นท์" (Realtime Voice Upgrade):
-- ยกระดับความลื่นไหลในการพูดคุยโต้ตอบ (Realtime Conversation, Low Latency, Streaming Audio)
-- ระบบดักจับเสียงพูดต่อเนื่อง หรือการตอบสนองที่รวดเร็วเป็นธรรมชาติยิ่งขึ้น
-- ปรับปรุงการแสดงผลและเครื่องมือให้ตอบโจทย์การใช้งานของบอสทั้งบนคอมพิวเตอร์และโทรศัพท์มือถือ
+- [x] **ระบบประวัติการสนทนาถาวร (Persistent Chat History):** บันทึกประวัติการคุยครบทุกขั้นตอน รีเฟรชหน้าเว็บแล้วไม่หาย โหลดขึ้นมาทันที 0ms ผ่าน LocalStorage + ซิงก์กับ Server `GET /api/history` พร้อมปุ่มล้างประวัติ `POST /api/clear-history`
+- [ ] ยกระดับความลื่นไหลในการพูดคุยโต้ตอบ (Realtime Conversation, Continuous Mic VAD, Streaming Audio)
 
 ---
 
