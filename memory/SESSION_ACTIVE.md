@@ -179,6 +179,25 @@
     - ✅ **Google Drive Search:** ค้นหาและดึงไฟล์จริงบน Drive ของบอส (พบ Google Colab, ใบคำร้องขอฝึกงานวิชาชีพ.pdf, ราคาปั้ม GTA V Online)
     - ✅ **Full Voice Assistant Flow:** ทดสอบสั่งเสียง "มาย ช่วยเช็คอีเมลล่าสุด 1 ฉบับให้หน่อย" -> มายมิ้นท์เรียก `google_workspace_gmail(action="search")` ต่อด้วย `action="get"` แล้วสรุปผลรายงานให้บอสฟังเป็นเสียงภาษาไทยหวานละมุนอย่างชัดเจน
 
+- [x] **สเต็ป 19: ปลดล็อกสิทธิ์ Google Workspace 13 ขอบเขตเต็มพิกัด All-in-One + เพิ่มเครื่องมือ Google Tasks (PASS 100%)**
+  - **คำขอจากบอส:** "เพิิ่มเลยจัดเต็ม", "ลองบันทึกในราเรดน้าสิแจ้งพท้นว่าพรุ้งนี้ไปทำงาน9โมงเช้า ส่งเมลมาด้วยยืนยันด้วย"
+  - **ขยาย Scopes ครบ 13 ขอบเขตเต็มพิกัด (All-in-One Enterprise Scopes):**
+    - `gmail.readonly`, `gmail.send`, `gmail.modify`, `calendar`, `drive`, `contacts`, `contacts.readonly`, `spreadsheets`, `documents`, `tasks`, `presentations`, `forms.body`, `meetings.space.created`
+    - ทำการยืนยันตัวตนใหม่และแลกเปลี่ยน Token ที่ครอบคลุมทุกบริการของ Google
+  - **เพิ่มเครื่องมือใหม่ `google_workspace_tasks` ใน `hermes-agent/plugins/google_workspace/tools.py`:**
+    - รองรับ Action: `list`, `create`, `complete`, `delete`
+    - เชื่อมต่อตรงกับ Google Tasks API (v1)
+    - ทดสอบการดึง Task, สร้าง Task และลบ Task ผ่านฉลุย 100%
+  - **แก้ไขปัญหา Google Sheets Thai Locale Sheet Name:**
+    - ในบัญชีภาษาไทย แผ่นงานแรกใช้ชื่อ `"แผ่นงาน1"` แทนที่จะเป็น `"Sheet1"`
+    - ปรับโค้ดให้ใช้ Range แบบสากล (`A1:Z50`, `A1`, `A:A`) โดยไม่ระบุชื่อชีตแบบตายตัว ทำให้ทำงานได้ถูกต้อง 100% ทุกภาษา
+  - **ผลการทดสอบเจาะลึก 17 รายการ (`scripts/test_google_workspace_deep.py`):**
+    - ✅ **17/17 PASSED (100% ใน 71.33s)** ครอบคลุม Gmail (Profile, Search, Get, Draft, Send, Trash), Calendar (List, Create, Update, Delete), Drive (About, List, Create Folder, Upload, Download, Delete), Docs (Create, Read, Append) และ Sheets (Create, Update, Get, Append)
+  - **การทำงานจริงตามคำสั่งบอส:**
+    - ✅ สร้างนัดหมาย Calendar: `💼 ไปทำงาน (Work)` ในวันพุธที่ 7 ตุลาคม 2026 เวลา 09:00 - 18:00
+    - ✅ ส่งอีเมลยืนยันไปยัง `bossok2546@gmail.com` (Message ID: `1a10d13f717b2e85`) เรียบร้อยสมบูรณ์
+    - ✅ สังเคราะห์เสียงตอบรับหวานๆ ของมายมิ้นท์และบันทึกประวัติการคุยต่อเนื่องใน Dashboard
+
 ---
 
 ## 🌐 ลิงก์ระบบที่เปิดใช้งานอยู่
@@ -187,4 +206,5 @@
 - 🌸 **Maymint Voice Web Dashboard (Local):** `http://127.0.0.1:9229/`
 - 🏠 **Tuya Smart IR Gateway Dashboard (Local):** `http://localhost:3000/`
 - 🖥️ **Hermes Standard Dashboard:** `http://127.0.0.1:9119/`
+
 

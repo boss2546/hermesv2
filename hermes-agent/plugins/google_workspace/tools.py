@@ -209,6 +209,40 @@ GOOGLE_WORKSPACE_TOOLS: List[Dict[str, Any]] = [
                 "required": ["service", "action"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "google_workspace_tasks",
+            "description": "Manage Google Tasks: list tasks, create new to-do items, mark tasks completed, or delete tasks. Use this whenever the user asks about to-do items, tasks list, checklists, or things to do.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["list", "create", "complete", "delete"],
+                        "description": "The Tasks action to perform."
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Title of the task to create (for 'create')."
+                    },
+                    "notes": {
+                        "type": "string",
+                        "description": "Detailed description or notes for the task (for 'create')."
+                    },
+                    "due": {
+                        "type": "string",
+                        "description": "Due date in RFC 3339 format (optional, e.g. '2026-10-07T00:00:00.000Z')."
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "description": "Task ID (required for 'complete' and 'delete')."
+                    }
+                },
+                "required": ["action"]
+            }
+        }
     }
 ]
 
@@ -381,7 +415,7 @@ def execute_google_workspace_tool(name: str, arguments: Dict[str, Any]) -> Dict[
         if svc == "sheets":
             if action == "get":
                 sid = arguments.get("id")
-                rng = arguments.get("range", "Sheet1!A1:Z50")
+                rng = arguments.get("range", "A1:Z50")
                 if not sid:
                     return {"error": "Spreadsheet 'id' is required for sheets get"}
                 return _run_script(["sheets", "get", sid, rng])
@@ -392,7 +426,7 @@ def execute_google_workspace_tool(name: str, arguments: Dict[str, Any]) -> Dict[
 
             elif action == "update":
                 sid = arguments.get("id")
-                rng = arguments.get("range")
+                rng = arguments.get("range", "A1")
                 vals = arguments.get("values", "[]")
                 if not sid or not rng:
                     return {"error": "'id' and 'range' are required for sheets update"}
@@ -400,7 +434,7 @@ def execute_google_workspace_tool(name: str, arguments: Dict[str, Any]) -> Dict[
 
             elif action == "append":
                 sid = arguments.get("id")
-                rng = arguments.get("range", "Sheet1!A:A")
+                rng = arguments.get("range", "A:A")
                 vals = arguments.get("values", "[]")
                 if not sid:
                     return {"error": "Spreadsheet 'id' is required for sheets append"}
@@ -429,4 +463,80 @@ def execute_google_workspace_tool(name: str, arguments: Dict[str, Any]) -> Dict[
 
         return {"error": f"Unknown Sheets/Docs combination: service={svc}, action={action}"}
 
+    elif name == "google_workspace_tasks":
+        return _handle_tasks_tool(arguments)
+
     return {"error": f"Unknown tool: {name}"}
+
+
+def _get_google_credentials():
+    """Retrieve Google OAuth2 credentials from hermes home."""
+    from google.oauth2.credentials import Credentials
+    token_candidates = [
+        Path.home() / "AppData" / "Local" / "hermes" / "google_token.json",
+        Path.home() / ".hermes" / "google_token.json",
+    ]
+    for p in token_candidates:
+        if p.exists():
+            return Credentials.from_authorized_user_file(str(p))
+    raise FileNotFoundError("No google_token.json found in candidate paths")
+
+
+def _handle_tasks_tool(arguments: Dict[str, Any]) -> Dict[str, Any]:
+    """Execute Google Tasks API calls directly."""
+    from googleapiclient.discovery import build
+    try:
+        creds = _get_google_credentials()
+        service = build("tasks", "v1", credentials=creds)
+        action = arguments.get("action", "").lower().strip()
+
+        # Find default tasklist ID
+        tasklists = service.tasklists().list(maxResults=10).execute()
+        items = tasklists.get("items", [])
+        if not items:
+            return {"error": "No task lists found in Google Tasks"}
+        default_tl_id = items[0]["id"]
+
+        if action == "list":
+            tasks_res = service.tasks().list(tasklist=default_tl_id, showCompleted=True, maxResults=20).execute()
+            task_list = []
+            for t in tasks_res.get("items", []):
+                task_list.append({
+                    "id": t.get("id"),
+                    "title": t.get("title", ""),
+                    "status": t.get("status", "needsAction"),
+                    "notes": t.get("notes", ""),
+                    "due": t.get("due")
+                })
+            return {"success": True, "tasklist_title": items[0].get("title"), "tasks": task_list}
+
+        elif action == "create":
+            title = arguments.get("title")
+            if not title:
+                return {"error": "title is required for tasks create"}
+            body: Dict[str, Any] = {"title": title}
+            if arguments.get("notes"):
+                body["notes"] = arguments["notes"]
+            if arguments.get("due"):
+                body["due"] = arguments["due"]
+            created = service.tasks().insert(tasklist=default_tl_id, body=body).execute()
+            return {"success": True, "message": "Task created", "task": created}
+
+        elif action == "complete":
+            tid = arguments.get("task_id")
+            if not tid:
+                return {"error": "task_id is required for tasks complete"}
+            patched = service.tasks().patch(tasklist=default_tl_id, task=tid, body={"status": "completed"}).execute()
+            return {"success": True, "message": "Task marked completed", "task": patched}
+
+        elif action == "delete":
+            tid = arguments.get("task_id")
+            if not tid:
+                return {"error": "task_id is required for tasks delete"}
+            service.tasks().delete(tasklist=default_tl_id, task=tid).execute()
+            return {"success": True, "message": f"Task {tid} deleted"}
+
+        return {"error": f"Unknown Tasks action: {action}"}
+
+    except Exception as exc:
+        return {"error": str(exc)}

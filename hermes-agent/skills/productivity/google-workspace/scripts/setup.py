@@ -58,9 +58,14 @@ SCOPES = [
     "https://www.googleapis.com/auth/gmail.modify",
     "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/contacts",
     "https://www.googleapis.com/auth/contacts.readonly",
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/documents",
+    "https://www.googleapis.com/auth/tasks",
+    "https://www.googleapis.com/auth/presentations",
+    "https://www.googleapis.com/auth/forms.body",
+    "https://www.googleapis.com/auth/meetings.space.created",
 ]
 
 # OAuth redirect for "out of band" manual code copy flow.
