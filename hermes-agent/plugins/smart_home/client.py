@@ -162,3 +162,15 @@ class SmartHomeClient:
                 if r.get("type") == dt or dt in r.get("category", "").lower():
                     return r
         return None
+
+    def get_hisense_indices(self) -> Dict[str, Any]:
+        """Fetch all 26 Hisense AC remote indices available in Tuya."""
+        return self._get("/api/ac/hisense-indices")
+
+    def test_hisense_index(self, index: str, code: str = "power", value: int = 1) -> Dict[str, Any]:
+        """Test firing an IR command for a specific Hisense remote index."""
+        return self._post("/api/ac/test-index", {"index": str(index), "code": code, "value": value})
+
+    def set_hisense_index(self, index: str, name: str = "Air") -> Dict[str, Any]:
+        """Configure and pair a specific Hisense remote index as the active AC remote."""
+        return self._post("/api/ac/set-index", {"index": str(index), "name": name})

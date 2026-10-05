@@ -115,11 +115,36 @@ SMART_HOME_SYNC_DEVICES_SCHEMA: Dict[str, Any] = {
     }
 }
 
+# ------------------------------------------------------------------------------
+# 5. smart_home_test_hisense_remote Tool Schema
+# ------------------------------------------------------------------------------
+SMART_HOME_TEST_HISENSE_REMOTE_SCHEMA: Dict[str, Any] = {
+    "type": "function",
+    "function": {
+        "name": "smart_home_test_hisense_remote",
+        "description": "ทดสอบยิงสัญญาณรีโมทแอร์ Hisense DG11 ทีละ Index จากคลังรหัสของ Tuya หรือดูรายชื่อรหัสทั้งหมด เพื่อหาว่า Index ไหนทำให้แอร์จริงดังติ๊ด/เปิด-ปิด",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "remote_index": {
+                    "type": "string",
+                    "description": "รหัส Index ที่ต้องการยิงทดสอบ เช่น '11717', '11677', '11672', '4841', '7596' หรือ 'list' เพื่อดูรหัสทั้งหมด"
+                },
+                "set_as_active": {
+                    "type": "boolean",
+                    "description": "หากเป็น true จะตั้งค่ารีโมทนี้เป็นรีโมทแอร์ตัวหลักในระบบทันทีเมื่อเจอรหัสที่ใช้งานได้"
+                }
+            }
+        }
+    }
+}
+
 SMART_HOME_TOOLS = [
     SMART_HOME_CONTROL_AC_SCHEMA,
     SMART_HOME_GET_AC_STATUS_SCHEMA,
     SMART_HOME_TRIGGER_SCENE_SCHEMA,
-    SMART_HOME_SYNC_DEVICES_SCHEMA
+    SMART_HOME_SYNC_DEVICES_SCHEMA,
+    SMART_HOME_TEST_HISENSE_REMOTE_SCHEMA
 ]
 
 
@@ -195,6 +220,23 @@ def execute_smart_home_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
 
         elif name == "smart_home_sync_devices":
             return client.sync_tuya()
+
+        elif name == "smart_home_test_hisense_remote":
+            idx = args.get("remote_index")
+            set_active = args.get("set_as_active", False)
+            if not idx or idx == "list":
+                indices_res = client.get_hisense_indices()
+                return {
+                    "success": True,
+                    "message": "รายการรหัสรีโมท Hisense ทั้งหมด 26 รหัสใน Tuya",
+                    "indices": indices_res.get("indices", []),
+                    "current_index": "11717"
+                }
+
+            test_res = client.test_hisense_index(idx)
+            if set_active and test_res.get("success"):
+                client.set_hisense_index(idx)
+            return test_res
 
         else:
             return {"success": False, "error": f"Unknown smart home tool: {name}"}
