@@ -166,6 +166,16 @@ def execute_smart_home_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
             wind = args.get("wind_speed")
             swing = args.get("swing")
             eco = args.get("eco")
+
+            # Eco Mode preset requested by Boss: 27°C, lowest fan speed (low), cool mode
+            if eco:
+                if temp is None:
+                    temp = 27
+                if wind is None:
+                    wind = "low"
+                if mode is None:
+                    mode = "cool"
+
             return client.control_ac(
                 remote_id=target_remote_id,
                 power=power,
