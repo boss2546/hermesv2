@@ -174,3 +174,7 @@ class SmartHomeClient:
     def set_hisense_index(self, index: str, name: str = "Air") -> Dict[str, Any]:
         """Configure and pair a specific Hisense remote index as the active AC remote."""
         return self._post("/api/ac/set-index", {"index": str(index), "name": name})
+
+    def run_eco_routine(self, interval_seconds: int = 5) -> Dict[str, Any]:
+        """Run the automated Eco Routine with 5-second intervals between commands."""
+        return self._post("/api/ac/routine/eco", {"intervalSeconds": interval_seconds})

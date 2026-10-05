@@ -139,12 +139,33 @@ SMART_HOME_TEST_HISENSE_REMOTE_SCHEMA: Dict[str, Any] = {
     }
 }
 
+# ------------------------------------------------------------------------------
+# 6. smart_home_run_eco_routine Tool Schema
+# ------------------------------------------------------------------------------
+SMART_HOME_RUN_ECO_ROUTINE_SCHEMA: Dict[str, Any] = {
+    "type": "function",
+    "function": {
+        "name": "smart_home_run_eco_routine",
+        "description": "สั่งทำงานชุดคำสั่งโหมดประหยัดพลังงานอัตโนมัติแบบเว้นจังหวะ 5 วินาทีต่อคำสั่ง (1.เปิดเครื่อง -> รอ 5 วิ -> 2.ปรับอุณหภูมิ 27°C -> รอ 5 วิ -> 3.ปรับพัดลมต่ำสุด Low -> รอ 5 วิ -> 4.ล็อคโหมด Cool เย็นคงที่) เหมาะสำหรับแอร์ที่ไม่รับคำสั่งรัวๆ",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "interval_seconds": {
+                    "type": "integer",
+                    "description": "ระยะเวลาเว้นจังหวะระหว่างแต่ละคำสั่ง (วินาที) ค่าเริ่มต้นคือ 5 วินาที"
+                }
+            }
+        }
+    }
+}
+
 SMART_HOME_TOOLS = [
     SMART_HOME_CONTROL_AC_SCHEMA,
     SMART_HOME_GET_AC_STATUS_SCHEMA,
     SMART_HOME_TRIGGER_SCENE_SCHEMA,
     SMART_HOME_SYNC_DEVICES_SCHEMA,
-    SMART_HOME_TEST_HISENSE_REMOTE_SCHEMA
+    SMART_HOME_TEST_HISENSE_REMOTE_SCHEMA,
+    SMART_HOME_RUN_ECO_ROUTINE_SCHEMA
 ]
 
 
@@ -247,6 +268,10 @@ def execute_smart_home_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
             if set_active and test_res.get("success"):
                 client.set_hisense_index(idx)
             return test_res
+
+        elif name == "smart_home_run_eco_routine":
+            interval = args.get("interval_seconds", 5)
+            return client.run_eco_routine(interval_seconds=interval)
 
         else:
             return {"success": False, "error": f"Unknown smart home tool: {name}"}
