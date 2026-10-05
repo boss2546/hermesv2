@@ -1,0 +1,9 @@
+name: smart_home
+version: 1.0.0
+description: "Smart Home Plugin for Hermes Agent — Controls Air Conditioner, TV, and home devices via Tuya Smart IR Gateway."
+author: Boss & Maymint
+kind: backend
+provides_tools:
+  - smart_home_control_ac
+  - smart_home_get_devices
+  - smart_home_trigger_scene

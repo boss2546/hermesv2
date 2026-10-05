@@ -1,14 +1,33 @@
-- **วันที่:** 2026-10-04
-- **Branch ปัจจุบัน:** 🌳 `main` (รวมฟีเจอร์ระบบเสียงเรียลไทม์ทั้งหมดเข้า Main เรียบร้อย)
-- **สถานะ:** 🟢 ซิงก์ Main ล่าสุดขึ้น GitHub เรียบร้อย พร้อมใช้งานระดับ Production (https://may.meuu.live)
+- **วันที่:** 2026-10-05
+- **Branch ปัจจุบัน:** 🌿 `feature/smart-home` (พัฒนาระบบ Smart Home สำเร็จสมบูรณ์)
+- **สถานะ:** 🟢 ควบคุมแอร์ Hisense DG11L1-02 (AN20DBG) สำเร็จ 100% พร้อมชุดคำสั่งงานอัตโนมัติเว้นจังหวะ 5 วินาที
 - **โปรเจกต์:** Hermes v2 (`c:\Users\Administrator\Desktop\hermes2`)
 
 ---
 
-## 🎯 เป้าหมายรอบนี้ (Current Goal)
-ปรับปรุงและยกระดับระบบ **Realtime Voice Chat** ให้ทรงพลังและลื่นไหลยิ่งขึ้นร่วมกับบอส
+## 🎯 เป้าหมายรอบนี้ (Current Goal) - [PASS 100% ✅]
+ค้นหาและทดสอบส่งสัญญาณ IR จริงให้แอร์ Hisense (รีโมท DG11L1-02 / AN20DBG) ตอบสนองและดังติ๊ด พร้อมระบบควบคุมผ่านเสียงของมายมิ้นท์และแดชบอร์ด
+- **ผลลัพธ์:** บอสยืนยัน "ดังแล้ว" แอร์ตอบสนองและรับคำสั่งเปิด 24°C ผ่านฮับ Tuya Smart IR และ Endpoint `/v2.0/infrareds/{hubId}/air-conditioners/{remoteId}/scenes/command` สำเร็จสมบูรณ์!
+- **ชุดคำสั่งงานอัตโนมัติ (Automated Eco Routine):** เว้นช่วง 5 วินาทีต่อคำสั่ง (เปิดเครื่อง -> รอ 5 วิ -> 27°C -> รอ 5 วิ -> ลมต่ำสุด -> รอ 5 วิ -> โหมด Cool) ใช้งานได้จริง 100%
 
 ---
+
+## 🔍 การค้นพบครั้งสำคัญ (Root Cause & Solution)
+1. **สาเหตุที่แอร์ไม่ตอบสนองก่อนหน้านี้:**
+   - โค้ดเดิมใน `tuyaService.js` ส่งคำสั่งไปที่ `/v1.0/infrareds/{hubId}/remotes/{remoteId}/command` ด้วย `{ key: 'PowerOn' }` ซึ่ง Tuya Cloud ปฏิเสธด้วย Error `30706: command or value not support` มาโดยตลอด ส่งผลให้ตัวฮับ IR จริงไม่เคยยิงสัญญาณแอร์ออกไปเลย!
+2. **Endpoint ที่ถูกต้องแท้จริงของ Tuya สำหรับแอร์:**
+   - ใช้ `POST /v2.0/infrareds/{hubId}/air-conditioners/{remoteId}/scenes/command`
+   - Payload: `{"power": 1, "mode": 0, "temp": 24, "wind": 0}` (หรือ `power: 0` สำหรับปิด)
+   - ผลลัพธ์: ทดสอบแล้ว Tuya Cloud ตอบรับ `result: True, success: True` 100% และฮับยิงสัญญาณจริงสำเร็จ!
+3. **ชุดคำสั่งงานอัตโนมัติเว้นช่วง 5 วินาที (Automated Eco Routine):**
+   - พัฒนาตามคำแนะนำของบอส: แยกคำสั่งเป็นเดี่ยวๆ เว้นจังหวะ 5 วินาทีเพื่อให้ไมโครคอนโทรลเลอร์ของแอร์ประมวลผลทัน
+   - สร้างสคริปต์ [run_eco_routine.py](file:///c:/Users/Administrator/Desktop/hermes2/scripts/run_eco_routine.py), Endpoint `/api/ac/routine/eco` และ Tool `smart_home_run_eco_routine`
+4. **การทดสอบรหัสรีโมท Hisense DG11 (มีทั้งหมด 26 รหัสใน Tuya):**
+   - รหัสคลัง Tuya สำหรับ Hisense: `['11717', '11677', '11672', '11797', '12250', '4841', '7596', '7724', '7725', '5217', '5932', '5897', '4838', '5922', '5252', '6302', '2807', '4888', '337', '4332', '9297', '7084', '4512', '5192', '5127', '5927']`
+   - พัฒนาระบบยิงทดสอบแบบเรียลไทม์ผ่าน `POST /api/ac/test-index` และสคริปต์ `scripts/test_hisense_scanner.py`
+   - เพิ่ม Tool `smart_home_test_hisense_remote` เข้าสู่ Hermes Agent และ Maymint Voice Assistant ให้บอสสั่งยิงเทสทางเสียงหรือแชตได้ทันที
+5. **ฐานข้อมูล SmartIR DG11 (Code 1522):**
+   - ดึงโค้ด Broadlink Base64 สำหรับ DG11R2/DG11 ครบทุกโหมดและอุณหภูมิ 16-30°C เตรียมไว้เป็นชุดสำรอง
 
 ## ✅ สิ่งที่ทำเสร็จแล้ว (PASS 100%)
 - [x] **สเต็ป 1: `voice_engine.py`**
@@ -94,6 +113,21 @@
   - ตั้งค่า Cloudflare Origin Rules: ชี้ `may.meuu.live` ไปยัง Port `9229`
   - เปิดพอร์ต `9229` (TCP) ใน Windows Defender Firewall
   - ปรับโหมด SSL/TLS บน Cloudflare เป็น `Flexible` เพื่อเชื่อมต่อกับ Origin Port 9229 แบบไร้รอยต่อ
+- [x] **สเต็ป 16: ติดตั้งระบบควบคุมบ้านอัจฉริยะ Smart Home (Tuya Smart IR Gateway & AC Control - PASS 100%)**
+  - **โครงสร้าง 3 ชั้นแบบ Decoupled:**
+    1. **Microservice Gateway (`gateway/tuya-smart-ir-gateway/`):** โคลนจาก GitHub `boss2546/tuya-smart-ir-gateway` รันด้วย Node.js บนพอร์ต 3000 เชื่อมต่อ Tuya Cloud ควบคุมแอร์จริง (`Air (แอร์จริงในบ้าน)`) และฉากอัตโนมัติ
+    2. **Smart Home Plugin (`hermes-agent/plugins/smart_home/`):** พัฒนาขึ้นใหม่ประกอบด้วย:
+       - `config.txt`: ไฟล์ตั้งค่า Gateway URL (`http://localhost:3000`), Default AC ID (`a35a4e0b12b02aa750ceh4`), Timeout
+       - `client.py`: Python REST client รองรับ `control_ac()`, `get_devices()`, `get_status()`, `trigger_scene()`
+       - `tools.py`: สร้าง 3 เครื่องมือมาตรฐาน OpenAI Tool Calling: `smart_home_control_ac`, `smart_home_get_ac_status`, `smart_home_trigger_scene`
+       - `__init__.py`: Export tools สะอาด ปลอดภัย ไม่กระทบไฟล์อื่น
+    3. **Agent Skill (`.agents/skills/smart-home/SKILL.md`):** คู่มือและแนวทางการสนทนาภาษาไทยสำหรับน้องมายมิ้นท์ในการควบคุมแอร์และฉากอัตโนมัติ พร้อมกฎ No-Emoji เคร่งครัด
+  - **การเชื่อมต่อ Voice Server (`server.py`):** เสียบ Tools เข้ากับ `AVAILABLE_TOOLS` และ `execute_tool()` อย่างปลอดภัยด้วย try-except หากไม่มีเกตเวย์จะไม่กระทบส่วนอื่น
+  - **ผลการทดสอบผ่านฉลุย 100%:**
+    - ✅ **Direct Test (`scripts/test_smart_home_direct.py`):** ยิงตรงเข้า Gateway ควบคุมแอร์สำเร็จ อ่านสถานะได้ 26°C โหมด Cool
+    - ✅ **End-to-End Voice & Chat Test (`scripts/test_smart_home_end_to_end.py`):**
+      - สั่งเช็คสถานะแอร์: AI เรียกใช้ `smart_home_get_ac_status` ดึงสถานะแอร์จริงมารายงานอย่างอบอุ่น ไม่มีอีโมจิ
+      - สั่งปรับแอร์ 25 องศา: AI เรียกใช้ `smart_home_control_ac(temperature=25)` สั่งปรับแอร์จริงสำเร็จและตอบกลับอย่างหวานเป็นธรรมชาติ
 
 ---
 
@@ -101,5 +135,6 @@
 - 🌸 **Maymint Production Subdomain:** `https://may.meuu.live/` (เข้าใช้งานได้จากทุกที่ทั่วโลก)
 - 🌸 **Maymint Voice Web Dashboard (Quick Tunnel):** `https://blair-king-michel-calendar.trycloudflare.com/`
 - 🌸 **Maymint Voice Web Dashboard (Local):** `http://127.0.0.1:9229/`
+- 🏠 **Tuya Smart IR Gateway Dashboard (Local):** `http://localhost:3000/`
 - 🖥️ **Hermes Standard Dashboard:** `http://127.0.0.1:9119/`
 
