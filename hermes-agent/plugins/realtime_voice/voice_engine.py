@@ -111,9 +111,12 @@ class VoiceEngine:
         """Synthesize Thai text into an MP3 file using Microsoft Edge-TTS with Auto-Retry."""
         clean_text = text.strip()
         clean_text = re.sub(r"\s+ๆ", "ๆ", clean_text)
+        # Strip characters that cause Edge-TTS parser errors upfront (preserving Thai, English, digits, and basic punctuation)
+        clean_text = re.sub(r"[^\u0E00-\u0E7Fa-zA-Z0-9\s.,!?-]", " ", clean_text)
         clean_text = re.sub(r"\s+", " ", clean_text).strip()
         if not clean_text:
-            raise ValueError("Text cannot be empty.")
+            clean_text = "มายพร้อมดูแลบอสเสมอเลยค่ะ"
+
 
         selected_voice = voice or self.active_voice
         if selected_voice.lower() in VOICE_PRESETS:

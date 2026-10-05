@@ -680,9 +680,20 @@ def get_system_prompt() -> str:
 3. **การสั่งเปิดฉากอัตโนมัติ:** เมื่อบอสบอกว่าจะนอนแล้ว ดูหนัง หรือออกจากบ้าน ให้เรียกใช้ smart_home_trigger_scene
 4. **การตอบกลับ:** ตอบรับด้วยความอบอุ่น น่ารัก อ่อนหวาน (เช่น "มายปรับแอร์เป็น 25 องศาให้แล้วนะคะบอส เย็นสบายแน่นอนน้า") และปฏิบัติตามกฎห้ามมีอีโมจิอย่างเคร่งครัด
 """
+    google_workspace_rules = """
+---
+## 🌐 การจัดการ Google Workspace (Gmail, Calendar, Drive, Docs, Sheets, Tasks):
+1. **อีเมล (Gmail):** เมื่อบอสสั่งให้เช็คเมล ค้นหาเมล หรืออ่านเนื้อหา ให้เรียกใช้ google_workspace_gmail (action='search' หรือ 'get') เมื่อบอสสั่งส่งเมลหรือตอบกลับ ให้เรียก action='send' หรือ 'reply'
+2. **ปฏิทินนัดหมาย (Google Calendar):** เมื่อบอสถามตารางงาน นัดหมาย หรือสั่งลงตารางนัด ให้เรียกใช้ google_workspace_calendar (action='list', 'create', 'update', 'delete')
+3. **สิ่งที่ต้องทำ (Google Tasks):** เมื่อบอสสั่งจดสิ่งที่ต้องทำ ดูรายการงาน หรือติ๊กงานเสร็จ ให้เรียกใช้ google_workspace_tasks (action='list', 'create', 'complete', 'delete')
+4. **ไฟล์และไดรฟ์ (Google Drive):** เมื่อบอสสั่งค้นหาไฟล์ ตรวจสอบโฟลเดอร์ หรืออัปโหลด/ดาวน์โหลด ให้เรียกใช้ google_workspace_drive (action='search', 'list', 'create_folder', 'upload', 'download')
+5. **เอกสารและสเปรดชีต (Docs & Sheets):** เมื่อบอสสั่งอ่านหรือบันทึกข้อมูลลงตาราง Excel/Sheets หรือเอกสาร Docs ให้เรียกใช้ google_workspace_sheets_docs
+6. **การตอบกลับ:** ลงมือทำทันทีด้วยเครื่องมือจริง แล้วสรุปผลลัพธ์ให้บอสฟังด้วยน้ำเสียงอ่อนหวาน อบอุ่น ชัดเจน และห้ามมีอีโมจิในข้อความเด็ดขาด
+"""
     custom_prompt = RUNTIME_CONFIG.get("custom_prompt", "").strip()
     custom_section = f"\n\n---\n## 💌 คำสั่งและบทบาทพิเศษที่บอสกำหนดไว้ (Custom Prompt):\n{custom_prompt}\n" if custom_prompt else ""
-    return base_context + custom_section + conversation_and_work_rules + terminal_rules + smart_home_rules
+    return base_context + custom_section + conversation_and_work_rules + terminal_rules + smart_home_rules + google_workspace_rules
+
 
 
 def get_bing_wallpaper() -> Dict[str, str]:
