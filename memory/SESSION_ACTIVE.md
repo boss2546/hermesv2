@@ -1,14 +1,15 @@
 - **วันที่:** 2026-10-05
-- **Branch ปัจจุบัน:** 🌟 `main` (รวมโค้ดและพุชขึ้น GitHub เรียบร้อยสมบูรณ์ 100%)
-- **สถานะ:** 🟢 ควบคุมแอร์ Hisense สำเร็จ 100%, แก้ไข Lint server.py สะอาดหมดจด, ยกระดับระบบเสียงและหน้าเว็บรองรับโทรศัพท์มือถือ (iOS Safari / Android Chrome) แบบเต็มรูปแบบ 100% (HTTP 206 Partial Content Range Streaming, Touch-Unlocked Audio Context, Mobile Media Queries & Replay Buttons)
+- **Branch ปัจจุบัน:** 🌿 `feature/realtime-voice-upgrade` (แตกกิ่งใหม่พร้อมลุยอัปเกรดระบบคุยเรียลไทม์)
+- **สถานะ:** 🚀 เริ่มต้นการอัปเกรดระบบสนทนาเรียลไทม์ (Realtime Voice & Conversation Upgrade)
 - **โปรเจกต์:** Hermes v2 (`c:\Users\Administrator\Desktop\hermes2`)
 
 ---
 
-## 🎯 เป้าหมายรอบนี้ (Current Goal) - [PASS 100% ✅]
-ค้นหาและทดสอบส่งสัญญาณ IR จริงให้แอร์ Hisense (รีโมท DG11L1-02 / AN20DBG) ตอบสนองและดังติ๊ด พร้อมระบบควบคุมผ่านเสียงของมายมิ้นท์และแดชบอร์ด
-- **ผลลัพธ์:** บอสยืนยัน "ดังแล้ว" แอร์ตอบสนองและรับคำสั่งเปิด 24°C ผ่านฮับ Tuya Smart IR และ Endpoint `/v2.0/infrareds/{hubId}/air-conditioners/{remoteId}/scenes/command` สำเร็จสมบูรณ์!
-- **ชุดคำสั่งงานอัตโนมัติ (Automated Eco Routine):** เว้นช่วง 5 วินาทีต่อคำสั่ง (เปิดเครื่อง -> รอ 5 วิ -> 27°C -> รอ 5 วิ -> ลมต่ำสุด -> รอ 5 วิ -> โหมด Cool) ใช้งานได้จริง 100%
+## 🎯 เป้าหมายรอบนี้ (Current Goal)
+อัปเกรดระบบการสนทนาเรียลไทม์ของ "มายมิ้นท์" (Realtime Voice Upgrade):
+- ยกระดับความลื่นไหลในการพูดคุยโต้ตอบ (Realtime Conversation, Low Latency, Streaming Audio)
+- ระบบดักจับเสียงพูดต่อเนื่อง หรือการตอบสนองที่รวดเร็วเป็นธรรมชาติยิ่งขึ้น
+- ปรับปรุงการแสดงผลและเครื่องมือให้ตอบโจทย์การใช้งานของบอสทั้งบนคอมพิวเตอร์และโทรศัพท์มือถือ
 
 ---
 
