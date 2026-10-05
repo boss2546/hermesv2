@@ -613,37 +613,59 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             return
 
         elif self.path.startswith("/audio/"):
-            fname = os.path.basename(self.path)
-            audio_path = engine._temp_dir / fname
-            if audio_path.exists():
-                self.send_response(200)
-                self.send_header("Content-Type", "audio/mpeg")
-                self.send_header("Content-Length", str(audio_path.stat().st_size))
-                self.send_header("Cache-Control", "no-cache")
-                self.end_headers()
-                self.wfile.write(audio_path.read_bytes())
-                return
-            else:
-                self.send_error(404, "Audio file not found")
-                return
+            self._serve_audio(is_head=False)
+            return
 
         super().do_GET()
 
     def do_HEAD(self):
         if self.path.startswith("/audio/"):
-            fname = os.path.basename(self.path)
-            audio_path = engine._temp_dir / fname
-            if audio_path.exists():
-                self.send_response(200)
-                self.send_header("Content-Type", "audio/mpeg")
-                self.send_header("Content-Length", str(audio_path.stat().st_size))
-                self.send_header("Cache-Control", "no-cache")
-                self.end_headers()
-                return
-            else:
-                self.send_error(404, "Audio file not found")
-                return
+            self._serve_audio(is_head=True)
+            return
         super().do_HEAD()
+
+    def _serve_audio(self, is_head: bool = False):
+        fname = os.path.basename(self.path.split("?")[0])
+        audio_path = engine._temp_dir / fname
+        if not audio_path.exists():
+            self.send_error(404, "Audio file not found")
+            return
+
+        file_size = audio_path.stat().st_size
+        range_header = self.headers.get("Range")
+
+        if range_header and range_header.startswith("bytes="):
+            try:
+                ranges = range_header.replace("bytes=", "").split("-")
+                start = int(ranges[0]) if ranges[0] else 0
+                end = int(ranges[1]) if len(ranges) > 1 and ranges[1] else file_size - 1
+                end = min(end, file_size - 1)
+                content_length = end - start + 1
+
+                self.send_response(206)
+                self.send_header("Content-Type", "audio/mpeg")
+                self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
+                self.send_header("Content-Length", str(content_length))
+                self.send_header("Accept-Ranges", "bytes")
+                self.send_header("Cache-Control", "public, max-age=3600")
+                self.end_headers()
+
+                if not is_head:
+                    with open(audio_path, "rb") as f:
+                        f.seek(start)
+                        self.wfile.write(f.read(content_length))
+                return
+            except Exception as range_err:
+                logger.warning("Range request failed: %s, falling back to 200", range_err)
+
+        self.send_response(200)
+        self.send_header("Content-Type", "audio/mpeg")
+        self.send_header("Content-Length", str(file_size))
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Cache-Control", "public, max-age=3600")
+        self.end_headers()
+        if not is_head:
+            self.wfile.write(audio_path.read_bytes())
 
     def do_POST(self):
         content_len = int(self.headers.get("Content-Length", 0))

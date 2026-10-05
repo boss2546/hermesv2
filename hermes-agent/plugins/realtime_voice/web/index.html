@@ -2,7 +2,11 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f0a17">
   <title>Maymint Realtime Voice — Liquid Glass</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1015,6 +1019,290 @@
       color: var(--text-dim);
       text-shadow: 0 1px 4px rgba(0,0,0,0.6);
     }
+
+    /* Floating Mobile Audio Unblock Prompt Banner */
+    .mobile-audio-prompt {
+      position: fixed;
+      top: 1.2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, rgba(236, 72, 153, 0.95), rgba(168, 85, 247, 0.95));
+      border: 1.5px solid rgba(255, 255, 255, 0.8);
+      color: #ffffff;
+      padding: 0.75rem 1.4rem;
+      border-radius: 30px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(236, 72, 153, 0.6), 0 0 20px rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(20px);
+      z-index: 10000;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      animation: pulse-prompt 1.5s infinite alternate ease-in-out;
+      text-align: center;
+      max-width: 90vw;
+    }
+
+    @keyframes pulse-prompt {
+      0% { transform: translateX(-50%) scale(1); box-shadow: 0 10px 25px rgba(236, 72, 153, 0.5); }
+      100% { transform: translateX(-50%) scale(1.04); box-shadow: 0 15px 35px rgba(236, 72, 153, 0.85); }
+    }
+
+    .play-bubble-audio-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(255, 255, 255, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      color: #ffffff;
+      padding: 0.3rem 0.75rem;
+      border-radius: 14px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      margin-top: 0.6rem;
+      cursor: pointer;
+      backdrop-filter: blur(12px);
+      transition: all 0.2s ease;
+    }
+
+    .play-bubble-audio-btn:hover {
+      background: rgba(255, 255, 255, 0.32);
+      transform: scale(1.03);
+    }
+
+    /* =========================================================================
+       RESPONSIVE DESIGN FOR SMARTPHONES & TABLETS (100% Mobile Ready)
+       ========================================================================= */
+    @media (max-width: 860px) {
+      header {
+        padding: 0.8rem 1.2rem;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+      }
+
+      .brand {
+        gap: 0.7rem;
+      }
+
+      .avatar-orb {
+        width: 40px;
+        height: 40px;
+        font-size: 1.25rem;
+      }
+
+      .brand-text h1 {
+        font-size: 1.1rem;
+      }
+
+      .brand-text p {
+        font-size: 0.75rem;
+      }
+
+      .header-controls {
+        gap: 0.6rem;
+        flex-wrap: wrap;
+      }
+
+      .glass-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+      }
+
+      .stages-grid {
+        display: flex;
+        overflow-x: auto;
+        gap: 0.6rem;
+        padding-bottom: 6px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .stages-grid::-webkit-scrollbar {
+        display: none;
+      }
+
+      .stage-capsule {
+        flex: 0 0 110px;
+        padding: 0.7rem 0.5rem;
+      }
+
+      .stage-capsule .icon {
+        font-size: 1.2rem;
+      }
+
+      .stage-capsule .label {
+        font-size: 0.75rem;
+        white-space: nowrap;
+      }
+    }
+
+    @media (max-width: 600px) {
+      header {
+        padding: 0.6rem 0.8rem;
+        justify-content: space-between;
+      }
+
+      .brand-text p {
+        display: none;
+      }
+
+      .brand-text h1 {
+        font-size: 0.98rem;
+      }
+
+      .toggle-wrapper {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.78rem;
+        gap: 0.4rem;
+      }
+
+      .toggle-wrapper span.toggle-text {
+        display: none;
+      }
+
+      .switch {
+        width: 36px;
+        height: 18px;
+      }
+
+      .slider:before {
+        height: 12px;
+        width: 12px;
+        bottom: 2px;
+        left: 2px;
+      }
+
+      input:checked + .slider:before {
+        transform: translateX(18px);
+      }
+
+      .glass-btn {
+        padding: 0.35rem 0.65rem;
+        font-size: 0.75rem;
+        border-radius: 16px;
+      }
+
+      .glass-btn.btn-text-hide span.btn-label {
+        display: none;
+      }
+
+      main {
+        padding: 0.8rem 0.6rem;
+        gap: 1rem;
+      }
+
+      .stages-glass-container {
+        padding: 0.9rem 0.9rem;
+        border-radius: 18px;
+      }
+
+      .stages-title {
+        font-size: 0.78rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+      }
+
+      .liquid-main-card {
+        padding: 1.4rem 0.8rem;
+        border-radius: 20px;
+        gap: 1.2rem;
+      }
+
+      .liquid-mic-btn {
+        width: 90px;
+        height: 90px;
+        font-size: 2.2rem;
+      }
+
+      .mic-water-ring {
+        width: 120px;
+        height: 120px;
+      }
+
+      .mic-caption {
+        font-size: 0.88rem;
+      }
+
+      .waveform-capsule {
+        padding: 0.4rem 0.9rem;
+        height: 36px;
+      }
+
+      .quick-chips-row {
+        gap: 0.45rem;
+        max-width: 100%;
+      }
+
+      .liquid-chip {
+        font-size: 0.78rem;
+        padding: 0.45rem 0.8rem;
+        border-radius: 20px;
+      }
+
+      .chat-transcript-glass {
+        padding: 0.85rem;
+        max-height: 380px;
+        min-height: 180px;
+        border-radius: 18px;
+        gap: 0.9rem;
+      }
+
+      .msg-bubble {
+        padding: 0.75rem 0.95rem;
+        font-size: 0.88rem;
+        max-width: 96%;
+        border-radius: 16px;
+      }
+
+      .chat-input-container {
+        padding: 0.4rem 0.5rem 0.4rem 0.85rem;
+        border-radius: 16px;
+        gap: 0.5rem;
+      }
+
+      /* 16px font-size prevents iOS Safari from automatically zooming into the textarea */
+      .chat-text-input {
+        font-size: 16px;
+        max-height: 100px;
+      }
+
+      .send-text-btn {
+        padding: 0.5rem 0.9rem;
+        font-size: 0.82rem;
+        border-radius: 12px;
+      }
+
+      .audio-liquid-bar {
+        padding: 0.7rem 0.9rem;
+        border-radius: 16px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+
+      .timing-tag {
+        margin-left: 0;
+        font-size: 0.7rem;
+      }
+
+      .modal-window {
+        padding: 1.3rem 0.95rem;
+        border-radius: 20px;
+        max-height: 88vh;
+        gap: 1.2rem;
+      }
+
+      .config-grid {
+        grid-template-columns: 1fr;
+        gap: 0.9rem;
+      }
+
+      .form-group.full-width {
+        grid-column: span 1;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1034,14 +1322,14 @@
     </div>
     <div class="header-controls">
       <label class="toggle-wrapper" title="เปิด/ปิดการพูดตอบกลับอัตโนมัติ">
-        <span>Auto-Speak</span>
+        <span class="toggle-text">Auto-Speak</span>
         <label class="switch">
           <input type="checkbox" id="autoSpeakToggle" checked>
           <span class="slider"></span>
         </label>
       </label>
-      <button class="glass-btn" id="clearChatBtn" title="เริ่มบทสนทนาใหม่ (ล้างประวัติการคุย)">🧹 เริ่มคุยใหม่</button>
-      <button class="glass-btn" id="testVoiceBtn">🔊 ทดสอบเสียง</button>
+      <button class="glass-btn btn-text-hide" id="clearChatBtn" title="เริ่มบทสนทนาใหม่ (ล้างประวัติการคุย)">🧹 <span class="btn-label">เริ่มใหม่</span></button>
+      <button class="glass-btn btn-text-hide" id="testVoiceBtn" title="ทดสอบเสียง">🔊 <span class="btn-label">ทดสอบเสียง</span></button>
       <button class="glass-btn icon-only" id="configOpenBtn" title="ตั้งค่าระบบ (Voice & AI Config)">⚙️</button>
     </div>
   </header>
@@ -1129,6 +1417,14 @@
       </div>
     </div>
   </main>
+
+  <!-- Hidden Persistent Audio Player for Mobile & iOS Autoplay Unlocking -->
+  <audio id="maymintAudioPlayer" playsinline webkit-playsinline preload="auto" style="display:none;"></audio>
+
+  <!-- Floating Mobile Audio Prompt Banner (Appears if mobile browser blocks background autoplay) -->
+  <div id="mobileAudioPrompt" class="mobile-audio-prompt">
+    <span>🔊 มายมิ้นท์ตอบแล้ว (แตะตรงนี้เพื่อเปิดเสียง) 💖</span>
+  </div>
 
   <!-- =========================================================================
        CONFIG MODAL WINDOW (หน้าต่างปรับแต่งการตั้งค่า)
@@ -1240,10 +1536,13 @@
   <script>
     let isRecording = false;
     let recognition = null;
-    let currentAudio = null;
     let waveInterval = null;
+    let audioUnlocked = false;
+    let pendingAudioUrl = null;
 
     // Elements
+    const maymintAudioPlayer = document.getElementById('maymintAudioPlayer');
+    const mobileAudioPrompt = document.getElementById('mobileAudioPrompt');
     const micButton = document.getElementById('micButton');
     const micHint = document.getElementById('micHint');
     const micRipple = document.getElementById('micRipple');
@@ -1256,6 +1555,28 @@
     const stopAudioBtn = document.getElementById('stopAudioBtn');
     const timingsBadge = document.getElementById('timingsBadge');
     const wallpaperBg = document.getElementById('wallpaperBg');
+
+    // Mobile Audio Unlocker: primes audio on user touch or click
+    function unlockMobileAudio() {
+      if (audioUnlocked) return;
+      try {
+        if (!maymintAudioPlayer.src) {
+          maymintAudioPlayer.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+        }
+        const p = maymintAudioPlayer.play();
+        if (p !== undefined) {
+          p.then(() => {
+            maymintAudioPlayer.pause();
+            audioUnlocked = true;
+            console.log('Mobile audio primed and unlocked!');
+          }).catch(() => {});
+        }
+      } catch (err) {}
+    }
+
+    ['touchstart', 'touchend', 'pointerdown', 'click'].forEach(evt => {
+      document.addEventListener(evt, unlockMobileAudio, { passive: true, once: true });
+    });
 
     // Modal Elements
     const configModal = document.getElementById('configModal');
@@ -1556,6 +1877,7 @@
 
     // Mic Button Click
     micButton.addEventListener('click', () => {
+      unlockMobileAudio();
       if (!recognition) {
         alert('เบราว์เซอร์นี้ไม่รองรับ Web Speech Recognition กรุณาใช้ Chrome หรือ Edge ค่ะบอส');
         return;
@@ -1563,7 +1885,9 @@
       if (isRecording) {
         recognition.stop();
       } else {
-        if (currentAudio) currentAudio.pause();
+        try {
+          maymintAudioPlayer.pause();
+        } catch(e) {}
         recognition.start();
       }
     });
@@ -1592,7 +1916,7 @@
           const data = await res.json();
 
           if (data.reply_text) {
-            appendChatMessage('maymint', data.reply_text, data.tool_events);
+            appendChatMessage('maymint', data.reply_text, data.tool_events, data.audio_url);
 
             if (data.timings) {
               timingsBadge.innerText = `⏱️ LLM: ${data.timings.llm_seconds}s | TTS: ${data.timings.tts_seconds}s | รวม: ${data.timings.total_seconds}s`;
@@ -1614,56 +1938,101 @@
       }, 300);
     }
 
-    // 6. Play Audio
+    // 6. Play Audio (Mobile & Desktop Safari/Chrome Friendly)
     function playAudioResponse(url) {
-      if (currentAudio) currentAudio.pause();
+      if (!url) return;
+      pendingAudioUrl = url;
 
-      currentAudio = new Audio(url);
+      // Stop any existing playing
+      try {
+        maymintAudioPlayer.pause();
+        maymintAudioPlayer.currentTime = 0;
+      } catch (e) {}
+
+      maymintAudioPlayer.src = url;
+      maymintAudioPlayer.load();
+
       setStage(5, '🔊 [สเต็ป 5/5] มายมิ้นท์กำลังพูดออกเสียง...');
       audioPlayingStatus.innerText = `🔊 กำลังพูดเสียง: ${cfgVoiceSelect.value}`;
       stopAudioBtn.style.display = 'inline-block';
       startWaveform();
 
-      currentAudio.onended = () => {
+      maymintAudioPlayer.onended = () => {
         stopWaveform();
         audioPlayingStatus.innerText = '✅ พูดเสร็จเรียบร้อยแล้วค่ะ';
         stopAudioBtn.style.display = 'none';
+        hideMobileAudioPrompt();
         setTimeout(resetStages, 2000);
       };
 
-      currentAudio.onerror = (err) => {
+      maymintAudioPlayer.onerror = (err) => {
         console.error('Audio play error:', err);
         stopWaveform();
         audioPlayingStatus.innerText = '⚠️ ไม่สามารถเล่นเสียงได้';
         stopAudioBtn.style.display = 'none';
+        hideMobileAudioPrompt();
         resetStages();
       };
 
-      currentAudio.play().catch(e => {
-        console.warn('Autoplay prevented:', e);
-        stopWaveform();
-      });
+      const playPromise = maymintAudioPlayer.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          hideMobileAudioPrompt();
+        }).catch(e => {
+          console.warn('Mobile Autoplay prevented by browser:', e);
+          stopWaveform();
+          audioPlayingStatus.innerText = '⚠️ แตะที่แถบด้านบนเพื่อเปิดเสียงมายมิ้นท์ 🔊';
+          showMobileAudioPrompt(url);
+        });
+      }
+    }
+
+    function showMobileAudioPrompt(url) {
+      pendingAudioUrl = url;
+      if (mobileAudioPrompt) {
+        mobileAudioPrompt.style.display = 'flex';
+        mobileAudioPrompt.onclick = () => {
+          unlockMobileAudio();
+          maymintAudioPlayer.src = pendingAudioUrl;
+          maymintAudioPlayer.play().then(() => {
+            hideMobileAudioPrompt();
+            startWaveform();
+            setStage(5, '🔊 [สเต็ป 5/5] มายมิ้นท์กำลังพูดออกเสียง...');
+          }).catch(err => {
+            console.error('Prompt play failed:', err);
+          });
+        };
+      }
+    }
+
+    function hideMobileAudioPrompt() {
+      if (mobileAudioPrompt) {
+        mobileAudioPrompt.style.display = 'none';
+      }
     }
 
     stopAudioBtn.addEventListener('click', () => {
-      if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.currentTime = 0;
-        stopWaveform();
-        audioPlayingStatus.innerText = '⏹️ หยุดเสียงแล้ว';
-        stopAudioBtn.style.display = 'none';
-        resetStages();
-      }
+      try {
+        maymintAudioPlayer.pause();
+        maymintAudioPlayer.currentTime = 0;
+      } catch(e) {}
+      stopWaveform();
+      audioPlayingStatus.innerText = '⏹️ หยุดเสียงแล้ว';
+      stopAudioBtn.style.display = 'none';
+      hideMobileAudioPrompt();
+      resetStages();
     });
 
     // 7. Quick Prompts
     window.sendQuickPrompt = function(promptText) {
+      unlockMobileAudio();
       micHint.innerText = `ส่งคำถาม: "${promptText}"`;
       submitUserSpeech(promptText);
     };
 
     // 8. Text Input & Terminal Prompt Actions (Keyboard & Button)
     function handleSendTextMessage() {
+      unlockMobileAudio();
       const text = chatTextInput.value.trim();
       if (!text) return;
       chatTextInput.value = '';
@@ -1693,6 +2062,7 @@
 
     // 9. Test Voice Button (Uses active config)
     document.getElementById('testVoiceBtn').addEventListener('click', async () => {
+      unlockMobileAudio();
       const testText = 'สวัสดีค่ะบอส มายมิ้นท์เองนะคะ นี่คือการทดสอบเสียงตามที่คุณบอสตั้งค่าไว้ค่ะ';
       setStage(4, '🎙️ กำลังสังเคราะห์เสียง Edge-TTS...');
       try {
@@ -1736,7 +2106,7 @@
     });
 
     // Helper: Append Message with Rich Markdown Rendering & Terminal Events
-    function appendChatMessage(sender, text, toolEvents = null) {
+    function appendChatMessage(sender, text, toolEvents = null, audioUrl = null) {
       const row = document.createElement('div');
       row.className = 'msg-row';
       const bubble = document.createElement('div');
@@ -1781,7 +2151,11 @@
           toolsHtml += '</div>';
         }
 
-        bubble.innerHTML = `🌸 <strong>มายมิ้นท์:</strong> ${toolsHtml}<div class="markdown-body">${contentHtml}</div>`;
+        const replayBtnHtml = (audioUrl && sender !== 'user') 
+          ? `<button class="play-bubble-audio-btn" onclick="playAudioResponse('${escapeHtml(audioUrl)}')" title="กดฟังเสียงคำตอบนี้">🔊 ฟังเสียงคำตอบนี้</button>` 
+          : '';
+
+        bubble.innerHTML = `🌸 <strong>มายมิ้นท์:</strong> ${toolsHtml}<div class="markdown-body">${contentHtml}</div>${replayBtnHtml}`;
       }
 
       row.appendChild(bubble);
