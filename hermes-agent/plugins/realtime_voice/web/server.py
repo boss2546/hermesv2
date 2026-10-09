@@ -1538,6 +1538,23 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             "cognitive_features": cognitive_features,
             "applied_corrections": applied_corrections
         }
+
+        # Stage 5: Non-blocking Autonomous Vocabulary Auto-Harvesting in background
+        if lexicon_mgr is not None:
+            def _bg_harvester():
+                try:
+                    learned = lexicon_mgr.extract_and_auto_learn(
+                        user_text=user_text,
+                        reply_text=reply_text,
+                        tool_events=tool_events
+                    )
+                    if learned:
+                        logger.info("🤖 [Auto-Learner] Successfully harvested %d new domain items: %s", len(learned), [item.get('term') for item in learned])
+                except Exception as err:
+                    logger.debug("Background auto-learner exception: %s", err)
+
+            threading.Thread(target=_bg_harvester, daemon=True, name="lexicon-harvester").start()
+
         self._send_json(response_data)
 
     def _query_agent_with_tools(

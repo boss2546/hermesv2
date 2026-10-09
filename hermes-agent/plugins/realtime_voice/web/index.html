@@ -1898,6 +1898,7 @@
           <button class="lexicon-tab-btn" data-cat="technical">💻 ศัพท์ Dev <span class="lexicon-tab-badge" id="badgeTech">0</span></button>
           <button class="lexicon-tab-btn" data-cat="identity">💖 อัตลักษณ์ <span class="lexicon-tab-badge" id="badgeId">0</span></button>
           <button class="lexicon-tab-btn" data-cat="corrections">🛠️ ตารางแก้คำเพี้ยน <span class="lexicon-tab-badge" id="badgeCor">0</span></button>
+          <button class="lexicon-tab-btn" data-cat="auto_learned">🤖 เรียนรู้อัตโนมัติ <span class="lexicon-tab-badge" id="badgeAuto">0</span></button>
           <button class="lexicon-tab-btn" data-cat="add_form">➕ เพิ่มคำใหม่</button>
         </div>
 
@@ -2870,6 +2871,16 @@
       if (bTech) bTech.innerText = stats.category_counts?.technical || 0;
       if (bId) bId.innerText = stats.category_counts?.identity || 0;
       if (bCor) bCor.innerText = stats.category_counts?.corrections || 0;
+
+      // Count auto-learned items
+      let autoTotal = 0;
+      if (currentLexiconData) {
+        Object.values(currentLexiconData.categories || {}).forEach(cat => {
+          (cat.items || []).forEach(it => { if (it.auto_learned) autoTotal++; });
+        });
+      }
+      const bAuto = document.getElementById('badgeAuto');
+      if (bAuto) bAuto.innerText = autoTotal;
     }
 
     function renderLexiconCards() {
@@ -2879,12 +2890,14 @@
 
       let allItems = [];
       Object.keys(cats).forEach(catKey => {
-        if (currentLexiconCategory === 'all' || currentLexiconCategory === catKey) {
-          const catInfo = cats[catKey];
-          (catInfo.items || []).forEach(it => {
+        const catInfo = cats[catKey];
+        (catInfo.items || []).forEach(it => {
+          if (currentLexiconCategory === 'all' || currentLexiconCategory === catKey) {
             allItems.push({ ...it, catLabel: catInfo.label, catIcon: catInfo.icon, catKey: catKey });
-          });
-        }
+          } else if (currentLexiconCategory === 'auto_learned' && it.auto_learned) {
+            allItems.push({ ...it, catLabel: catInfo.label, catIcon: catInfo.icon, catKey: catKey });
+          }
+        });
       });
 
       // Filter by search query
@@ -2900,7 +2913,7 @@
       if (allItems.length === 0) {
         lexiconCardsGrid.innerHTML = `
           <div style="grid-column: 1/-1; text-align: center; padding: 2.5rem; color: var(--text-dim); font-size: 0.9rem;">
-            🔍 ไม่พบคำศัพท์หรือคำสั่งที่ค้นหาในหมวดนี้ค่ะบอส
+            🔍 ไม่พบคำศัพท์หรือคำสั่งในหมวดนี้ค่ะบอส
           </div>
         `;
         return;
@@ -2911,12 +2924,17 @@
           ? `<div class="lexicon-aliases-wrap">${it.aliases.map(a => `<span class="lexicon-alias-pill" title="คำพ้อง/เสียงที่มักได้ยิน">${escapeHtml(a)}</span>`).join('')}</div>`
           : (it.pattern ? `<div class="lexicon-aliases-wrap"><span class="lexicon-alias-pill" style="background:rgba(236,72,153,0.25); border-color:rgba(236,72,153,0.4);" title="Regex Pattern">${escapeHtml(it.pattern)}</span></div>` : '');
 
+        const autoLearnedBadge = it.auto_learned 
+          ? `<span style="font-size:0.62rem; background:rgba(34,197,94,0.22); border:1px solid rgba(74,222,128,0.4); color:#86efac; padding:0.1rem 0.4rem; border-radius:8px; font-weight:normal;" title="ระบบเรียนรู้อัตโนมัติจากบทสนทนา">🤖 เรียนรู้อัตโนมัติ</span>`
+          : '';
+
         return `
           <div class="lexicon-card" data-id="${escapeHtml(it.id)}" data-cat="${escapeHtml(it.catKey)}">
             <div class="lexicon-card-header">
               <div class="lexicon-term">
                 <span>${it.catIcon || '📌'}</span>
                 <span>${escapeHtml(it.term)}</span>
+                ${autoLearnedBadge}
               </div>
               <div style="display:flex; align-items:center; gap:0.4rem;">
                 <span class="lexicon-cat-tag">${escapeHtml(it.catLabel || it.catKey)}</span>

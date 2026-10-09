@@ -11,13 +11,25 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import threading
 import time
+import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("voice-lexicon")
+
+DEFAULT_GATEWAY_URL = "https://api.meuu.club/v1"
+DEFAULT_MASTER_KEY = "sk-07ccde1e709eb2ca-e05r6c-a11b5d7c"
+
+def _resolve_api_key() -> str:
+    return (
+        os.getenv("MEUU_API_KEY")
+        or os.getenv("OPENAI_API_KEY")
+        or DEFAULT_MASTER_KEY
+    )
 
 LEXICON_FILE_PATH = Path(__file__).resolve().parent / "knowledge_lexicon.json"
 _lexicon_lock = threading.RLock()
@@ -684,6 +696,192 @@ class KnowledgeLexiconManager:
         # Cleanup multiple consecutive spaces
         normalized = re.sub(r"\s+", " ", normalized).strip()
         return normalized, applied
+
+    # -------------------------------------------------------------------------
+    # 🤖 Autonomous Vocabulary Learning & Entity Discovery Engine
+    # -------------------------------------------------------------------------
+    def auto_learn_term(
+        self,
+        category: str,
+        term: str,
+        aliases: Optional[List[str]] = None,
+        desc: str = "",
+        source: str = "auto_learned"
+    ) -> Optional[Dict[str, Any]]:
+        """Autonomously learn a new term into the lexicon without duplicating."""
+        clean_term = term.strip()
+        if not clean_term or len(clean_term) < 2:
+            return None
+
+        # Filter out common stop words / conversational fillers
+        STOP_WORDS = {
+            "สวัสดี", "ขอบคุณ", "ครับ", "ค่ะ", "นะคะ", "น้า", "งับ", "วันนี้", "พรุ่งนี้", 
+            "เมื่อวาน", "อะไร", "ทำไม", "ยังไง", "อย่างไร", "ไหน", "ที่ไหน", "ใคร", "ช่วย",
+            "หน่อย", "ด้วย", "แล้ว", "และ", "หรือ", "ถ้า", "แต่", "ว่า", "กินข้าว", "นอน",
+            "ok", "hello", "hi", "yes", "no", "thanks", "thank you"
+        }
+        if clean_term.lower() in STOP_WORDS:
+            return None
+
+        with _lexicon_lock:
+            data = self.load(force_reload=True)
+            cats = data.setdefault("categories", {})
+            if category not in cats:
+                category = "commands"
+
+            items = cats[category].setdefault("items", [])
+
+            # Check if term already exists in ANY category
+            for cat_k, cat_v in cats.items():
+                for it in cat_v.get("items", []):
+                    if it.get("term", "").strip().lower() == clean_term.lower():
+                        # Already exists! Merge new aliases if any
+                        existing_aliases = set(it.get("aliases", []))
+                        new_aliases = [a.strip() for a in (aliases or []) if a.strip() and a.strip().lower() not in existing_aliases]
+                        if new_aliases:
+                            it["aliases"] = list(existing_aliases.union(new_aliases))
+                            it["updated_at"] = int(time.time())
+                            self.save(data)
+                            logger.info("🤖 [Auto-Learning] Merged new aliases into existing term '%s': %s", clean_term, new_aliases)
+                            return it
+                        return None  # Already present, no changes
+
+            # Create new auto-learned entry
+            new_id = f"{category[:3]}_auto_{int(time.time() * 1000) % 1000000}"
+            clean_aliases = [a.strip() for a in (aliases or []) if a.strip() and a.strip().lower() != clean_term.lower()]
+            new_item = {
+                "id": new_id,
+                "term": clean_term,
+                "category": category,
+                "aliases": clean_aliases,
+                "desc": desc.strip() or "เรียนรู้และบันทึกอัตโนมัติจากบทสนทนา",
+                "source": source,
+                "auto_learned": True,
+                "created_at": int(time.time())
+            }
+            items.append(new_item)
+            self.save(data)
+            logger.info("🤖 [Auto-Learning] Successfully indexed new term: '%s' [%s] with aliases %s", clean_term, category, clean_aliases)
+            return new_item
+
+    def extract_and_auto_learn(
+        self,
+        user_text: str,
+        reply_text: str = "",
+        tool_events: Optional[List[Dict[str, Any]]] = None
+    ) -> List[Dict[str, Any]]:
+        """Asynchronously analyze conversation and tool interactions to discover and learn novel vocabulary."""
+        if not user_text or len(user_text.strip()) < 3:
+            return []
+
+        learned_items = []
+
+        # 1. Direct Heuristic Extraction for Common Correction Phrases
+        # e.g., "ไม่ใช่ หมายถึง X" หรือ "เรียก X ว่า Y" หรือ "เรียกว่า X"
+        correction_match = re.search(r"(?:ไม่ใช่|หมายถึง|เรียกว่า|คือคำว่า)\s+([^\s,.!?]+)", user_text)
+        if correction_match:
+            cand_term = correction_match.group(1).strip()
+            if len(cand_term) >= 2:
+                learned = self.auto_learn_term(
+                    category="commands",
+                    term=cand_term,
+                    desc="คำที่ผู้ใช้แก้ไขหรือระบุความหมายโดยตรง",
+                    source="correction_heuristic"
+                )
+                if learned:
+                    learned_items.append(learned)
+
+        # 2. Extract Device / Service entities from Tool Events
+        if tool_events:
+            for ev in tool_events:
+                tool_name = ev.get("tool", "")
+                args = ev.get("args", {})
+                if tool_name.startswith("smart_home_"):
+                    dev_name = args.get("device_name") or args.get("device")
+                    if dev_name and isinstance(dev_name, str) and len(dev_name) >= 2:
+                        learned = self.auto_learn_term(
+                            category="devices",
+                            term=dev_name,
+                            desc=f"อุปกรณ์ Smart Home ที่ตรวจพบจากการทำงาน ({tool_name})",
+                            source="smart_home_discovery"
+                        )
+                        if learned:
+                            learned_items.append(learned)
+                elif tool_name.startswith("google_workspace_"):
+                    title = args.get("title") or args.get("query")
+                    if title and isinstance(title, str) and 3 <= len(title) <= 40 and not title.startswith("http"):
+                        learned = self.auto_learn_term(
+                            category="workspace",
+                            term=title,
+                            desc=f"ไฟล์/ข้อมูลที่เกี่ยวข้องกับ Google Workspace",
+                            source="workspace_discovery"
+                        )
+                        if learned:
+                            learned_items.append(learned)
+
+        # 3. LLM-Powered Autonomous Vocabulary Harvester (Fast Gemini 2.5 Flash query)
+        api_key = _resolve_api_key()
+        if not api_key:
+            return learned_items
+
+        try:
+            prompt = (
+                "You are an autonomous lexicon discovery system for a Thai personal AI assistant.\n"
+                "Analyze user utterance and assistant response.\n"
+                "Extract any NEW domain-specific words, technical terms, smart home devices, workspace tools, custom command names, or proper nouns that should be permanently remembered into the STT Lexicon to prevent future speech recognition mistakes.\n"
+                "CRITICAL RULES:\n"
+                "- DO NOT extract common everyday conversational words, pleasantries, verbs, or stopwords (e.g. สวัสดี, ขอบคุณ, กินข้าว, ทำงาน, ไปไหน, วันนี้, ครับ, ค่ะ, ช่วย, หน่อย, จ้า, จ้ะ).\n"
+                "- ONLY extract specialized entities, domain terms, device names, or custom command triggers.\n"
+                "- If no new specialized vocabulary is introduced, return an empty array: []\n"
+                "- If found, output ONLY a valid JSON array of objects:\n"
+                "[{\"category\": \"commands\"|\"devices\"|\"workspace\"|\"technical\"|\"identity\", \"term\": \"...\", \"aliases\": [\"...\"], \"desc\": \"...\"}]"
+            )
+            payload = {
+                "model": "ag/gemini-2.5-flash",
+                "messages": [
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": f"User: {user_text}\nAssistant: {reply_text}"}
+                ],
+                "temperature": 0.0,
+                "stream": False
+            }
+            req = urllib.request.Request(
+                f"{DEFAULT_GATEWAY_URL}/chat/completions",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {api_key}",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Hermes/1.0"
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=10.0) as resp:
+                res_data = json.loads(resp.read().decode("utf-8"))
+                raw_content = res_data["choices"][0]["message"].get("content", "").strip()
+
+                match = re.search(r"\[[\s\S]*\]", raw_content)
+                if match:
+                    extracted_list = json.loads(match.group(0))
+                    if isinstance(extracted_list, list):
+                        for entry in extracted_list:
+                            cat = entry.get("category", "commands")
+                            term = entry.get("term", "").strip()
+                            aliases = entry.get("aliases", [])
+                            desc = entry.get("desc", "เรียนรู้อัตโนมัติจากบทสนทนา")
+                            if term and len(term) >= 2:
+                                learned = self.auto_learn_term(
+                                    category=cat,
+                                    term=term,
+                                    aliases=aliases,
+                                    desc=desc,
+                                    source="autonomous_ai_harvester"
+                                )
+                                if learned:
+                                    learned_items.append(learned)
+        except Exception as harvest_err:
+            logger.debug("Autonomous vocabulary harvest failed: %s", harvest_err)
+
+        return learned_items
 
 
 # Singleton instance
