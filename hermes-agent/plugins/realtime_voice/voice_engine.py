@@ -29,6 +29,14 @@ try:
 except ImportError:
     edge_tts = None
 
+try:
+    from .knowledge_lexicon import lexicon_mgr
+except ImportError:
+    try:
+        from knowledge_lexicon import lexicon_mgr
+    except ImportError:
+        lexicon_mgr = None
+
 logger = logging.getLogger(__name__)
 
 # Constants
@@ -210,10 +218,10 @@ class VoiceEngine:
     def transcribe_audio(
         self,
         audio_source: Union[str, Path, bytes],
-        prompt: str = "ฟังเสียงนี้แล้วถอดความภาษาไทยออกมา ตอบเฉพาะข้อความที่ได้ยินเท่านั้น ห้ามมีคำอธิบายเพิ่มเติม:",
+        prompt: Optional[str] = None,
         model: str = DEFAULT_STT_MODEL,
     ) -> str:
-        """Transcribe an audio file into Thai text using 9Router Multimodal Model."""
+        """Transcribe an audio file into Thai text using 9Router Multimodal Model with Knowledge Lexicon."""
         if isinstance(audio_source, (str, Path)):
             audio_path = Path(audio_source)
             if not audio_path.exists():
@@ -224,6 +232,13 @@ class VoiceEngine:
 
         if len(audio_bytes) == 0:
             raise ValueError("Audio data is empty.")
+
+        # If no explicit custom prompt provided, prime model with rich domain knowledge lexicon
+        if prompt is None:
+            if lexicon_mgr is not None:
+                prompt = lexicon_mgr.generate_stt_system_prompt()
+            else:
+                prompt = "ฟังเสียงนี้แล้วถอดความภาษาไทยออกมา ตอบเฉพาะข้อความที่ได้ยินเท่านั้น ห้ามมีคำอธิบายเพิ่มเติม:"
 
         audio_b64 = base64.b64encode(audio_bytes).decode("ascii")
 
@@ -280,7 +295,19 @@ class VoiceEngine:
                 data = json.loads(raw)
                 text = data["choices"][0]["message"]["content"].strip()
 
-        return text.strip()
+        raw_transcript = text.strip()
+
+        # Double-Shield: Apply Lexicon Normalization to eliminate any residual phonetic distortions
+        if lexicon_mgr is not None:
+            try:
+                normalized, applied = lexicon_mgr.normalize_text(raw_transcript)
+                if applied:
+                    logger.info("STT Lexicon Normalizer corrected %d items: '%s' -> '%s'", len(applied), raw_transcript, normalized)
+                return normalized
+            except Exception as norm_err:
+                logger.warning("Lexicon post-normalization error: %s", norm_err)
+
+        return raw_transcript
 
     # =========================================================================
     # 3. PLAYBACK & IMMEDIATE SPEAK

@@ -68,6 +68,14 @@ try:
 except ImportError:
     from ..voice_engine import engine, DEFAULT_GATEWAY_URL, _resolve_api_key  # type: ignore
 
+try:
+    from knowledge_lexicon import lexicon_mgr  # type: ignore
+except ImportError:
+    try:
+        from ..knowledge_lexicon import lexicon_mgr  # type: ignore
+    except Exception:
+        lexicon_mgr = None
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("voice-server")
 
@@ -1094,6 +1102,14 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({"success": True, "session": data}, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
                 self.send_error(500, f"Error reading session: {e}")
+        elif self.path == "/api/lexicon":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            lex_data = lexicon_mgr.get_all() if lexicon_mgr else {}
+            stats = lexicon_mgr.get_summary_stats() if lexicon_mgr else {}
+            self.wfile.write(json.dumps({"success": True, "lexicon": lex_data, "stats": stats}, ensure_ascii=False).encode("utf-8"))
             return
 
         elif self.path.startswith("/audio/"):
@@ -1256,6 +1272,51 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             self._handle_tts(payload)
         elif self.path == "/api/stt":
             self._handle_stt(payload)
+        elif self.path == "/api/lexicon/item":
+            if not lexicon_mgr:
+                self._send_json({"error": "Lexicon manager not available"}, status=500)
+                return
+            cat = payload.get("category", "commands")
+            term = payload.get("term", "").strip()
+            if not term:
+                self._send_json({"error": "term is required"}, status=400)
+                return
+            aliases = payload.get("aliases")
+            if isinstance(aliases, str):
+                aliases = [a.strip() for a in aliases.split(",") if a.strip()]
+            desc = payload.get("desc", "")
+            pattern = payload.get("pattern", "")
+            replace_with = payload.get("replace_with", "")
+            item_id = payload.get("id")
+            saved = lexicon_mgr.add_or_update_item(
+                category=cat,
+                term=term,
+                aliases=aliases,
+                desc=desc,
+                pattern=pattern,
+                replace_with=replace_with,
+                item_id=item_id
+            )
+            self._send_json({"success": True, "item": saved, "stats": lexicon_mgr.get_summary_stats()})
+        elif self.path == "/api/lexicon/delete":
+            if not lexicon_mgr:
+                self._send_json({"error": "Lexicon manager not available"}, status=500)
+                return
+            cat = payload.get("category", "")
+            item_id = payload.get("id", "")
+            ok = lexicon_mgr.delete_item(cat, item_id)
+            self._send_json({"success": ok, "stats": lexicon_mgr.get_summary_stats()})
+        elif self.path == "/api/lexicon/normalize":
+            text = payload.get("text", "")
+            if lexicon_mgr:
+                norm, applied = lexicon_mgr.normalize_text(text)
+            else:
+                norm, applied = text, []
+            self._send_json({"success": True, "original": text, "normalized": norm, "applied": applied})
+        elif self.path == "/api/lexicon/reset":
+            if lexicon_mgr:
+                lexicon_mgr.reset_to_default()
+            self._send_json({"success": True, "lexicon": lexicon_mgr.get_all() if lexicon_mgr else {}, "stats": lexicon_mgr.get_summary_stats() if lexicon_mgr else {}})
         else:
             self.send_error(404, "Unknown API endpoint")
 
@@ -1292,14 +1353,6 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         speed = payload.get("speed") or RUNTIME_CONFIG.get("speed", "+0%")
         pitch = payload.get("pitch") or RUNTIME_CONFIG.get("pitch", "+0Hz")
         raw_model = payload.get("model") or RUNTIME_CONFIG.get("model", "auto")
-        route = resolve_adaptive_model(user_text, raw_model)
-        model = route.model
-        cognitive_tier = route.tier
-        route_reason = route.reason
-        complexity_score = route.score
-        cognitive_features = route.features
-        logger.info("Adaptive cognitive routing: prompt='%s' => model=%s (tier=%s, score=%d: %s)", user_text[:35], model, cognitive_tier, complexity_score, route_reason)
-        temperature = float(payload.get("temperature", RUNTIME_CONFIG.get("temperature", 0.7)))
 
         # Stage 1 & 2: STT (if audio provided)
         if not user_text and audio_b64:
@@ -1316,6 +1369,24 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         if not user_text:
             self._send_json({"error": "No text or audio provided"}, status=400)
             return
+
+        # Double Shield: Apply Knowledge Lexicon Normalization to eliminate speech recognition errors
+        applied_corrections = []
+        if lexicon_mgr is not None:
+            raw_input = user_text
+            user_text, applied_corrections = lexicon_mgr.normalize_text(user_text)
+            if applied_corrections:
+                logger.info("Knowledge Lexicon normalized input (%d fixes): '%s' -> '%s'", len(applied_corrections), raw_input, user_text)
+
+        # Adaptive Cognitive Routing (after text normalization so keywords match accurately)
+        route = resolve_adaptive_model(user_text, raw_model)
+        model = route.model
+        cognitive_tier = route.tier
+        route_reason = route.reason
+        complexity_score = route.score
+        cognitive_features = route.features
+        logger.info("Adaptive cognitive routing: prompt='%s' => model=%s (tier=%s, score=%d: %s)", user_text[:35], model, cognitive_tier, complexity_score, route_reason)
+        temperature = float(payload.get("temperature", RUNTIME_CONFIG.get("temperature", 0.7)))
 
         # Stage 3: LLM Thinking + Tool Execution (PowerShell, Files, System Info)
         t1 = time.time()
@@ -1375,7 +1446,8 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             "cognitive_tier": cognitive_tier,
             "route_reason": route_reason,
             "complexity_score": complexity_score,
-            "cognitive_features": cognitive_features
+            "cognitive_features": cognitive_features,
+            "applied_corrections": applied_corrections
         }
         with _history_lock:
             RICH_CHAT_HISTORY.append(user_msg)
@@ -1395,7 +1467,8 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             "cognitive_tier": cognitive_tier,
             "route_reason": route_reason,
             "complexity_score": complexity_score,
-            "cognitive_features": cognitive_features
+            "cognitive_features": cognitive_features,
+            "applied_corrections": applied_corrections
         }
         self._send_json(response_data)
 

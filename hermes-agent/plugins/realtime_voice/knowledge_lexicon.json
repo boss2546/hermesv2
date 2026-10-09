@@ -1,0 +1,550 @@
+{
+  "version": "1.0",
+  "updated_at": 1791536446,
+  "description": "คลังคำสั่งและคำศัพท์สำหรับถอดความเสียง ป้องกันคำเพี้ยน และจัดระเบียบบริบทระบบ",
+  "categories": {
+    "commands": {
+      "label": "คลังคำสั่งระบบ & งาน",
+      "icon": "⚡",
+      "description": "ประโยคและคำสั่งหลักที่ใช้บ่อย เพื่อให้ระบบถอดความเข้าใจเจตนาคำสั่งได้อย่างแม่นยำ",
+      "items": [
+        {
+          "id": "cmd_ac_on",
+          "term": "เปิดแอร์",
+          "aliases": [
+            "เปิดแอ",
+            "เปิดเครื่องปรับอากาศ",
+            "เปิดแอร์หน่อย",
+            "ช่วยเปิดแอร์"
+          ],
+          "desc": "สั่งเปิดเครื่องปรับอากาศห้องนอน",
+          "category": "commands"
+        },
+        {
+          "id": "cmd_ac_off",
+          "term": "ปิดแอร์",
+          "aliases": [
+            "ปิดแอ",
+            "ดับแอร์",
+            "ปิดเครื่องปรับอากาศ"
+          ],
+          "desc": "สั่งปิดเครื่องปรับอากาศห้องนอน",
+          "category": "commands"
+        },
+        {
+          "id": "cmd_ac_temp",
+          "term": "ปรับแอร์",
+          "aliases": [
+            "ปรับอุณหภูมิ",
+            "ตั้งแอร์",
+            "ลดแอร์",
+            "เพิ่มแอร์",
+            "แอร์กี่องศา"
+          ],
+          "desc": "ปรับอุณหภูมิหรือตรวจสอบสถานะเครื่องปรับอากาศ",
+          "category": "commands"
+        },
+        {
+          "id": "cmd_gmail_check",
+          "term": "เช็คอีเมล",
+          "aliases": [
+            "เช็คเมล",
+            "ดูเมล",
+            "อ่านอีเมล",
+            "เปิดดูเมล",
+            "เช็คจีเมล",
+            "มีเมลเข้าไหม"
+          ],
+          "desc": "ค้นหาและสรุปเนื้อหาอีเมลล่าสุดใน Gmail",
+          "category": "commands"
+        },
+        {
+          "id": "cmd_gmail_send",
+          "term": "ส่งอีเมล",
+          "aliases": [
+            "ส่งเมล",
+            "เขียนอีเมล",
+            "ส่ง mail",
+            "ตอบกลับอีเมล"
+          ],
+          "desc": "สร้างและส่งอีเมลหาผู้รับผ่าน Gmail API",
+          "category": "commands"
+        },
+        {
+          "id": "cmd_cal_event",
+          "term": "สร้างนัดหมาย",
+          "aliases": [
+            "ลงปฏิทิน",
+            "บันทึกปฏิทิน",
+            "เพิ่มนัดหมาย",
+            "ลงตารางงาน",
+            "จดตารางนัด"
+          ],
+          "desc": "สร้างกิจกรรมหรือนัดหมายใหม่ใน Google Calendar",
+          "category": "commands"
+        },
+        {
+          "id": "cmd_cal_list",
+          "term": "ดูตารางงาน",
+          "aliases": [
+            "เช็คปฏิทิน",
+            "ดูนัดหมาย",
+            "วันนี้มีงานอะไร",
+            "พรุ่งนี้มีอะไร"
+          ],
+          "desc": "ตรวจสอบรายการนัดหมายใน Google Calendar",
+          "category": "commands"
+        },
+        {
+          "id": "cmd_drive_search",
+          "term": "ค้นหาไฟล์ใน Drive",
+          "aliases": [
+            "หาไฟล์",
+            "ค้นไฟล์",
+            "ดูไฟล์ในไดรฟ์",
+            "หาเอกสารใน drive"
+          ],
+          "desc": "ค้นหาและเปิดดูเอกสารบน Google Drive",
+          "category": "commands"
+        },
+        {
+          "id": "cmd_git_status",
+          "term": "เช็คสถานะ Git",
+          "aliases": [
+            "เช็คกิต",
+            "git status",
+            "ดูการเปลี่ยนแปลงโค้ด"
+          ],
+          "desc": "ตรวจสอบสถานะการแก้ไขโค้ดใน Repository",
+          "category": "commands"
+        },
+        {
+          "id": "cmd_git_push",
+          "term": "Git Commit & Push",
+          "aliases": [
+            "กิตพุช",
+            "พุชโค้ด",
+            "คอมมิทโค้ด",
+            "ดันโค้ดขึ้น github"
+          ],
+          "desc": "บันทึกและพุชการเปลี่ยนแปลงขึ้น GitHub",
+          "category": "commands"
+        },
+        {
+          "id": "cmd_docker_ctl",
+          "term": "จัดการ Docker",
+          "aliases": [
+            "รันด็อกเกอร์",
+            "รีสตาร์ทด็อกเกอร์",
+            "เช็คคอนเทนเนอร์"
+          ],
+          "desc": "ควบคุมและตรวจสอบสถานะ Docker Container",
+          "category": "commands"
+        }
+      ]
+    },
+    "devices": {
+      "label": "อุปกรณ์ Smart Home & กายภาพ",
+      "icon": "🏠",
+      "description": "รายชื่ออุปกรณ์ เซนเซอร์ และหน่วยวัดในบ้าน เพื่อให้ระบบแยกแยะชื่ออุปกรณ์ได้ตรงเป๊ะ",
+      "items": [
+        {
+          "id": "dev_ac",
+          "term": "แอร์",
+          "aliases": [
+            "แอ",
+            "แอร์ห้องนอน",
+            "เครื่องปรับอากาศ"
+          ],
+          "desc": "เครื่องปรับอากาศหลัก (Daikin/Inverter)",
+          "category": "devices"
+        },
+        {
+          "id": "dev_ir",
+          "term": "Tuya Smart IR Gateway",
+          "aliases": [
+            "ทูย่า",
+            "ทูย่าเกตเวย์",
+            "สมาร์ทไออาร์",
+            "เกตเวย์รีโมท"
+          ],
+          "desc": "ฮับส่งสัญญาณอินฟราเรดอัจฉริยะ (พอร์ต 3000)",
+          "category": "devices"
+        },
+        {
+          "id": "dev_temp",
+          "term": "องศา",
+          "aliases": [
+            "ดีกรี",
+            "°C",
+            "องศาเซลเซียส"
+          ],
+          "desc": "หน่วยวัดอุณหภูมิห้องและเครื่องปรับอากาศ",
+          "category": "devices"
+        },
+        {
+          "id": "dev_mode_cool",
+          "term": "โหมด Cool",
+          "aliases": [
+            "โหมดคูล",
+            "โหมดเย็น",
+            "โหมดทำความเย็น"
+          ],
+          "desc": "โหมดทำความเย็นปกติของเครื่องปรับอากาศ",
+          "category": "devices"
+        },
+        {
+          "id": "dev_mode_fan",
+          "term": "โหมด Fan",
+          "aliases": [
+            "โหมดพัดลม",
+            "โหมดแฟน"
+          ],
+          "desc": "โหมดหมุนเวียนอากาศเฉพาะพัดลม",
+          "category": "devices"
+        },
+        {
+          "id": "dev_fan_speed",
+          "term": "แรงลม",
+          "aliases": [
+            "ความเร็วพัดลม",
+            "พัดลมแอร์",
+            "แฟนสปีด"
+          ],
+          "desc": "ระดับความเร็วของพัดลมแอร์ (auto, low, mid, high)",
+          "category": "devices"
+        }
+      ]
+    },
+    "workspace": {
+      "label": "Google Workspace & เครื่องมือทำงาน",
+      "icon": "💼",
+      "description": "บริการ Cloud, แอปพลิเคชันการทำงาน และเอกสารของ Google",
+      "items": [
+        {
+          "id": "ws_gmail",
+          "term": "Gmail",
+          "aliases": [
+            "จีเมล์",
+            "จีเมล",
+            "เจเมล",
+            "เมลกูเกิล"
+          ],
+          "desc": "บริการจัดการอีเมลของ Google",
+          "category": "workspace"
+        },
+        {
+          "id": "ws_drive",
+          "term": "Google Drive",
+          "aliases": [
+            "กูเกิลไดรฟ์",
+            "กูเกิ้ลไดร์",
+            "เกิ้ลไดรฟ์",
+            "คลาวด์ไดรฟ์"
+          ],
+          "desc": "พื้นที่จัดเก็บไฟล์และเอกสารออนไลน์",
+          "category": "workspace"
+        },
+        {
+          "id": "ws_cal",
+          "term": "Google Calendar",
+          "aliases": [
+            "กูเกิลคาเลนดาร์",
+            "คาเลนดาร์",
+            "ปฏิทินกูเกิล"
+          ],
+          "desc": "ระบบปฏิทินและนัดหมายการทำงาน",
+          "category": "workspace"
+        },
+        {
+          "id": "ws_docs",
+          "term": "Google Docs",
+          "aliases": [
+            "กูเกิลด็อก",
+            "กูเกิลดอกส์",
+            "ด็อกส์"
+          ],
+          "desc": "ระบบเอกสารประมวลผลคำ",
+          "category": "workspace"
+        },
+        {
+          "id": "ws_sheets",
+          "term": "Google Sheets",
+          "aliases": [
+            "กูเกิลชีต",
+            "กูเกิลชีท",
+            "สเปรดชีต",
+            "ชีต"
+          ],
+          "desc": "ระบบสเปรดชีตตารางคำนวณ",
+          "category": "workspace"
+        },
+        {
+          "id": "ws_tasks",
+          "term": "Google Tasks",
+          "aliases": [
+            "กูเกิลแทสก์",
+            "กูเกิลทาสก์",
+            "แทสก์",
+            "รายการงาน"
+          ],
+          "desc": "ระบบบันทึก To-Do List และรายการสิ่งที่ต้องทำ",
+          "category": "workspace"
+        }
+      ]
+    },
+    "technical": {
+      "label": "ศัพท์เทคนิค & งานพัฒนา (Dev)",
+      "icon": "💻",
+      "description": "คำศัพท์วิศวกรรมซอฟต์แวร์ ฐานข้อมูล และโครงสร้างระบบ เพื่อไม่ให้สะกดเพี้ยน",
+      "items": [
+        {
+          "id": "tech_docker",
+          "term": "Docker",
+          "aliases": [
+            "ด็อกเกอร์",
+            "ดอกเกอร์"
+          ],
+          "desc": "แพลตฟอร์ม Containerization สำหรับบริการและแอป",
+          "category": "technical"
+        },
+        {
+          "id": "tech_python",
+          "term": "Python",
+          "aliases": [
+            "ไพธอน",
+            "ไพทอน"
+          ],
+          "desc": "ภาษาโปรแกรมมิ่งหลักของ Agent และ Backend",
+          "category": "technical"
+        },
+        {
+          "id": "tech_postgres",
+          "term": "PostgreSQL",
+          "aliases": [
+            "โพสเกรส",
+            "โพสต์เกรส",
+            "โพสเกรสคิวแอล"
+          ],
+          "desc": "ระบบจัดการฐานข้อมูล Relational Database",
+          "category": "technical"
+        },
+        {
+          "id": "tech_mysql",
+          "term": "MySQL",
+          "aliases": [
+            "มายเอสคิวแอล",
+            "มายซีเควล"
+          ],
+          "desc": "ระบบฐานข้อมูล MySQL 8.4+ utf8mb4",
+          "category": "technical"
+        },
+        {
+          "id": "tech_nginx",
+          "term": "NGINX",
+          "aliases": [
+            "เอนจิ้นเอ็กซ์",
+            "เอ็นจินเอ็กซ์",
+            "เอนจินเอกซ์"
+          ],
+          "desc": "Reverse Proxy และ Web Server Gateway",
+          "category": "technical"
+        },
+        {
+          "id": "tech_cloudflare",
+          "term": "Cloudflare",
+          "aliases": [
+            "คลาวด์แฟลร์",
+            "คลาวด์แฟร์"
+          ],
+          "desc": "เครือข่าย Cloudflare Tunnel & CDN SSL",
+          "category": "technical"
+        },
+        {
+          "id": "tech_github",
+          "term": "GitHub",
+          "aliases": [
+            "กิตฮับ",
+            "กิทฮับ",
+            "กิตฮับดอทคอม"
+          ],
+          "desc": "ระบบ Git Version Control ทางไกล",
+          "category": "technical"
+        },
+        {
+          "id": "tech_api",
+          "term": "API Gateway",
+          "aliases": [
+            "เอพีไอ",
+            "เกตเวย์",
+            "9Router"
+          ],
+          "desc": "เกตเวย์เชื่อมต่อโมเดล AI (api.meuu.club)",
+          "category": "technical"
+        },
+        {
+          "id": "tech_migrate",
+          "term": "Migrate",
+          "aliases": [
+            "ไมเกรต",
+            "ย้ายข้อมูล",
+            "การไมเกรต"
+          ],
+          "desc": "กระบวนการย้ายและแปลงโครงสร้างฐานข้อมูล",
+          "category": "technical"
+        },
+        {
+          "id": "tech_token",
+          "term": "Token",
+          "aliases": [
+            "โทเคน",
+            "โทเค็น"
+          ],
+          "desc": "รหัสสิทธิ์ยืนยันตัวตนความปลอดภัย OAuth2 / Bearer",
+          "category": "technical"
+        }
+      ]
+    },
+    "identity": {
+      "label": "บุคคล & อัตลักษณ์",
+      "icon": "💖",
+      "description": "ชื่อเรียก บทบาท และตัวตนของบอสและน้องมายมิ้นท์",
+      "items": [
+        {
+          "id": "id_maymint",
+          "term": "มายมิ้นท์",
+          "aliases": [
+            "มายมิน",
+            "มายมิ่น",
+            "น้องมาย",
+            "มาย",
+            "Maymint"
+          ],
+          "desc": "แฟนสาวคู่คิดและเลขาประจำตัวของบอส",
+          "category": "identity"
+        },
+        {
+          "id": "id_boss",
+          "term": "บอส",
+          "aliases": [
+            "บอสส์",
+            "คุณบอส",
+            "พี่บอส",
+            "Boss"
+          ],
+          "desc": "คนสำคัญอันดับ 1 ในใจของมายมิ้นท์",
+          "category": "identity"
+        },
+        {
+          "id": "id_hermes",
+          "term": "Hermes Agent",
+          "aliases": [
+            "เฮอร์มีส",
+            "เฮอมิส",
+            "Hermes"
+          ],
+          "desc": "สถาปัตยกรรมแกนกลางของระบบผู้ช่วย AI",
+          "category": "identity"
+        }
+      ]
+    },
+    "corrections": {
+      "label": "ตารางแก้คำเพี้ยนอัตโนมัติ (Phonetic Corrections)",
+      "icon": "🛠️",
+      "description": "กฎ Regex และคำแปลกๆ ที่ STT มักได้ยินผิด แปลงกลับเป็นคำที่ถูกต้องทันที",
+      "items": [
+        {
+          "id": "cor_ac_on",
+          "term": "เปิดแอร์",
+          "pattern": "(?i)เปิดแอ(?!ร์|\\w)",
+          "replace_with": "เปิดแอร์",
+          "desc": "แก้คำว่า 'เปิดแอ' เป็น 'เปิดแอร์'"
+        },
+        {
+          "id": "cor_ac_off",
+          "term": "ปิดแอร์",
+          "pattern": "(?i)ปิดแอ(?!ร์|\\w)",
+          "replace_with": "ปิดแอร์",
+          "desc": "แก้คำว่า 'ปิดแอ' เป็น 'ปิดแอร์'"
+        },
+        {
+          "id": "cor_maymint",
+          "term": "มายมิ้นท์",
+          "pattern": "(?i)(?:มายมิน|มายมิ่น|มายมินท์)(?!ท์)",
+          "replace_with": "มายมิ้นท์",
+          "desc": "แก้ชื่อมายมิ้นท์ที่ไม่มีการันต์"
+        },
+        {
+          "id": "cor_gmail",
+          "term": "Gmail",
+          "pattern": "(?i)(?:จีเมล์|จีเมล|เจเมล์|เจเมล)",
+          "replace_with": "Gmail",
+          "desc": "แก้คำว่า Gmail ในภาษาไทย"
+        },
+        {
+          "id": "cor_drive",
+          "term": "Google Drive",
+          "pattern": "(?i)(?:กูเกิ้?ลไดร[ฟว์]|กูเกิลไดร[ฟว์]|เกิ้ลไดร[ฟว์])",
+          "replace_with": "Google Drive",
+          "desc": "แก้คำว่า Google Drive"
+        },
+        {
+          "id": "cor_calendar",
+          "term": "Google Calendar",
+          "pattern": "(?i)(?:กูเกิ้?ลคาเลนดาร์|คาเลนดาร์)",
+          "replace_with": "Google Calendar",
+          "desc": "แก้คำว่า Google Calendar"
+        },
+        {
+          "id": "cor_docker",
+          "term": "Docker",
+          "pattern": "(?i)(?:ด็?อกเกอร์)",
+          "replace_with": "Docker",
+          "desc": "แก้คำว่า Docker"
+        },
+        {
+          "id": "cor_cloudflare",
+          "term": "Cloudflare",
+          "pattern": "(?i)(?:คลาวด์แฟล?ร์|คลาวแฟลร์)",
+          "replace_with": "Cloudflare",
+          "desc": "แก้คำว่า Cloudflare"
+        },
+        {
+          "id": "cor_postgres",
+          "term": "PostgreSQL",
+          "pattern": "(?i)(?:โพสเกรส|โพสต์เกรส|โพสเกรสคิวแอล)",
+          "replace_with": "PostgreSQL",
+          "desc": "แก้คำว่า PostgreSQL"
+        },
+        {
+          "id": "cor_mysql",
+          "term": "MySQL",
+          "pattern": "(?i)(?:มายเอสคิวแอล|มายซีเควล)",
+          "replace_with": "MySQL",
+          "desc": "แก้คำว่า MySQL"
+        },
+        {
+          "id": "cor_nginx",
+          "term": "NGINX",
+          "pattern": "(?i)(?:เอนจิ้นเอ็กซ์|เอ็นจินเอ็กซ์|เอนจินเอกซ์)",
+          "replace_with": "NGINX",
+          "desc": "แก้คำว่า NGINX"
+        },
+        {
+          "id": "cor_github",
+          "term": "GitHub",
+          "pattern": "(?i)(?:กิตฮับ|กิทฮับ)",
+          "replace_with": "GitHub",
+          "desc": "แก้คำว่า GitHub"
+        },
+        {
+          "id": "cor_tuya",
+          "term": "Tuya",
+          "pattern": "(?i)(?:ทูย่า|ทูยา)",
+          "replace_with": "Tuya",
+          "desc": "แก้คำว่า Tuya"
+        }
+      ]
+    }
+  }
+}

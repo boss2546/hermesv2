@@ -1198,6 +1198,210 @@
     }
 
     /* =========================================================================
+       LIQUID GLASS KNOWLEDGE LEXICON MODAL (คลังคำสั่งและคำศัพท์ ป้องกันคำเพี้ยน)
+       ========================================================================= */
+    .lexicon-modal-window {
+      max-width: 860px;
+      width: 95%;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    .lexicon-tabs {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      scrollbar-width: thin;
+    }
+
+    .lexicon-tab-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--text-dim);
+      padding: 0.45rem 0.9rem;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.2s ease;
+    }
+
+    .lexicon-tab-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .lexicon-tab-btn.active {
+      background: linear-gradient(135deg, var(--pink-core), var(--purple-accent));
+      border-color: rgba(255, 255, 255, 0.4);
+      color: #ffffff;
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
+    }
+
+    .lexicon-tab-badge {
+      background: rgba(0, 0, 0, 0.25);
+      padding: 0.1rem 0.4rem;
+      border-radius: 10px;
+      font-size: 0.7rem;
+    }
+
+    .lexicon-toolbar {
+      display: flex;
+      gap: 0.8rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .lexicon-search-input {
+      flex: 1;
+      min-width: 200px;
+      background: rgba(15, 10, 25, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      padding: 0.6rem 1rem;
+      border-radius: 14px;
+      font-size: 0.88rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .lexicon-search-input:focus {
+      border-color: var(--pink-glow);
+      box-shadow: 0 0 10px rgba(236, 72, 153, 0.4);
+    }
+
+    .lexicon-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 0.9rem;
+      max-height: 44vh;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .lexicon-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 16px;
+      padding: 0.9rem 1rem;
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .lexicon-card:hover {
+      background: rgba(236, 72, 153, 0.1);
+      border-color: rgba(244, 114, 182, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .lexicon-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.4rem;
+    }
+
+    .lexicon-term {
+      font-weight: 700;
+      font-size: 0.98rem;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .lexicon-cat-tag {
+      font-size: 0.68rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--pink-glow);
+      font-weight: 600;
+    }
+
+    .lexicon-aliases-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+    }
+
+    .lexicon-alias-pill {
+      font-size: 0.72rem;
+      background: rgba(168, 85, 247, 0.25);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      color: #f3e8ff;
+      padding: 0.1rem 0.45rem;
+      border-radius: 10px;
+    }
+
+    .lexicon-desc {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      line-height: 1.35;
+    }
+
+    .lexicon-card-del-btn {
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.35);
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 0.2rem;
+      transition: color 0.15s;
+    }
+
+    .lexicon-card-del-btn:hover {
+      color: #f87171;
+    }
+
+    .lexicon-tester-box {
+      background: rgba(15, 10, 25, 0.7);
+      border: 1px solid rgba(236, 72, 153, 0.3);
+      border-radius: 14px;
+      padding: 0.85rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 0.3rem;
+    }
+
+    .lexicon-test-result {
+      font-size: 0.84rem;
+      padding: 0.45rem 0.75rem;
+      border-radius: 10px;
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid rgba(34, 197, 94, 0.35);
+      color: #86efac;
+      display: none;
+    }
+
+    .correction-badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      background: rgba(34, 197, 94, 0.2);
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      color: #86efac;
+      font-size: 0.72rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 10px;
+      margin-top: 0.35rem;
+    }
+
+    /* =========================================================================
        RESPONSIVE DESIGN FOR SMARTPHONES & TABLETS (100% Mobile Ready)
        ========================================================================= */
     @media (max-width: 860px) {
@@ -1453,6 +1657,7 @@
           <span class="slider"></span>
         </label>
       </label>
+      <button class="glass-btn" id="lexiconOpenBtn" title="คลังคำสั่งและคำศัพท์ (STT Precision Knowledge Bank)">📚 <span class="btn-label">คลังคำสั่ง</span> <span class="session-badge" id="lexiconCountBadge">0</span></button>
       <button class="glass-btn" id="sessionsOpenBtn" title="ดูประวัติเซสชั่นย้อนหลังทั้งหมด">📜 <span class="btn-label">ประวัติ</span> <span class="session-badge" id="sessionCountBadge">0</span></button>
       <button class="glass-btn" id="newSessionBtn" title="เริ่มบทสนทนาใหม่ (เซสชั่นเดิมถูกเก็บไว้เสมอ)">➕ <span class="btn-label">แชตใหม่</span></button>
       <button class="glass-btn btn-text-hide" id="testVoiceBtn" title="ทดสอบเสียง">🔊 <span class="btn-label">ทดสอบเสียง</span></button>
@@ -1668,6 +1873,88 @@
         </div>
         <div class="sessions-list" id="sessionsList">
           <!-- Dynamic Session Items -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       KNOWLEDGE LEXICON MODAL WINDOW (คลังคำสั่ง & ข้อมูลบริบท ป้องกันคำเพี้ยน)
+       ========================================================================= -->
+  <div class="modal-overlay" id="lexiconModal">
+    <div class="modal-window lexicon-modal-window">
+      <div class="modal-header">
+        <h2>📚 คลังคำสั่งและคำศัพท์ (STT Precision Knowledge Bank)</h2>
+        <button class="modal-close-btn" id="lexiconCloseBtn" title="ปิดหน้าต่าง">✕</button>
+      </div>
+
+      <div class="sessions-modal-body">
+        <!-- Category Tabs -->
+        <div class="lexicon-tabs" id="lexiconTabs">
+          <button class="lexicon-tab-btn active" data-cat="all">⚡ ทั้งหมด <span class="lexicon-tab-badge" id="badgeAll">0</span></button>
+          <button class="lexicon-tab-btn" data-cat="commands">🎯 คำสั่ง <span class="lexicon-tab-badge" id="badgeCmd">0</span></button>
+          <button class="lexicon-tab-btn" data-cat="devices">🏠 Smart Home <span class="lexicon-tab-badge" id="badgeDev">0</span></button>
+          <button class="lexicon-tab-btn" data-cat="workspace">💼 Workspace <span class="lexicon-tab-badge" id="badgeWs">0</span></button>
+          <button class="lexicon-tab-btn" data-cat="technical">💻 ศัพท์ Dev <span class="lexicon-tab-badge" id="badgeTech">0</span></button>
+          <button class="lexicon-tab-btn" data-cat="identity">💖 อัตลักษณ์ <span class="lexicon-tab-badge" id="badgeId">0</span></button>
+          <button class="lexicon-tab-btn" data-cat="corrections">🛠️ ตารางแก้คำเพี้ยน <span class="lexicon-tab-badge" id="badgeCor">0</span></button>
+          <button class="lexicon-tab-btn" data-cat="add_form">➕ เพิ่มคำใหม่</button>
+        </div>
+
+        <!-- Toolbar: Search & Action Buttons -->
+        <div class="lexicon-toolbar" id="lexiconToolbar">
+          <input type="text" class="lexicon-search-input" id="lexiconSearchInput" placeholder="🔍 ค้นหาคำสั่ง, อุปกรณ์, หรือคำศัพท์ในคลัง...">
+          <button class="glass-btn primary-glow-btn" id="lexiconAddNewBtn">➕ เพิ่มข้อมูลใหม่</button>
+          <button class="glass-btn" id="lexiconResetDefaultBtn" title="รีเซ็ตเป็นค่าเริ่มต้น">🔄 รีเซ็ตคลังศัพท์</button>
+        </div>
+
+        <!-- Cards View -->
+        <div class="lexicon-cards-grid" id="lexiconCardsGrid">
+          <!-- Dynamic cards injected via JS -->
+        </div>
+
+        <!-- Add / Edit Form (Hidden by default or shown in tab) -->
+        <div class="config-section" id="lexiconAddFormContainer" style="display: none; background: rgba(15, 10, 25, 0.5); padding: 1.2rem; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.15);">
+          <div class="section-title">✨ เพิ่ม / แก้ไขคำศัพท์หรือคำสั่งลงในคลัง</div>
+          <div class="config-grid">
+            <div class="form-group">
+              <label>หมวดหมู่ (Category)</label>
+              <select id="lexFormCategory">
+                <option value="commands">🎯 คลังคำสั่ง (commands)</option>
+                <option value="devices">🏠 Smart Home & แอร์ (devices)</option>
+                <option value="workspace">💼 Google Workspace (workspace)</option>
+                <option value="technical">💻 ศัพท์เทคนิค & Dev (technical)</option>
+                <option value="identity">💖 บุคคล & อัตลักษณ์ (identity)</option>
+                <option value="corrections">🛠️ กฎแก้คำเพี้ยน Regex (corrections)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>คำที่ถูกต้อง (Canonical Term / Target)</label>
+              <input type="text" id="lexFormTerm" placeholder="เช่น เปิดแอร์, Gmail, 24 องศา">
+            </div>
+            <div class="form-group full-width">
+              <label>คำที่มักได้ยินเพี้ยน / คำพ้องเสียง (คั่นด้วยเครื่องหมายจุลภาค ,)</label>
+              <input type="text" id="lexFormAliases" placeholder="เช่น เปิดแอ, เปิดแอร์หน่อย, ช่วยเปิดแอร์">
+            </div>
+            <div class="form-group full-width">
+              <label>คำอธิบายความหมาย / หน้าที่</label>
+              <input type="text" id="lexFormDesc" placeholder="เช่น สั่งเปิดเครื่องปรับอากาศห้องนอน">
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.8rem; margin-top: 1rem;">
+            <button class="save-btn" id="lexFormSaveBtn">💾 บันทึกลงคลังความรู้</button>
+            <button class="glass-btn" id="lexFormCancelBtn">ยกเลิก</button>
+          </div>
+        </div>
+
+        <!-- Live STT Normalization Tester -->
+        <div class="lexicon-tester-box">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.84rem; font-weight: 600; color: var(--pink-glow);">🧪 กล่องทดสอบตรวจจับและแก้คำเพี้ยน (Live Normalization Tester)</span>
+            <button class="glass-btn" id="lexiconRunTestBtn" style="padding: 0.3rem 0.8rem; font-size: 0.78rem;">⚡ ตรวจสอบ</button>
+          </div>
+          <input type="text" class="lexicon-search-input" id="lexiconTestInput" placeholder="พิมพ์หรือลองวางประโยค เช่น 'เปิดแอ 24 องศา มายมิน ช่วยดูเจเมล หน่อย ด็อกเกอร์ รันอยู่ไหม'" value="เปิดแอ 24 องศา มายมิน ช่วยดูเจเมล หน่อย ด็อกเกอร์ รันอยู่ไหม">
+          <div class="lexicon-test-result" id="lexiconTestResult"></div>
         </div>
       </div>
     </div>
@@ -2313,6 +2600,15 @@
           appendChatMessage('maymint', data.reply_text, data.tool_events, data.audio_url, true, data.cognitive_tier, data.model, data.cognitive_features, data.route_reason);
           recordHistoryMessage('maymint', data.reply_text, data.tool_events, data.audio_url);
 
+          if (data.applied_corrections && data.applied_corrections.length > 0) {
+            const fixList = data.applied_corrections.map(c => `${c.matched || c.alias} ➜ ${c.replaced_with || c.canonical}`).join(', ');
+            if (toastPill) {
+              toastPill.innerText = `✨ ตรวจแก้คำเพี้ยนอัตโนมัติ: ${fixList}`;
+              toastPill.style.display = 'block';
+              setTimeout(() => { toastPill.style.display = 'none'; }, 4500);
+            }
+          }
+
           if (data.timings) {
             const tierBadge = data.cognitive_tier === 'deep' ? '🧠 คิดลึกซึ้ง' : (data.cognitive_tier === 'fast' ? '⚡ ตอบไว' : '');
             const modelName = (data.model || '').replace('ag/', '');
@@ -2515,6 +2811,306 @@
         if (e.target === sessionsModal) closeSessionsModal();
       });
     }
+
+    // =========================================================================
+    // KNOWLEDGE LEXICON LOGIC (คลังคำสั่งและคำศัพท์ ป้องกันคำเพี้ยน)
+    // =========================================================================
+    const lexiconModal = document.getElementById('lexiconModal');
+    const lexiconOpenBtn = document.getElementById('lexiconOpenBtn');
+    const lexiconCloseBtn = document.getElementById('lexiconCloseBtn');
+    const lexiconCountBadge = document.getElementById('lexiconCountBadge');
+    const lexiconTabs = document.getElementById('lexiconTabs');
+    const lexiconSearchInput = document.getElementById('lexiconSearchInput');
+    const lexiconAddNewBtn = document.getElementById('lexiconAddNewBtn');
+    const lexiconResetDefaultBtn = document.getElementById('lexiconResetDefaultBtn');
+    const lexiconCardsGrid = document.getElementById('lexiconCardsGrid');
+    const lexiconAddFormContainer = document.getElementById('lexiconAddFormContainer');
+    const lexFormCategory = document.getElementById('lexFormCategory');
+    const lexFormTerm = document.getElementById('lexFormTerm');
+    const lexFormAliases = document.getElementById('lexFormAliases');
+    const lexFormDesc = document.getElementById('lexFormDesc');
+    const lexFormSaveBtn = document.getElementById('lexFormSaveBtn');
+    const lexFormCancelBtn = document.getElementById('lexFormCancelBtn');
+    const lexiconTestInput = document.getElementById('lexiconTestInput');
+    const lexiconRunTestBtn = document.getElementById('lexiconRunTestBtn');
+    const lexiconTestResult = document.getElementById('lexiconTestResult');
+
+    let currentLexiconData = null;
+    let currentLexiconCategory = 'all';
+
+    async function fetchLexicon() {
+      try {
+        const res = await fetch('/api/lexicon');
+        const data = await res.json();
+        if (data.success && data.lexicon) {
+          currentLexiconData = data.lexicon;
+          updateLexiconStats(data.stats);
+          renderLexiconCards();
+        }
+      } catch (err) {
+        console.error('Failed to load lexicon:', err);
+      }
+    }
+
+    function updateLexiconStats(stats) {
+      if (!stats) return;
+      if (lexiconCountBadge) lexiconCountBadge.innerText = stats.total_items || 0;
+      const bAll = document.getElementById('badgeAll');
+      const bCmd = document.getElementById('badgeCmd');
+      const bDev = document.getElementById('badgeDev');
+      const bWs = document.getElementById('badgeWs');
+      const bTech = document.getElementById('badgeTech');
+      const bId = document.getElementById('badgeId');
+      const bCor = document.getElementById('badgeCor');
+
+      if (bAll) bAll.innerText = stats.total_items || 0;
+      if (bCmd) bCmd.innerText = stats.category_counts?.commands || 0;
+      if (bDev) bDev.innerText = stats.category_counts?.devices || 0;
+      if (bWs) bWs.innerText = stats.category_counts?.workspace || 0;
+      if (bTech) bTech.innerText = stats.category_counts?.technical || 0;
+      if (bId) bId.innerText = stats.category_counts?.identity || 0;
+      if (bCor) bCor.innerText = stats.category_counts?.corrections || 0;
+    }
+
+    function renderLexiconCards() {
+      if (!lexiconCardsGrid || !currentLexiconData) return;
+      const cats = currentLexiconData.categories || {};
+      const query = (lexiconSearchInput?.value || '').trim().toLowerCase();
+
+      let allItems = [];
+      Object.keys(cats).forEach(catKey => {
+        if (currentLexiconCategory === 'all' || currentLexiconCategory === catKey) {
+          const catInfo = cats[catKey];
+          (catInfo.items || []).forEach(it => {
+            allItems.push({ ...it, catLabel: catInfo.label, catIcon: catInfo.icon, catKey: catKey });
+          });
+        }
+      });
+
+      // Filter by search query
+      if (query) {
+        allItems = allItems.filter(it => {
+          const term = (it.term || '').toLowerCase();
+          const desc = (it.desc || '').toLowerCase();
+          const aliases = (it.aliases || []).join(' ').toLowerCase();
+          return term.includes(query) || desc.includes(query) || aliases.includes(query);
+        });
+      }
+
+      if (allItems.length === 0) {
+        lexiconCardsGrid.innerHTML = `
+          <div style="grid-column: 1/-1; text-align: center; padding: 2.5rem; color: var(--text-dim); font-size: 0.9rem;">
+            🔍 ไม่พบคำศัพท์หรือคำสั่งที่ค้นหาในหมวดนี้ค่ะบอส
+          </div>
+        `;
+        return;
+      }
+
+      lexiconCardsGrid.innerHTML = allItems.map(it => {
+        const aliasesHtml = (it.aliases && it.aliases.length > 0)
+          ? `<div class="lexicon-aliases-wrap">${it.aliases.map(a => `<span class="lexicon-alias-pill" title="คำพ้อง/เสียงที่มักได้ยิน">${escapeHtml(a)}</span>`).join('')}</div>`
+          : (it.pattern ? `<div class="lexicon-aliases-wrap"><span class="lexicon-alias-pill" style="background:rgba(236,72,153,0.25); border-color:rgba(236,72,153,0.4);" title="Regex Pattern">${escapeHtml(it.pattern)}</span></div>` : '');
+
+        return `
+          <div class="lexicon-card" data-id="${escapeHtml(it.id)}" data-cat="${escapeHtml(it.catKey)}">
+            <div class="lexicon-card-header">
+              <div class="lexicon-term">
+                <span>${it.catIcon || '📌'}</span>
+                <span>${escapeHtml(it.term)}</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:0.4rem;">
+                <span class="lexicon-cat-tag">${escapeHtml(it.catLabel || it.catKey)}</span>
+                <button class="lexicon-card-del-btn" onclick="deleteLexiconItem('${escapeHtml(it.catKey)}', '${escapeHtml(it.id)}')" title="ลบคำนี้">🗑️</button>
+              </div>
+            </div>
+            ${aliasesHtml}
+            <div class="lexicon-desc">${escapeHtml(it.desc || 'ไม่มีคำอธิบาย')}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openLexiconModal() {
+      if (lexiconModal) lexiconModal.classList.add('open');
+      fetchLexicon();
+    }
+
+    function closeLexiconModal() {
+      if (lexiconModal) lexiconModal.classList.remove('open');
+    }
+
+    window.deleteLexiconItem = async function(catKey, itemId) {
+      if (!confirm(`ต้องการลบรายการนี้ออกจากคลังความรู้ใช่ไหมคะบอส?`)) return;
+      try {
+        const res = await fetch('/api/lexicon/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ category: catKey, id: itemId })
+        });
+        const data = await res.json();
+        if (data.success) {
+          fetchLexicon();
+        }
+      } catch (err) {
+        alert('เกิดข้อผิดพลาดในการลบ: ' + err);
+      }
+    };
+
+    // Category Tabs click handling
+    if (lexiconTabs) {
+      lexiconTabs.addEventListener('click', (e) => {
+        const btn = e.target.closest('.lexicon-tab-btn');
+        if (!btn) return;
+        const targetCat = btn.getAttribute('data-cat');
+        if (targetCat === 'add_form') {
+          // Show form
+          lexiconCardsGrid.style.display = 'none';
+          lexiconAddFormContainer.style.display = 'block';
+          lexiconTabs.querySelectorAll('.lexicon-tab-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          return;
+        }
+
+        lexiconCardsGrid.style.display = 'grid';
+        lexiconAddFormContainer.style.display = 'none';
+        lexiconTabs.querySelectorAll('.lexicon-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentLexiconCategory = targetCat;
+        renderLexiconCards();
+      });
+    }
+
+    if (lexiconAddNewBtn) {
+      lexiconAddNewBtn.addEventListener('click', () => {
+        lexiconCardsGrid.style.display = 'none';
+        lexiconAddFormContainer.style.display = 'block';
+        const addBtn = lexiconTabs.querySelector('[data-cat="add_form"]');
+        if (addBtn) {
+          lexiconTabs.querySelectorAll('.lexicon-tab-btn').forEach(b => b.classList.remove('active'));
+          addBtn.classList.add('active');
+        }
+      });
+    }
+
+    if (lexFormCancelBtn) {
+      lexFormCancelBtn.addEventListener('click', () => {
+        lexiconCardsGrid.style.display = 'grid';
+        lexiconAddFormContainer.style.display = 'none';
+        const allBtn = lexiconTabs.querySelector('[data-cat="all"]');
+        if (allBtn) {
+          lexiconTabs.querySelectorAll('.lexicon-tab-btn').forEach(b => b.classList.remove('active'));
+          allBtn.classList.add('active');
+          currentLexiconCategory = 'all';
+          renderLexiconCards();
+        }
+      });
+    }
+
+    if (lexFormSaveBtn) {
+      lexFormSaveBtn.addEventListener('click', async () => {
+        const term = lexFormTerm.value.trim();
+        if (!term) {
+          alert('กรุณากรอกคำที่ถูกต้อง (Term) ด้วยค่ะบอส');
+          return;
+        }
+        const cat = lexFormCategory.value;
+        const aliasesStr = lexFormAliases.value.trim();
+        const desc = lexFormDesc.value.trim();
+
+        try {
+          const res = await fetch('/api/lexicon/item', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              category: cat,
+              term: term,
+              aliases: aliasesStr,
+              desc: desc
+            })
+          });
+          const data = await res.json();
+          if (data.success) {
+            lexFormTerm.value = '';
+            lexFormAliases.value = '';
+            lexFormDesc.value = '';
+            lexiconCardsGrid.style.display = 'grid';
+            lexiconAddFormContainer.style.display = 'none';
+            const catBtn = lexiconTabs.querySelector(`[data-cat="${cat}"]`) || lexiconTabs.querySelector('[data-cat="all"]');
+            if (catBtn) {
+              lexiconTabs.querySelectorAll('.lexicon-tab-btn').forEach(b => b.classList.remove('active'));
+              catBtn.classList.add('active');
+              currentLexiconCategory = cat;
+            }
+            fetchLexicon();
+          } else {
+            alert('เกิดข้อผิดพลาด: ' + (data.error || 'บันทึกไม่สำเร็จ'));
+          }
+        } catch (err) {
+          alert('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err);
+        }
+      });
+    }
+
+    if (lexiconResetDefaultBtn) {
+      lexiconResetDefaultBtn.addEventListener('click', async () => {
+        if (!confirm('ต้องการรีเซ็ตคลังคำสั่งและคำศัพท์กลับเป็นค่ามาตรฐานของระบบใช่ไหมคะบอส?')) return;
+        try {
+          const res = await fetch('/api/lexicon/reset', { method: 'POST' });
+          const data = await res.json();
+          if (data.success) {
+            fetchLexicon();
+          }
+        } catch (err) {
+          alert('เกิดข้อผิดพลาดในการรีเซ็ต: ' + err);
+        }
+      });
+    }
+
+    if (lexiconSearchInput) {
+      lexiconSearchInput.addEventListener('input', () => {
+        renderLexiconCards();
+      });
+    }
+
+    if (lexiconRunTestBtn && lexiconTestInput && lexiconTestResult) {
+      lexiconRunTestBtn.addEventListener('click', async () => {
+        const text = lexiconTestInput.value.trim();
+        if (!text) return;
+        try {
+          const res = await fetch('/api/lexicon/normalize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text })
+          });
+          const data = await res.json();
+          if (data.success) {
+            const appliedCount = (data.applied || []).length;
+            const appliedDetails = appliedCount > 0 
+              ? data.applied.map(a => `${a.matched || a.alias} ➜ <strong>${a.replaced_with || a.canonical}</strong>`).join(', ')
+              : 'ตรงตามมาตรฐานแล้ว ไม่มีคำเพี้ยนค่ะ';
+
+            lexiconTestResult.style.display = 'block';
+            lexiconTestResult.innerHTML = `
+              <div>✨ <strong>ผลลัพธ์ที่แก้ไขแล้ว:</strong> "${escapeHtml(data.normalized)}"</div>
+              <div style="font-size:0.75rem; color:var(--text-dim); margin-top:0.3rem;">ตรวจพบและแก้ไข ${appliedCount} จุด (${appliedDetails})</div>
+            `;
+          }
+        } catch (err) {
+          alert('เกิดข้อผิดพลาดในการทดสอบ: ' + err);
+        }
+      });
+    }
+
+    if (lexiconOpenBtn) lexiconOpenBtn.addEventListener('click', openLexiconModal);
+    if (lexiconCloseBtn) lexiconCloseBtn.addEventListener('click', closeLexiconModal);
+    if (lexiconModal) {
+      lexiconModal.addEventListener('click', (e) => {
+        if (e.target === lexiconModal) closeLexiconModal();
+      });
+    }
+
+    // Load initial lexicon count
+    fetchLexicon();
 
     // Helper: Append Message with Rich Markdown Rendering & Terminal Events
     function appendChatMessage(sender, text, toolEvents = null, audioUrl = null, autoScroll = true, cognitiveTier = null, modelUsed = null, cognitiveFeatures = null, routeReason = null) {
