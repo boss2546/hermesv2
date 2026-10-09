@@ -199,7 +199,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "voice": "th-TH-PremwadeeNeural",
     "speed": "+0%",
     "pitch": "+0Hz",
-    "model": "ag/gemini-2.5-flash",
+    "model": "auto",
     "temperature": 0.7,
     "auto_speak": True,
     "wallpaper_mode": "custom",
@@ -278,6 +278,56 @@ def save_stored_config(cfg: Dict[str, Any]):
         logger.error("Could not save config.json: %s", e)
 
 RUNTIME_CONFIG: Dict[str, Any] = load_stored_config()
+
+# -----------------------------------------------------------------------------
+# 🧠 Dynamic Cognitive Auto-Routing Engine (สลับสมองเร็ว/คิดลึกอัตโนมัติ)
+# -----------------------------------------------------------------------------
+FAST_TIER_MODEL = "ag/gemini-2.5-flash"
+DEEP_TIER_MODEL = "ag/gemini-3.8-flash-high"
+
+DEEP_THINK_TRIGGERS = [
+    # Coding & Development
+    r"\bcode\b", r"\bpython\b", r"\bjavascript\b", r"\btypescript\b", r"\breact\b",
+    r"\bsql\b", r"\bdocker\b", r"\bgit\b", r"\bapi\b", r"\bfunction\b", r"\bclass\b",
+    r"เขียนโค้ด", r"โค้ด", r"ฟังก์ชัน", r"ดีบัก", r"แก้บัก", r"แก้บั๊ก", r"รีแฟกเตอร์",
+    r"refactor", r"debug", r"exception", r"error", r"traceback",
+    # Architecture & System Design
+    r"สถาปัตยกรรม", r"architecture", r"วางระบบ", r"ออกแบบระบบ", r"ฐานข้อมูล",
+    r"อัลกอริทึม", r"algorithm", r"โครงสร้างข้อมูล",
+    # Deep Analysis & Strategic Reasoning
+    r"วิเคราะห์เชิงลึก", r"วิเคราะห์อย่างละเอียด", r"วิเคราะห์", r"เปรียบเทียบ",
+    r"ข้อดีข้อเสีย", r"trade-off", r"หาสาเหตุ", r"ทำไมถึง", r"อธิบายหลักการ",
+    r"กลยุทธ์", r"คำนวณ", r"พิสูจน์",
+    # Explicit User Direction
+    r"คิดลึก", r"คิดให้ละเอียด", r"คิดให้ดี", r"deep think", r"thinking",
+]
+
+DEEP_PATTERN = re.compile("|".join(DEEP_THINK_TRIGGERS), re.IGNORECASE)
+
+def resolve_adaptive_model(text: str, requested_model: str = "auto") -> Tuple[str, str, str]:
+    """Dynamically route request to fast or deep cognitive model when in auto mode.
+
+    Returns:
+        (actual_model_id, cognitive_tier, route_reason)
+    """
+    req = (requested_model or "").strip()
+    if req and req not in ["auto", "auto-adaptive", "default"]:
+        return req, "custom", "ผู้ใช้ระบุโมเดลเฉพาะเจาะจง"
+
+    cleaned = text.strip()
+
+    # 1. Check for explicit code blocks or long complex prompts (> 260 chars)
+    if len(cleaned) > 260 or "```" in cleaned or "`" in cleaned:
+        return DEEP_TIER_MODEL, "deep", "ข้อความยาวหรือมีโค้ดโปรแกรม (โหมดคิดลึกซึ้ง 🧠)"
+
+    # 2. Check for technical, algorithmic, architecture, or deep thinking keywords
+    match = DEEP_PATTERN.search(cleaned)
+    if match:
+        trigger_word = match.group(0)
+        return DEEP_TIER_MODEL, "deep", f"ตรวจพบบริบทงานเทคนิค/คิดลึก ('{trigger_word}') 🧠"
+
+    # 3. Default to ultra-fast tier for greetings, casual chat, everyday life, and smart home AC commands
+    return FAST_TIER_MODEL, "fast", "บทสนทนาทั่วไป & สั่งการเครื่องมือฉับไว (โหมดตอบไว ⚡ 1.1s)"
 
 # -----------------------------------------------------------------------------
 # 🛠️ Host Terminal & System Tools
@@ -996,7 +1046,9 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         voice = payload.get("voice") or RUNTIME_CONFIG.get("voice", "th-TH-PremwadeeNeural")
         speed = payload.get("speed") or RUNTIME_CONFIG.get("speed", "+0%")
         pitch = payload.get("pitch") or RUNTIME_CONFIG.get("pitch", "+0Hz")
-        model = payload.get("model") or RUNTIME_CONFIG.get("model", "ag/gemini-2.5-flash")
+        raw_model = payload.get("model") or RUNTIME_CONFIG.get("model", "auto")
+        model, cognitive_tier, route_reason = resolve_adaptive_model(user_text, raw_model)
+        logger.info("Adaptive cognitive routing: prompt='%s' => model=%s (tier=%s: %s)", user_text[:35], model, cognitive_tier, route_reason)
         temperature = float(payload.get("temperature", RUNTIME_CONFIG.get("temperature", 0.7)))
 
         # Stage 1 & 2: STT (if audio provided)
@@ -1055,7 +1107,11 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             "text": reply_text,
             "tool_events": tool_events,
             "audio_url": audio_url,
-            "timings": timings
+            "timings": timings,
+            "model": model,
+            "requested_model": raw_model,
+            "cognitive_tier": cognitive_tier,
+            "route_reason": route_reason
         }
         with _history_lock:
             RICH_CHAT_HISTORY.append(user_msg)
@@ -1071,6 +1127,9 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             "timings": timings,
             "voice": voice,
             "model": model,
+            "requested_model": raw_model,
+            "cognitive_tier": cognitive_tier,
+            "route_reason": route_reason,
         }
         self._send_json(response_data)
 
