@@ -280,122 +280,169 @@ def save_stored_config(cfg: Dict[str, Any]):
 RUNTIME_CONFIG: Dict[str, Any] = load_stored_config()
 
 # -----------------------------------------------------------------------------
-# 🧠 High-Precision Dynamic Cognitive Auto-Routing Engine (สมองกลสลับรุ่นความแม่นยำสูง)
-# ป้องกัน False Positives 100%: คุยเล่น / แอร์ / ถามไถ่ชีวิตประจำวัน ต้องตอบไวเสมอ!
+# 🧠 Multi-Dimensional Cognitive Understanding Engine (สมองกลวิเคราะห์ความซับซ้อนหลายมิติ)
+# รองรับ: คำสั่งหลายสเต็ป (Multi-Step), ตรรกะเงื่อนไข (Conditionals), งานวิศวกรรมสถาปัตยกรรม (Deep Engineering)
+# พร้อม Safe Fast Shield คุ้มกันคำสั่งชีวิตประจำวัน/แอร์ให้ตอบไว 1-2s เสมอ
 # -----------------------------------------------------------------------------
 FAST_TIER_MODEL = "ag/gemini-2.5-flash"
 DEEP_TIER_MODEL = "ag/gemini-3.8-flash-high"
 
-# 1. Explicit User Voice Overrides (เจตนาสั่งโหมดโมเดลโดยตรงผ่านเสียงหรือข้อความ)
-EXPLICIT_FAST_TRIGGERS = [
-    r"ตอบไว", r"ตอบเร็ว", r"เอาเร็ว", r"ขอเร็ว", r"ไม่ต้องคิดลึก",
-    r"สรุปสั้น", r"ขอสั้น", r"fast mode", r"โหมดเร็ว"
-]
-EXPLICIT_DEEP_TRIGGERS = [
-    r"คิดลึก", r"คิดหนัก", r"คิดให้ละเอียด", r"คิดรอบคอบ", r"วิเคราะห์ลึก",
-    r"วิเคราะห์อย่างละเอียด", r"deep think", r"โหมดคิดลึก", r"think deeply"
-]
-RE_EXPLICIT_FAST = re.compile("|".join(EXPLICIT_FAST_TRIGGERS), re.IGNORECASE)
-RE_EXPLICIT_DEEP = re.compile("|".join(EXPLICIT_DEEP_TRIGGERS), re.IGNORECASE)
+class CognitiveRouteResult(tuple):
+    """Tuple supporting both 3-element unpack: (model, tier, reason)
+    and attribute access: res.model, res.tier, res.reason, res.score, res.features.
+    """
+    def __new__(cls, model: str, tier: str, reason: str, score: int = 0, features: List[str] = None):
+        return super().__new__(cls, (model, tier, reason))
 
-# 2. Guaranteed Fast Shield (ป้องกัน False Positives 100% ตอบไวทันใจบอส)
-# แอร์, Smart Home, คุยเล่น, ชีวิตประจำวัน, ทักทาย, คำถามสั้นๆ
-FAST_SHIELD_PATTERNS = [
-    # Smart Home & AC
-    r"แอร์", r"อุณหภูมิ", r"องศา", r"เปิดแอร์", r"ปิดแอร์", r"ปรับแอร์",
-    r"พัดลม", r"หลอดไฟ", r"เปิดไฟ", r"ปิดไฟ", r"สวิตช์", r"tuya",
-    # Everyday greetings & affectionate care
-    r"สวัสดี", r"หวัดดี", r"ดีจ้า", r"ฮัลโหล", r"morning", r"ฝันดี", r"กู๊ดไนท์",
-    r"เหนื่อยไหม", r"สบายดีไหม", r"เป็นไงบ้าง", r"กินข้าว", r"ชานม", r"รักนะ",
-    r"คิดถึง", r"น่ารัก", r"แฟน", r"จุ๊บ", r"กอด", r"เขิน", r"มายจ๋า", r"มายคะ",
-    # Everyday inquiries & short commands
-    r"กี่โมง", r"วันนี้วันที่", r"อากาศเป็นไง", r"ฝนตกไหม",
-    r"^git\s+(status|pull|branch|log|diff)\b",
-    r"^(dir|ls|pwd|whoami)\b"
-]
-RE_FAST_SHIELD = re.compile("|".join(FAST_SHIELD_PATTERNS), re.IGNORECASE)
+    def __init__(self, model: str, tier: str, reason: str, score: int = 0, features: List[str] = None):
+        self.model = model
+        self.tier = tier
+        self.reason = reason
+        self.score = score
+        self.features = features or []
 
-# 3. Dedicated High-Confidence Deep Engineering Triggers
-# ต้องเป็นคำที่ระบุงานด้านวิศวกรรม / โค้ด / การวิเคราะห์ระบบระดับสูงอย่างแท้จริง
-DEEP_HIGH_CONFIDENCE_TRIGGERS = [
-    # Coding & Development verbs/nouns
+# 1. Explicit Voice Overrides (เจตนาสั่งโหมดโมเดลโดยตรงผ่านเสียงหรือข้อความ)
+RE_EXPLICIT_FAST = re.compile(r"ตอบไว|ตอบเร็ว|เอาเร็ว|ขอเร็ว|ไม่ต้องคิดลึก|สรุปสั้น|ขอสั้น|fast mode|โหมดเร็ว", re.IGNORECASE)
+RE_EXPLICIT_DEEP = re.compile(r"คิดลึก|คิดหนัก|คิดให้ละเอียด|คิดรอบคอบ|วิเคราะห์ลึก|วิเคราะห์อย่างละเอียด|deep think|โหมดคิดลึก|think deeply", re.IGNORECASE)
+
+# 2. Pure Casual & Everyday Safe Shield (คุ้มกันคุยเล่นประจำวัน)
+RE_CASUAL_PURE = re.compile(
+    r"^(สวัสดี|หวัดดี|ดีจ้า|ฮัลโหล|morning|ฝันดี|กู๊ดไนท์|"
+    r"สบายดีไหม|เหนื่อยไหม|เป็นไงบ้าง|กินข้าว|ชานม|รักนะ|คิดถึง|น่ารัก|แฟน|จุ๊บ|กอด|เขิน|มายจ๋า|มายคะ|"
+    r"กี่โมง|วันนี้วันที่|อากาศเป็นไง|ฝนตกไหม|ปวดหัว|หิวข้าว|ง่วงนอน)[^?]*\??$",
+    re.IGNORECASE
+)
+
+# 3. Simple AC / Single Device Commands (คำสั่งแอร์เดี่ยวๆ ต้องตอบไวฉับไว)
+RE_SIMPLE_AC = re.compile(
+    r"^(เปิดแอร์|ปิดแอร์|ปรับแอร์|แอร์\s*\d+\s*องศา|แอร์เย็น|แอร์ร้อน|สถานะแอร์|ตอนนี้แอร์เปิดอยู่ไหม|กี่องศา)[^?]*\??$",
+    re.IGNORECASE
+)
+
+# 4. Multi-Step & Chaining Connectors (คำเชื่อมขั้นตอนและความซับซ้อนของเวิร์กโฟลว์)
+MULTI_STEP_CONNECTORS = [
+    r"แล้วค่อย", r"หลังจากนั้น", r"จากนั้น", r"พร้อมทั้ง", r"ขั้นตอนที่",
+    r"step-by-step", r"ทีละสเต็ป", r"ทีละขั้น", r"ลำดับต่อไป", r"ก่อนอื่น",
+    r"และหลังจาก", r"ต่อด้วย", r"พร้อมทั้งสรุป", r"roadmap", r"action plan"
+]
+RE_MULTI_STEP = re.compile("|".join(MULTI_STEP_CONNECTORS), re.IGNORECASE)
+
+# 5. Conditionals & Logic (ตรรกะเงื่อนไขและการจัดการข้อผิดพลาด)
+CONDITIONALS = [
+    r"ถ้า.*?(ให้|ช่วย|ต้อง)", r"หาก.*?(ให้|ช่วย|ต้อง)", r"ในกรณีที่",
+    r"แต่ถ้า", r"ถ้าเกิด", r"ถ้าไม่.*?(ให้|ช่วย)", r"failover", r"fallback", r"rollback"
+]
+RE_CONDITIONALS = re.compile("|".join(CONDITIONALS), re.IGNORECASE)
+
+# 6. Deep Engineering & Architecture Domains (วิศวกรรม/สถาปัตยกรรม/ฐานข้อมูล/อัลกอริทึม)
+DEEP_DOMAINS = [
+    # Coding & Development
     r"เขียนโค้ด", r"เขียนสคริปต์", r"เขียนโปรแกรม", r"เขียนฟังก์ชัน", r"เขียนคลาส",
     r"เขียน\s*(python|javascript|typescript|react|html|css|sql|bash|powershell|dockerfile|docker|c\+\+|cpp|c#|go|rust|java|php)",
     r"write\s+(code|script|function|class|program|query|dockerfile)",
     r"ดีบักโค้ด", r"แก้บั๊กโค้ด", r"แก้บักโค้ด", r"debug\s+code", r"refactor\s+code",
     r"วิเคราะห์โค้ด", r"ตรวจโค้ด", r"รีวิวโค้ด", r"review\s+code",
     r"แก้ error", r"แก้ bug", r"traceback", r"unit\s*test", r"memory\s*leak",
-    # Software Architecture & Algorithms
+    # Architecture & Distributed Systems
     r"ออกแบบระบบ", r"สถาปัตยกรรม", r"architecture", r"system\s*design",
-    r"microservices", r"kubernetes", r"k8s", r"docker\s+swarm",
+    r"microservices", r"kubernetes", r"k8s", r"docker\s+swarm", r"load\s*balanc",
+    r"rate\s*limit", r"circuit\s*breaker", r"message\s*queue", r"kafka", r"rabbitmq",
+    r"reverse\s*proxy", r"api\s*gateway", r"high\s*availability",
+    # Database & Data Engineering
+    r"ฐานข้อมูล", r"database", r"schema", r"migrate\s*ฐานข้อมูล", r"migration",
+    r"query\s*optimization", r"index(ing)?", r"deadlock", r"transaction", r"acid",
+    r"sharding", r"replication", r"postgres", r"mysql", r"mongodb", r"redis",
+    # Algorithms & Mathematics
     r"อัลกอริทึม", r"algorithm", r"โครงสร้างข้อมูล", r"data\s*structure",
     r"big-o", r"time\s*complexity", r"space\s*complexity", r"dynamic\s*programming",
-    r"binary\s*search", r"พิสูจน์สูตร", r"แคลคูลัส", r"สมการเชิงอนุพันธ์"
+    r"binary\s*search", r"พิสูจน์สูตร", r"แคลคูลัส", r"สมการเชิงอนุพันธ์",
+    # Strategic Planning & Deep Comparative Analysis
+    r"ประเมินความเสี่ยง", r"risk\s*assessment", r"เปรียบเทียบข้อดีข้อเสีย",
+    r"trade-off", r"วิเคราะห์สาเหตุเชิงลึก", r"root\s*cause", r"swot", r"cost-benefit"
 ]
-RE_DEEP_HIGH_CONF = re.compile("|".join(DEEP_HIGH_CONFIDENCE_TRIGGERS), re.IGNORECASE)
+RE_DEEP_DOMAINS = re.compile("|".join(DEEP_DOMAINS), re.IGNORECASE)
 
-# Code block detection (actual programming block, not just quotes)
-RE_CODE_BLOCK = re.compile(r"```(?:python|js|ts|html|css|json|sql|sh|bash|go|rust|cpp|c|java)?\s*\n.+?```", re.DOTALL | re.IGNORECASE)
+# Code Block Pattern (ตรวจจับบล็อกโค้ดในข้อความ)
+RE_CODE_BLOCK = re.compile(r"```[\s\S]+?```", re.IGNORECASE)
 
-# Secondary technical terms requiring supporting analytical context
-SECONDARY_TECH_TERMS = [
-    r"\bdocker\b", r"\bkubernetes\b", r"\bk8s\b", r"\bdatabase\b", r"\bschema\b",
-    r"\bkafka\b", r"\bmq\b", r"\bredis\b", r"\bnginx\b", r"\bgrpc\b", r"\bgraphql\b",
-    r"\bconcurrency\b", r"\bmultithreading\b", r"\bmutex\b", r"\bdeadlock\b"
-]
-RE_SECONDARY_TECH = re.compile("|".join(SECONDARY_TECH_TERMS), re.IGNORECASE)
 
-ANALYSIS_CONTEXT_WORDS = [
-    r"วิเคราะห์", r"เปรียบเทียบ", r"ข้อดีข้อเสีย", r"trade-off", r"หลักการทำงาน",
-    r"best\s*practice", r"pros\s*and\s*cons", r"benchmark"
-]
-RE_ANALYSIS_CONTEXT = re.compile("|".join(ANALYSIS_CONTEXT_WORDS), re.IGNORECASE)
-
-def resolve_adaptive_model(text: str, requested_model: str = "auto") -> Tuple[str, str, str]:
-    """High-Precision Multi-Tier Cognitive Model Router.
-    Guarantees zero false positives on everyday conversation and smart home control.
-
-    Returns:
-        (actual_model_id, cognitive_tier, route_reason)
+def resolve_adaptive_model(text: str, requested_model: str = "auto") -> CognitiveRouteResult:
+    """Analyzes linguistic complexity, multi-step clauses, conditionals, and domain depth.
+    Returns CognitiveRouteResult containing (model, tier, reason) and .score, .features.
     """
     req = (requested_model or "").strip()
     if req and req not in ["auto", "auto-adaptive", "default"]:
-        return req, "custom", "ผู้ใช้ระบุโมเดลเฉพาะเจาะจง"
+        return CognitiveRouteResult(
+            req, "custom", "ผู้ใช้ระบุโมเดลเฉพาะเจาะจง", 0, ["User Specified"]
+        )
 
     cleaned = text.strip()
+    features: List[str] = []
+    complexity_score = 0
 
-    # Rule 1: Explicit User Command (สูงสุด)
+    # 1. Check Explicit Voice Overrides
     if RE_EXPLICIT_FAST.search(cleaned):
-        return FAST_TIER_MODEL, "fast", "ผู้ใช้สั่งให้ตอบไว/สั้น (โหมดตอบไว ⚡ 1.1s)"
+        return CognitiveRouteResult(
+            FAST_TIER_MODEL, "fast", "ผู้ใช้สั่งให้ตอบไว/สั้น (โหมดตอบไว ⚡ 1.1s)", 0, ["Explicit Fast Command"]
+        )
     if RE_EXPLICIT_DEEP.search(cleaned):
-        return DEEP_TIER_MODEL, "deep", "ผู้ใช้สั่งให้คิดลึกซึ้งเป็นพิเศษ (โหมดคิดลึก 🧠)"
+        return CognitiveRouteResult(
+            DEEP_TIER_MODEL, "deep", "ผู้ใช้สั่งให้คิดลึกซึ้งเป็นพิเศษ (โหมดคิดลึก 🧠)", 10, ["Explicit Deep Command"]
+        )
 
-    # Rule 2: Safe Fast Shield (ป้องกัน False Positives 100%)
-    # ถ้ามีเจตนาคุยเล่น, ถามแอร์, ถามสารทุกข์สุกดิบ, ถามเวลา ให้วิ่ง Fast เสมอ!
-    if RE_FAST_SHIELD.search(cleaned):
-        # ข้อยกเว้นเดียว: หากในประโยคมีคำสั่งเขียนโค้ดอย่างเด่นชัดจริงๆ (เช่น "เขียนโค้ด python ควบคุมแอร์ tuya ให้หน่อย")
-        if not RE_DEEP_HIGH_CONF.search(cleaned):
-            return FAST_TIER_MODEL, "fast", "บทสนทนาประจำวัน & อุปกรณ์ Smart Home (โหมดตอบไว ⚡ 1.1s)"
+    # 2. Check Pure Casual / Pure Simple AC (Safe Fast Shield)
+    if RE_CASUAL_PURE.match(cleaned):
+        return CognitiveRouteResult(
+            FAST_TIER_MODEL, "fast", "บทสนทนาประจำวันทั่วไป (โหมดตอบไว ⚡ 1.1s)", 0, ["Casual Chat"]
+        )
 
-    # Rule 3: High-Confidence Coding & Architecture Triggers
-    if RE_DEEP_HIGH_CONF.search(cleaned):
-        match = RE_DEEP_HIGH_CONF.search(cleaned)
-        word = match.group(0) if match else "งานวิศวกรรม"
-        return DEEP_TIER_MODEL, "deep", f"งานพัฒนาโปรแกรม/อัลกอริทึม/สถาปัตยกรรม ('{word}') 🧠"
+    if RE_SIMPLE_AC.match(cleaned):
+        return CognitiveRouteResult(
+            FAST_TIER_MODEL, "fast", "สั่งการเครื่องมือ Smart Home ฉับไว (โหมดตอบไว ⚡ 1.1s)", 0, ["Direct Smart Home Action"]
+        )
 
-    # Rule 4: Actual Code Block in text
+    # 3. Multi-Clause & Multi-Step Workflow Analysis
+    if RE_MULTI_STEP.search(cleaned):
+        match_step = RE_MULTI_STEP.search(cleaned).group(0)
+        complexity_score += 3
+        features.append(f"Multi-Step Workflow ('{match_step}')")
+
+    # 4. Conditional Logic & Failure Handling Analysis
+    if RE_CONDITIONALS.search(cleaned):
+        complexity_score += 3
+        features.append("Conditional / Fallback Logic")
+
+    # 5. Deep Domain & Engineering Trigger Analysis
+    deep_matches = [m.group(0) for m in RE_DEEP_DOMAINS.finditer(cleaned)]
+    if deep_matches:
+        complexity_score += len(deep_matches) * 3
+        matched_words = list(dict.fromkeys(deep_matches))[:3]
+        features.append(f"Deep Domain: {', '.join(matched_words)}")
+
+    # 6. Embedded Code Block in prompt
     if RE_CODE_BLOCK.search(cleaned):
-        return DEEP_TIER_MODEL, "deep", "พบบล็อกโค้ดโปรแกรมในข้อความ (โหมดคิดลึก 🧠)"
+        complexity_score += 5
+        features.append("Embedded Code Block")
 
-    # Rule 5: Compound Technical Analysis (Technical term + Comparative/Analytical intent)
-    has_tech = bool(RE_SECONDARY_TECH.search(cleaned))
-    has_analysis = bool(RE_ANALYSIS_CONTEXT.search(cleaned))
-    if has_tech and has_analysis:
-        return DEEP_TIER_MODEL, "deep", "งานวิเคราะห์เปรียบเทียบเชิงเทคนิค (โหมดคิดลึก 🧠)"
+    # 7. Text Length & High Information Density
+    words = cleaned.split()
+    if len(words) > 35 or len(cleaned) > 220:
+        complexity_score += 1
+        features.append("High Information Density")
 
-    # Rule 6: Default Fallback -> Ultra-Fast Tier
-    # คำถามทั่วไป, ถามข้อเท็จจริงสั้นๆ, ขอคำแนะนำทั่วไป ไม่ดึงเข้า Deep Model เพื่อป้องกันความหน่วง
-    return FAST_TIER_MODEL, "fast", "บทสนทนาทั่วไป & ผู้ช่วยเสียงฉับไว (โหมดตอบไว ⚡ 1.1s)"
+    # Decision Threshold:
+    # If complexity_score >= 3 -> Escalate to Deep Tier!
+    if complexity_score >= 3:
+        reason_str = " | ".join(features) if features else "คำสั่งซับซ้อนหลายมิติ"
+        return CognitiveRouteResult(
+            DEEP_TIER_MODEL, "deep", f"ตรวจพบคำสั่งซับซ้อน ({reason_str}) 🧠", complexity_score, features
+        )
+
+    # Otherwise default to ultra-fast tier
+    return CognitiveRouteResult(
+        FAST_TIER_MODEL, "fast", "บทสนทนาทั่วไป & ผู้ช่วยเสียงฉับไว (โหมดตอบไว ⚡ 1.1s)", complexity_score, features or ["Simple Inquiry"]
+    )
+
 
 
 # -----------------------------------------------------------------------------
@@ -1116,8 +1163,13 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         speed = payload.get("speed") or RUNTIME_CONFIG.get("speed", "+0%")
         pitch = payload.get("pitch") or RUNTIME_CONFIG.get("pitch", "+0Hz")
         raw_model = payload.get("model") or RUNTIME_CONFIG.get("model", "auto")
-        model, cognitive_tier, route_reason = resolve_adaptive_model(user_text, raw_model)
-        logger.info("Adaptive cognitive routing: prompt='%s' => model=%s (tier=%s: %s)", user_text[:35], model, cognitive_tier, route_reason)
+        route = resolve_adaptive_model(user_text, raw_model)
+        model = route.model
+        cognitive_tier = route.tier
+        route_reason = route.reason
+        complexity_score = route.score
+        cognitive_features = route.features
+        logger.info("Adaptive cognitive routing: prompt='%s' => model=%s (tier=%s, score=%d: %s)", user_text[:35], model, cognitive_tier, complexity_score, route_reason)
         temperature = float(payload.get("temperature", RUNTIME_CONFIG.get("temperature", 0.7)))
 
         # Stage 1 & 2: STT (if audio provided)
@@ -1139,7 +1191,14 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         # Stage 3: LLM Thinking + Tool Execution (PowerShell, Files, System Info)
         t1 = time.time()
         try:
-            reply_text, tool_events = self._query_agent_with_tools(user_text, model=model, temperature=temperature)
+            reply_text, tool_events = self._query_agent_with_tools(
+                user_text,
+                model=model,
+                temperature=temperature,
+                cognitive_tier=cognitive_tier,
+                complexity_score=complexity_score,
+                cognitive_features=cognitive_features
+            )
             timings["llm_seconds"] = round(time.time() - t1, 2)
         except Exception as e:
             logger.error("LLM processing error: %s", e)
@@ -1180,7 +1239,9 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             "model": model,
             "requested_model": raw_model,
             "cognitive_tier": cognitive_tier,
-            "route_reason": route_reason
+            "route_reason": route_reason,
+            "complexity_score": complexity_score,
+            "cognitive_features": cognitive_features
         }
         with _history_lock:
             RICH_CHAT_HISTORY.append(user_msg)
@@ -1199,10 +1260,20 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             "requested_model": raw_model,
             "cognitive_tier": cognitive_tier,
             "route_reason": route_reason,
+            "complexity_score": complexity_score,
+            "cognitive_features": cognitive_features
         }
         self._send_json(response_data)
 
-    def _query_agent_with_tools(self, text: str, model: str = "ag/gemini-2.5-flash", temperature: float = 0.7) -> Tuple[str, List[Dict[str, Any]]]:
+    def _query_agent_with_tools(
+        self,
+        text: str,
+        model: str = "ag/gemini-2.5-flash",
+        temperature: float = 0.7,
+        cognitive_tier: str = "fast",
+        complexity_score: int = 0,
+        cognitive_features: List[str] = None
+    ) -> Tuple[str, List[Dict[str, Any]]]:
         """Call LLM with full tool-calling loop (PowerShell terminal execution, file ops, system info)."""
         api_key = _resolve_api_key()
         system_prompt = get_system_prompt()
@@ -1214,9 +1285,24 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
 
         # Provide up to 20 recent messages
         messages = [{"role": "system", "content": system_prompt}] + CONVERSATION_HISTORY[-20:]
+
+        # Inject Deep Guidance if in Deep Cognitive Mode for complex/multi-step reasoning
+        if cognitive_tier == "deep":
+            feat_desc = ", ".join(cognitive_features) if cognitive_features else "คำสั่งซับซ้อนหลายขั้นตอน"
+            deep_guidance = (
+                f"\n\n[ระบบนำทาง DEEP COGNITIVE MODE: คำสั่งนี้มีความซับซ้อนระดับสูง ({feat_desc})]\n"
+                "- ให้คิดและวิเคราะห์อย่างรอบคอบและเป็นระบบ (Step-by-step reasoning)\n"
+                "- หากมีเงื่อนไขและหลายขั้นตอน ให้ปฏิบัติตามลำดับและตรวจสอบความถูกต้องครบถ้วนทุกข้อ\n"
+                "- หากต้องใช้เครื่องมือระบบ ให้ดำเนินการต่อเนื่องจนงานเสร็จสมบูรณ์ 100%\n"
+                "- อธิบายและจัดรูปแบบคำตอบด้วย Markdown อย่างชัดเจน เป็นระเบียบ และสวยงามตามมาตรฐานวิศวกรรม"
+            )
+            messages[0]["content"] += deep_guidance
+
         tool_events: List[Dict[str, Any]] = []
-        max_tool_rounds = 3 if enable_tools else 1
+        # Complex or deep tasks get up to 6 rounds for multi-step workflows
+        max_tool_rounds = (6 if (cognitive_tier == "deep" or complexity_score >= 3) else 3) if enable_tools else 1
         force_finalize_next = False
+
 
         for round_idx in range(max_tool_rounds):
             payload = {

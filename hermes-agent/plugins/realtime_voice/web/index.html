@@ -2310,14 +2310,16 @@
         if (existingThinking) existingThinking.remove();
 
         if (data.reply_text) {
-          appendChatMessage('maymint', data.reply_text, data.tool_events, data.audio_url, true, data.cognitive_tier, data.model);
+          appendChatMessage('maymint', data.reply_text, data.tool_events, data.audio_url, true, data.cognitive_tier, data.model, data.cognitive_features, data.route_reason);
           recordHistoryMessage('maymint', data.reply_text, data.tool_events, data.audio_url);
 
           if (data.timings) {
             const tierBadge = data.cognitive_tier === 'deep' ? '🧠 คิดลึกซึ้ง' : (data.cognitive_tier === 'fast' ? '⚡ ตอบไว' : '');
             const modelName = (data.model || '').replace('ag/', '');
-            timingsBadge.innerText = `${tierBadge ? tierBadge + ' (' + modelName + ') | ' : ''}⏱️ LLM: ${data.timings.llm_seconds}s | TTS: ${data.timings.tts_seconds}s | รวม: ${data.timings.total_seconds}s`;
+            const featBrief = (data.cognitive_features && data.cognitive_features.length > 0) ? ` [${data.cognitive_features[0].split('(')[0].replace('Deep Domain: ', '').trim()}]` : '';
+            timingsBadge.innerText = `${tierBadge ? tierBadge + featBrief + ' (' + modelName + ') | ' : ''}⏱️ LLM: ${data.timings.llm_seconds}s | TTS: ${data.timings.tts_seconds}s | รวม: ${data.timings.total_seconds}s`;
           }
+
 
           if (autoSpeakToggle.checked && data.audio_url) {
             setStage(4, '🎙️ [สเต็ป 4/5] สร้างเสียงพูด Edge-TTS เสร็จสิ้น...');
@@ -2513,7 +2515,7 @@
     }
 
     // Helper: Append Message with Rich Markdown Rendering & Terminal Events
-    function appendChatMessage(sender, text, toolEvents = null, audioUrl = null, autoScroll = true, cognitiveTier = null, modelUsed = null) {
+    function appendChatMessage(sender, text, toolEvents = null, audioUrl = null, autoScroll = true, cognitiveTier = null, modelUsed = null, cognitiveFeatures = null, routeReason = null) {
       const row = document.createElement('div');
       row.className = 'msg-row';
       const bubble = document.createElement('div');
@@ -2564,9 +2566,12 @@
 
         let tierTagHtml = '';
         if (cognitiveTier === 'deep') {
-          tierTagHtml = `<span style="display:inline-block; margin-left:0.5rem; font-size:0.73rem; padding:0.12rem 0.5rem; border-radius:10px; background:rgba(168,85,247,0.25); border:1px solid rgba(192,132,252,0.45); color:#f3e8ff;">🧠 คิดลึกซึ้ง</span>`;
+          const featLabels = (cognitiveFeatures && cognitiveFeatures.length > 0)
+            ? ' · ' + cognitiveFeatures.slice(0, 2).map(f => f.split('(')[0].replace('Deep Domain: ', '')).join(', ')
+            : '';
+          tierTagHtml = `<span style="display:inline-block; margin-left:0.5rem; font-size:0.73rem; padding:0.12rem 0.5rem; border-radius:10px; background:rgba(168,85,247,0.25); border:1px solid rgba(192,132,252,0.45); color:#f3e8ff;" title="${escapeHtml(routeReason || 'โหมดคิดลึกซึ้ง')}">🧠 คิดลึกซึ้ง${escapeHtml(featLabels)}</span>`;
         } else if (cognitiveTier === 'fast') {
-          tierTagHtml = `<span style="display:inline-block; margin-left:0.5rem; font-size:0.73rem; padding:0.12rem 0.5rem; border-radius:10px; background:rgba(34,197,94,0.2); border:1px solid rgba(74,222,128,0.4); color:#bbf7d0;">⚡ ตอบไว 1.1s</span>`;
+          tierTagHtml = `<span style="display:inline-block; margin-left:0.5rem; font-size:0.73rem; padding:0.12rem 0.5rem; border-radius:10px; background:rgba(34,197,94,0.2); border:1px solid rgba(74,222,128,0.4); color:#bbf7d0;" title="${escapeHtml(routeReason || 'โหมดตอบไว')}">⚡ ตอบไว 1.1s</span>`;
         }
 
         bubble.innerHTML = `🌸 <strong>มายมิ้นท์:</strong>${tierTagHtml} ${toolsHtml}<div class="markdown-body">${contentHtml}</div>${replayBtnHtml}`;
