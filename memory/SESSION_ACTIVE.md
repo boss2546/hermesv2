@@ -218,6 +218,23 @@
     - ✅ *"ช่วยคิดลึกๆ วิเคราะห์การออกแบบระบบ Rate Limiting ให้หน่อย"* -> Tier: `deep` (`ag/gemini-3.8-flash-high`)
   - **Git Sync:** Commit `414b7abc` บนกิ่ง `feature/web-ui-redesign`
 
+- [x] **สเต็ป 21: Multi-Dimensional Cognitive Understanding Engine รองรับคำสั่งซับซ้อนหลายขั้นตอน (PASS 100%)**
+  - **ความต้องการของบอส:** "อยากให้มันฉลาดด้วยนะ ⚡ ระบบปัจจุบันของเรา (Local Multi-Tier) ไม่ใช่แค่เร็วอย่างเดียว ขอแบบฉลาดด้วย เข้าใจคำสั่งซับซ้อนได้"
+  - **การยกระดับความฉลาด (Multi-Dimensional Cognitive Architecture):**
+    1. **Multi-Step & Workflow Chaining:** ตรวจจับคำเชื่อมขั้นตอน (`แล้วค่อย`, `หลังจากนั้น`, `ขั้นตอนที่`, `step-by-step`, `ทีละสเต็ป`, `roadmap`, `action plan`)
+    2. **Conditional & Fallback Logic:** ตรวจจับตรรกะเงื่อนไข (`ถ้า...แล้ว...`, `หากเกิด...ให้...`, `failover`, `fallback`, `rollback`)
+    3. **Deep Technical & Architectural Domains:** ครอบคลุมงานวิศวกรรมสถาปัตยกรรม (Database Migration, Microservices, Rate Limiting, Deadlock Analysis, Security, Algorithms)
+    4. **Multi-Round Deep Execution Loop:** หากคำสั่งซับซ้อน (`complexity_score >= 3` หรือ `tier == 'deep'`) ขยายขีดความสามารถให้ AI ทำงานต่อเนื่องได้สูงสุด **6 Tool Rounds** พร้อมฉีด Chain-of-Thought Guidance System Prompt
+    5. **Cognitive Feature Tagging on UI:** แสดง Badge ละเอียดบนหน้าจอ เช่น `🧠 คิดลึกซึ้ง · Multi-Step, Database`
+  - **ผลการทดสอบสดบนระบบจริง (Live Server PASS 100%):**
+    - ✅ *"ช่วยเปิดแอร์ 24 องศา แล้วถ้าอุณหภูมิห้องยังไม่ลดใน 10 นาที ให้เขียนสคริปต์แจ้งเตือนผ่าน telegram ให้หน่อย"*
+      -> Tier: `deep` (Score: 6, Features: `Conditional / Fallback Logic`, `Deep Domain: เขียนสคริปต์`)
+      -> ผลการทำงาน: สั่งปรับแอร์จริง 24°C + เขียนโค้ด Python Monitor อุณหภูมิและส่งแจ้งเตือน Telegram ครบถ้วน
+    - ✅ *"ช่วยวางแผนขั้นตอนการ Migrate ฐานข้อมูลจาก MySQL ไป PostgreSQL ทีละสเต็ป พร้อมวิธี rollback ถ้าเกิดปัญหา"*
+      -> Tier: `deep` (Score: 15, Features: `Multi-Step Workflow ('ทีละสเต็ป')`, `Conditional Logic`, `Deep Domain: Migrate ฐานข้อมูล, MySQL, Postgres`)
+      -> ผลการทำงาน: จัดทำแผนการย้ายฐานข้อมูล 6 ขั้นตอนอย่างเป็นมืออาชีพ พร้อมแผน Rollback ป้องกันข้อมูลสูญหาย
+  - **Git Sync:** Commit `447b94d4` บนกิ่ง `feature/web-ui-redesign`
+
 ---
 
 ## 🌐 ลิงก์ระบบที่เปิดใช้งานอยู่
