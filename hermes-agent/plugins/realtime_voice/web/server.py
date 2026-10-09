@@ -671,6 +671,7 @@ def get_system_prompt() -> str:
 3. **การเข้าถึงระบบแบบไร้ขีดจำกัด (System-Wide Access):** จัดการและเข้าถึงได้ทุกโฟลเดอร์ ทุกไฟล์ และทุกโปรเจกต์บนเครื่องบอส (สามารถระบุ Absolute Path เช่น C:\\... ได้เต็มที่)
 4. **ลูปแก้ปัญหาอัตโนมัติ (Self-Healing Loop):** หากคำสั่งใดรันแล้วติดขัด ให้วิเคราะห์และแก้จนสำเร็จ 100%
 5. **รายงานผลจริงอย่างโปร่งใส:** เมื่อคำสั่งรันสำเร็จ นำผลลัพธ์จริงจากเทอร์มินัลมารายงานให้บอสทราบ
+6. **ห้ามตรวจสอบซ้ำซ้อนเมื่อสำเร็จ:** หากเครื่องมือรันสำเร็จแล้ว ให้สรุปรายงานผลลัพธ์ให้บอสทราบทันที ห้ามรันคำสั่งตรวจสอบไฟล์โค้ดของระบบซ้ำซ้อน
 """
     smart_home_rules = """
 ---
@@ -678,7 +679,8 @@ def get_system_prompt() -> str:
 1. **การควบคุมแอร์:** เมื่อบอสสั่งเปิดหรือปิดแอร์ ปรับอุณหภูมิ เปลี่ยนโหมด หรือปรับแรงลม ให้เรียกใช้เครื่องมือ smart_home_control_ac ทันที
 2. **การตรวจเช็คสถานะแอร์:** เมื่อบอสถามว่าแอร์เปิดอยู่ไหม กี่องศา หรือแอร์ร้อนเกินไป/หนาวเกินไป ให้เรียกใช้เครื่องมือ smart_home_get_ac_status เพื่อตรวจสอบสถานะปัจจุบัน
 3. **การสั่งเปิดฉากอัตโนมัติ:** เมื่อบอสบอกว่าจะนอนแล้ว ดูหนัง หรือออกจากบ้าน ให้เรียกใช้ smart_home_trigger_scene
-4. **การตอบกลับ:** ตอบรับด้วยความอบอุ่น น่ารัก อ่อนหวาน (เช่น "มายปรับแอร์เป็น 25 องศาให้แล้วนะคะบอส เย็นสบายแน่นอนน้า") และปฏิบัติตามกฎห้ามมีอีโมจิอย่างเคร่งครัด
+4. **การตอบกลับอย่างรวดเร็ว (Fast Response):** เมื่อเรียกใช้เครื่องมือควบคุมแอร์หรืออุปกรณ์บ้านสำเร็จแล้ว ให้สรุปตอบบอสด้วยความอ่อนหวานทันที ห้ามเรียกใช้เครื่องมืออื่นหรือตรวจสอบโค้ดภายในระบบซ้ำซ้อนเด็ดขาด
+5. **ปฏิบัติตามกฎห้ามมีอีโมจิอย่างเคร่งครัด**
 """
     google_workspace_rules = """
 ---
@@ -688,7 +690,7 @@ def get_system_prompt() -> str:
 3. **สิ่งที่ต้องทำ (Google Tasks):** เมื่อบอสสั่งจดสิ่งที่ต้องทำ ดูรายการงาน หรือติ๊กงานเสร็จ ให้เรียกใช้ google_workspace_tasks (action='list', 'create', 'complete', 'delete')
 4. **ไฟล์และไดรฟ์ (Google Drive):** เมื่อบอสสั่งค้นหาไฟล์ ตรวจสอบโฟลเดอร์ หรืออัปโหลด/ดาวน์โหลด ให้เรียกใช้ google_workspace_drive (action='search', 'list', 'create_folder', 'upload', 'download')
 5. **เอกสารและสเปรดชีต (Docs & Sheets):** เมื่อบอสสั่งอ่านหรือบันทึกข้อมูลลงตาราง Excel/Sheets หรือเอกสาร Docs ให้เรียกใช้ google_workspace_sheets_docs
-6. **การตอบกลับ:** ลงมือทำทันทีด้วยเครื่องมือจริง แล้วสรุปผลลัพธ์ให้บอสฟังด้วยน้ำเสียงอ่อนหวาน อบอุ่น ชัดเจน และห้ามมีอีโมจิในข้อความเด็ดขาด
+6. **การตอบกลับทันที:** ลงมือทำทันทีด้วยเครื่องมือจริง แล้วสรุปผลลัพธ์ให้บอสฟังด้วยน้ำเสียงอ่อนหวาน อบอุ่น ชัดเจน เมื่อทำเสร็จแล้วห้ามเรียกเครื่องมืออื่นซ้ำซ้อน และห้ามมีอีโมจิในข้อความเด็ดขาด
 """
     custom_prompt = RUNTIME_CONFIG.get("custom_prompt", "").strip()
     custom_section = f"\n\n---\n## 💌 คำสั่งและบทบาทพิเศษที่บอสกำหนดไว้ (Custom Prompt):\n{custom_prompt}\n" if custom_prompt else ""
@@ -1085,7 +1087,8 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         # Provide up to 20 recent messages
         messages = [{"role": "system", "content": system_prompt}] + CONVERSATION_HISTORY[-20:]
         tool_events: List[Dict[str, Any]] = []
-        max_tool_rounds = 6 if enable_tools else 1
+        max_tool_rounds = 3 if enable_tools else 1
+        force_finalize_next = False
 
         for round_idx in range(max_tool_rounds):
             payload = {
@@ -1094,9 +1097,13 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
                 "temperature": temperature,
                 "stream": False,
             }
-            if enable_tools:
+            if enable_tools and not force_finalize_next:
                 payload["tools"] = AVAILABLE_TOOLS
                 payload["tool_choice"] = "auto"
+            elif enable_tools and force_finalize_next:
+                payload["tools"] = AVAILABLE_TOOLS
+                payload["tool_choice"] = "none"
+
             try:
                 res = requests.post(
                     f"{DEFAULT_GATEWAY_URL}/chat/completions",
@@ -1177,6 +1184,13 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
                         "result": tool_output,
                     })
 
+                    # If this was a domain action (smart home, google workspace) or successful command,
+                    # force the next round to synthesize the final friendly response without re-looping!
+                    if fn_name.startswith("smart_home_") or fn_name.startswith("google_workspace_"):
+                        force_finalize_next = True
+                    elif isinstance(tool_output, dict) and (tool_output.get("status") == "success" or tool_output.get("exit_code") == 0):
+                        force_finalize_next = True
+
                     messages.append({
                         "role": "tool",
                         "tool_call_id": call_id,
@@ -1187,6 +1201,36 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             except Exception as e:
                 logger.error("LLM tool execution loop error: %s", e)
                 break
+
+        # If tools were executed but no final text reply was generated yet, do a quick direct synthesis
+        if tool_events:
+            try:
+                syn_res = requests.post(
+                    f"{DEFAULT_GATEWAY_URL}/chat/completions",
+                    json={
+                        "model": model,
+                        "messages": messages,
+                        "temperature": temperature,
+                        "stream": False,
+                        "tools": AVAILABLE_TOOLS,
+                        "tool_choice": "none",
+                    },
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {api_key}",
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    },
+                    timeout=30,
+                )
+                if syn_res.status_code == 200:
+                    syn_msg = syn_res.json()["choices"][0]["message"]
+                    syn_text = (syn_msg.get("content") or syn_msg.get("reasoning_content") or "").strip()
+                    if syn_text:
+                        syn_text = strip_emojis(syn_text)
+                        CONVERSATION_HISTORY.append({"role": "assistant", "content": syn_text})
+                        return syn_text, tool_events
+            except Exception as syn_err:
+                logger.error("Final tool synthesis error: %s", syn_err)
 
         # Fallback if loop ended or hit error
         if tool_events:

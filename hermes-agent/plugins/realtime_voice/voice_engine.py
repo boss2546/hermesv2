@@ -129,7 +129,13 @@ class VoiceEngine:
 
         output_file = self._temp_dir / f"tts_{abs(hash(clean_text + selected_voice)) % 10000000}.mp3"
 
-        # Direct Edge-TTS synthesis via Async loop with progressive fallback retries
+        # 1. Primary: High-speed, robust synthesis via 9Router Edge-TTS Gateway (~1-2s)
+        try:
+            return self._synthesize_via_gateway(clean_text, selected_voice, output_file)
+        except Exception as gw_err:
+            logger.warning("Gateway TTS synthesis failed (%s), attempting direct Edge-TTS...", gw_err)
+
+        # 2. Fallback: Direct Edge-TTS synthesis via Async loop with progressive retries
         last_error = None
         for attempt in range(1, max_retries + 1):
             try:
@@ -161,20 +167,20 @@ class VoiceEngine:
                 asyncio.run(_run_edge())
 
                 if output_file.exists() and output_file.stat().st_size > 500:
-                    logger.info("Synthesized %s bytes using Edge-TTS (Attempt %d)", output_file.stat().st_size, attempt)
+                    logger.info("Synthesized %s bytes using Direct Edge-TTS (Attempt %d)", output_file.stat().st_size, attempt)
                     return output_file
 
             except Exception as exc:
                 last_error = exc
-                logger.warning("Edge-TTS attempt %d failed: %s", attempt, exc)
+                logger.warning("Direct Edge-TTS attempt %d failed: %s", attempt, exc)
                 time.sleep(0.3 * attempt)
 
-        # Log failure and raise so caller handles without unhandled gateway 403
+        # Log failure and raise so caller handles
         logger.error("Edge-TTS failed after %d retries: %s", max_retries, last_error)
         raise RuntimeError(f"Edge-TTS synthesis failed: {last_error}")
 
     def _synthesize_via_gateway(self, text: str, voice: str, output_file: Path) -> Path:
-        """Fallback synthesis via 9Router audio/speech endpoint."""
+        """High-performance synthesis via 9Router audio/speech endpoint."""
         api_key = _resolve_api_key()
         payload = {
             "model": f"edge-tts/{voice}",
@@ -187,13 +193,14 @@ class VoiceEngine:
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {api_key}",
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Hermes/1.0",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             },
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=20.0) as resp:
+        with urllib.request.urlopen(req, timeout=12.0) as resp:
             audio_bytes = resp.read()
         output_file.write_bytes(audio_bytes)
+        logger.info("Synthesized %s bytes via 9Router Edge-TTS Gateway", len(audio_bytes))
         return output_file
 
     # =========================================================================

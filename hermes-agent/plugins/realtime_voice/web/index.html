@@ -1599,10 +1599,10 @@
           <div class="form-group full-width">
             <label>โมเดลภาษา AI (AI Brain Model):</label>
             <select id="cfgModelSelect">
-              <option value="ag/gemini-3.8-flash-high">🌟 ag/gemini-3.8-flash-high (สมองหลัก แนะนำ คิดรอบคอบ เร็วสูง)</option>
-              <option value="ag/gemini-2.5-flash">🚀 ag/gemini-2.5-flash (โหมดทำงานเครื่อง & ทูลเร็วฉับไว แนะนำ)</option>
+              <option value="ag/gemini-2.5-flash" selected>🚀 ag/gemini-2.5-flash (ความเร็วสูงพิเศษ 1.1s ตอบไวฉับไว แนะนำ 💖)</option>
+              <option value="ag/gemini-3.8-flash-high">🌟 ag/gemini-3.8-flash-high (สมองหลัก คิดรอบคอบ เร็วสูง)</option>
               <option value="ag/claude-sonnet-4-6">🧠 ag/claude-sonnet-4-6 (คิดเหตุผลซับซ้อน โค้ดดิ้งลึกซึ้ง)</option>
-              <option value="ag/gemini-3.7-flash-low">⚡ ag/gemini-3.7-flash-low (ความเร็วพิเศษ 2.6s ตอบไวที่สุด)</option>
+              <option value="ag/gemini-3.7-flash-low">⚡ ag/gemini-3.7-flash-low (ความเร็วพิเศษ ตอบไวที่สุด)</option>
               <option value="ag/gemini-3.8-flash">⚡ ag/gemini-3.8-flash (สมดุลความเร็ว)</option>
             </select>
           </div>
@@ -1778,7 +1778,7 @@
         cfgPitchSlider.value = pitchNum;
         cfgPitchDisplay.innerText = (pitchNum >= 0 ? '+' : '') + pitchNum + 'Hz';
 
-        cfgModelSelect.value = cfg.model || 'ag/gemini-3.8-flash-high';
+        cfgModelSelect.value = cfg.model || 'ag/gemini-2.5-flash';
         cfgTempSlider.value = cfg.temperature !== undefined ? cfg.temperature : 0.7;
         cfgTempDisplay.innerText = cfgTempSlider.value;
 
@@ -2129,7 +2129,7 @@
       cfgSpeedDisplay.innerText = '+0%';
       cfgPitchSlider.value = 0;
       cfgPitchDisplay.innerText = '+0Hz';
-      cfgModelSelect.value = 'ag/gemini-3.8-flash-high';
+      cfgModelSelect.value = 'ag/gemini-2.5-flash';
       cfgTempSlider.value = 0.7;
       cfgTempDisplay.innerText = '0.7';
       cfgWallpaperSelect.value = 'custom';
