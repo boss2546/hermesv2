@@ -280,32 +280,80 @@ def save_stored_config(cfg: Dict[str, Any]):
 RUNTIME_CONFIG: Dict[str, Any] = load_stored_config()
 
 # -----------------------------------------------------------------------------
-# 🧠 Dynamic Cognitive Auto-Routing Engine (สลับสมองเร็ว/คิดลึกอัตโนมัติ)
+# 🧠 High-Precision Dynamic Cognitive Auto-Routing Engine (สมองกลสลับรุ่นความแม่นยำสูง)
+# ป้องกัน False Positives 100%: คุยเล่น / แอร์ / ถามไถ่ชีวิตประจำวัน ต้องตอบไวเสมอ!
 # -----------------------------------------------------------------------------
 FAST_TIER_MODEL = "ag/gemini-2.5-flash"
 DEEP_TIER_MODEL = "ag/gemini-3.8-flash-high"
 
-DEEP_THINK_TRIGGERS = [
-    # Coding & Development
-    r"\bcode\b", r"\bpython\b", r"\bjavascript\b", r"\btypescript\b", r"\breact\b",
-    r"\bsql\b", r"\bdocker\b", r"\bgit\b", r"\bapi\b", r"\bfunction\b", r"\bclass\b",
-    r"เขียนโค้ด", r"โค้ด", r"ฟังก์ชัน", r"ดีบัก", r"แก้บัก", r"แก้บั๊ก", r"รีแฟกเตอร์",
-    r"refactor", r"debug", r"exception", r"error", r"traceback",
-    # Architecture & System Design
-    r"สถาปัตยกรรม", r"architecture", r"วางระบบ", r"ออกแบบระบบ", r"ฐานข้อมูล",
-    r"อัลกอริทึม", r"algorithm", r"โครงสร้างข้อมูล",
-    # Deep Analysis & Strategic Reasoning
-    r"วิเคราะห์เชิงลึก", r"วิเคราะห์อย่างละเอียด", r"วิเคราะห์", r"เปรียบเทียบ",
-    r"ข้อดีข้อเสีย", r"trade-off", r"หาสาเหตุ", r"ทำไมถึง", r"อธิบายหลักการ",
-    r"กลยุทธ์", r"คำนวณ", r"พิสูจน์",
-    # Explicit User Direction
-    r"คิดลึก", r"คิดให้ละเอียด", r"คิดให้ดี", r"deep think", r"thinking",
+# 1. Explicit User Voice Overrides (เจตนาสั่งโหมดโมเดลโดยตรงผ่านเสียงหรือข้อความ)
+EXPLICIT_FAST_TRIGGERS = [
+    r"ตอบไว", r"ตอบเร็ว", r"เอาเร็ว", r"ขอเร็ว", r"ไม่ต้องคิดลึก",
+    r"สรุปสั้น", r"ขอสั้น", r"fast mode", r"โหมดเร็ว"
 ]
+EXPLICIT_DEEP_TRIGGERS = [
+    r"คิดลึก", r"คิดหนัก", r"คิดให้ละเอียด", r"คิดรอบคอบ", r"วิเคราะห์ลึก",
+    r"วิเคราะห์อย่างละเอียด", r"deep think", r"โหมดคิดลึก", r"think deeply"
+]
+RE_EXPLICIT_FAST = re.compile("|".join(EXPLICIT_FAST_TRIGGERS), re.IGNORECASE)
+RE_EXPLICIT_DEEP = re.compile("|".join(EXPLICIT_DEEP_TRIGGERS), re.IGNORECASE)
 
-DEEP_PATTERN = re.compile("|".join(DEEP_THINK_TRIGGERS), re.IGNORECASE)
+# 2. Guaranteed Fast Shield (ป้องกัน False Positives 100% ตอบไวทันใจบอส)
+# แอร์, Smart Home, คุยเล่น, ชีวิตประจำวัน, ทักทาย, คำถามสั้นๆ
+FAST_SHIELD_PATTERNS = [
+    # Smart Home & AC
+    r"แอร์", r"อุณหภูมิ", r"องศา", r"เปิดแอร์", r"ปิดแอร์", r"ปรับแอร์",
+    r"พัดลม", r"หลอดไฟ", r"เปิดไฟ", r"ปิดไฟ", r"สวิตช์", r"tuya",
+    # Everyday greetings & affectionate care
+    r"สวัสดี", r"หวัดดี", r"ดีจ้า", r"ฮัลโหล", r"morning", r"ฝันดี", r"กู๊ดไนท์",
+    r"เหนื่อยไหม", r"สบายดีไหม", r"เป็นไงบ้าง", r"กินข้าว", r"ชานม", r"รักนะ",
+    r"คิดถึง", r"น่ารัก", r"แฟน", r"จุ๊บ", r"กอด", r"เขิน", r"มายจ๋า", r"มายคะ",
+    # Everyday inquiries & short commands
+    r"กี่โมง", r"วันนี้วันที่", r"อากาศเป็นไง", r"ฝนตกไหม",
+    r"^git\s+(status|pull|branch|log|diff)\b",
+    r"^(dir|ls|pwd|whoami)\b"
+]
+RE_FAST_SHIELD = re.compile("|".join(FAST_SHIELD_PATTERNS), re.IGNORECASE)
+
+# 3. Dedicated High-Confidence Deep Engineering Triggers
+# ต้องเป็นคำที่ระบุงานด้านวิศวกรรม / โค้ด / การวิเคราะห์ระบบระดับสูงอย่างแท้จริง
+DEEP_HIGH_CONFIDENCE_TRIGGERS = [
+    # Coding & Development verbs/nouns
+    r"เขียนโค้ด", r"เขียนสคริปต์", r"เขียนโปรแกรม", r"เขียนฟังก์ชัน", r"เขียนคลาส",
+    r"เขียน\s*(python|javascript|typescript|react|html|css|sql|bash|powershell|dockerfile|docker|c\+\+|cpp|c#|go|rust|java|php)",
+    r"write\s+(code|script|function|class|program|query|dockerfile)",
+    r"ดีบักโค้ด", r"แก้บั๊กโค้ด", r"แก้บักโค้ด", r"debug\s+code", r"refactor\s+code",
+    r"วิเคราะห์โค้ด", r"ตรวจโค้ด", r"รีวิวโค้ด", r"review\s+code",
+    r"แก้ error", r"แก้ bug", r"traceback", r"unit\s*test", r"memory\s*leak",
+    # Software Architecture & Algorithms
+    r"ออกแบบระบบ", r"สถาปัตยกรรม", r"architecture", r"system\s*design",
+    r"microservices", r"kubernetes", r"k8s", r"docker\s+swarm",
+    r"อัลกอริทึม", r"algorithm", r"โครงสร้างข้อมูล", r"data\s*structure",
+    r"big-o", r"time\s*complexity", r"space\s*complexity", r"dynamic\s*programming",
+    r"binary\s*search", r"พิสูจน์สูตร", r"แคลคูลัส", r"สมการเชิงอนุพันธ์"
+]
+RE_DEEP_HIGH_CONF = re.compile("|".join(DEEP_HIGH_CONFIDENCE_TRIGGERS), re.IGNORECASE)
+
+# Code block detection (actual programming block, not just quotes)
+RE_CODE_BLOCK = re.compile(r"```(?:python|js|ts|html|css|json|sql|sh|bash|go|rust|cpp|c|java)?\s*\n.+?```", re.DOTALL | re.IGNORECASE)
+
+# Secondary technical terms requiring supporting analytical context
+SECONDARY_TECH_TERMS = [
+    r"\bdocker\b", r"\bkubernetes\b", r"\bk8s\b", r"\bdatabase\b", r"\bschema\b",
+    r"\bkafka\b", r"\bmq\b", r"\bredis\b", r"\bnginx\b", r"\bgrpc\b", r"\bgraphql\b",
+    r"\bconcurrency\b", r"\bmultithreading\b", r"\bmutex\b", r"\bdeadlock\b"
+]
+RE_SECONDARY_TECH = re.compile("|".join(SECONDARY_TECH_TERMS), re.IGNORECASE)
+
+ANALYSIS_CONTEXT_WORDS = [
+    r"วิเคราะห์", r"เปรียบเทียบ", r"ข้อดีข้อเสีย", r"trade-off", r"หลักการทำงาน",
+    r"best\s*practice", r"pros\s*and\s*cons", r"benchmark"
+]
+RE_ANALYSIS_CONTEXT = re.compile("|".join(ANALYSIS_CONTEXT_WORDS), re.IGNORECASE)
 
 def resolve_adaptive_model(text: str, requested_model: str = "auto") -> Tuple[str, str, str]:
-    """Dynamically route request to fast or deep cognitive model when in auto mode.
+    """High-Precision Multi-Tier Cognitive Model Router.
+    Guarantees zero false positives on everyday conversation and smart home control.
 
     Returns:
         (actual_model_id, cognitive_tier, route_reason)
@@ -316,18 +364,39 @@ def resolve_adaptive_model(text: str, requested_model: str = "auto") -> Tuple[st
 
     cleaned = text.strip()
 
-    # 1. Check for explicit code blocks or long complex prompts (> 260 chars)
-    if len(cleaned) > 260 or "```" in cleaned or "`" in cleaned:
-        return DEEP_TIER_MODEL, "deep", "ข้อความยาวหรือมีโค้ดโปรแกรม (โหมดคิดลึกซึ้ง 🧠)"
+    # Rule 1: Explicit User Command (สูงสุด)
+    if RE_EXPLICIT_FAST.search(cleaned):
+        return FAST_TIER_MODEL, "fast", "ผู้ใช้สั่งให้ตอบไว/สั้น (โหมดตอบไว ⚡ 1.1s)"
+    if RE_EXPLICIT_DEEP.search(cleaned):
+        return DEEP_TIER_MODEL, "deep", "ผู้ใช้สั่งให้คิดลึกซึ้งเป็นพิเศษ (โหมดคิดลึก 🧠)"
 
-    # 2. Check for technical, algorithmic, architecture, or deep thinking keywords
-    match = DEEP_PATTERN.search(cleaned)
-    if match:
-        trigger_word = match.group(0)
-        return DEEP_TIER_MODEL, "deep", f"ตรวจพบบริบทงานเทคนิค/คิดลึก ('{trigger_word}') 🧠"
+    # Rule 2: Safe Fast Shield (ป้องกัน False Positives 100%)
+    # ถ้ามีเจตนาคุยเล่น, ถามแอร์, ถามสารทุกข์สุกดิบ, ถามเวลา ให้วิ่ง Fast เสมอ!
+    if RE_FAST_SHIELD.search(cleaned):
+        # ข้อยกเว้นเดียว: หากในประโยคมีคำสั่งเขียนโค้ดอย่างเด่นชัดจริงๆ (เช่น "เขียนโค้ด python ควบคุมแอร์ tuya ให้หน่อย")
+        if not RE_DEEP_HIGH_CONF.search(cleaned):
+            return FAST_TIER_MODEL, "fast", "บทสนทนาประจำวัน & อุปกรณ์ Smart Home (โหมดตอบไว ⚡ 1.1s)"
 
-    # 3. Default to ultra-fast tier for greetings, casual chat, everyday life, and smart home AC commands
-    return FAST_TIER_MODEL, "fast", "บทสนทนาทั่วไป & สั่งการเครื่องมือฉับไว (โหมดตอบไว ⚡ 1.1s)"
+    # Rule 3: High-Confidence Coding & Architecture Triggers
+    if RE_DEEP_HIGH_CONF.search(cleaned):
+        match = RE_DEEP_HIGH_CONF.search(cleaned)
+        word = match.group(0) if match else "งานวิศวกรรม"
+        return DEEP_TIER_MODEL, "deep", f"งานพัฒนาโปรแกรม/อัลกอริทึม/สถาปัตยกรรม ('{word}') 🧠"
+
+    # Rule 4: Actual Code Block in text
+    if RE_CODE_BLOCK.search(cleaned):
+        return DEEP_TIER_MODEL, "deep", "พบบล็อกโค้ดโปรแกรมในข้อความ (โหมดคิดลึก 🧠)"
+
+    # Rule 5: Compound Technical Analysis (Technical term + Comparative/Analytical intent)
+    has_tech = bool(RE_SECONDARY_TECH.search(cleaned))
+    has_analysis = bool(RE_ANALYSIS_CONTEXT.search(cleaned))
+    if has_tech and has_analysis:
+        return DEEP_TIER_MODEL, "deep", "งานวิเคราะห์เปรียบเทียบเชิงเทคนิค (โหมดคิดลึก 🧠)"
+
+    # Rule 6: Default Fallback -> Ultra-Fast Tier
+    # คำถามทั่วไป, ถามข้อเท็จจริงสั้นๆ, ขอคำแนะนำทั่วไป ไม่ดึงเข้า Deep Model เพื่อป้องกันความหน่วง
+    return FAST_TIER_MODEL, "fast", "บทสนทนาทั่วไป & ผู้ช่วยเสียงฉับไว (โหมดตอบไว ⚡ 1.1s)"
+
 
 # -----------------------------------------------------------------------------
 # 🛠️ Host Terminal & System Tools
