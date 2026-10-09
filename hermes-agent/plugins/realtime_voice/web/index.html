@@ -1067,9 +1067,175 @@
       transition: all 0.2s ease;
     }
 
-    .play-bubble-audio-btn:hover {
-      background: rgba(255, 255, 255, 0.32);
-      transform: scale(1.03);
+    /* =========================================================================
+       LIQUID GLASS SESSIONS MODAL (ระบบจัดการเซสชั่นประวัติย้อนหลัง)
+       ========================================================================= */
+    .session-badge {
+      background: var(--pink-core);
+      color: #ffffff;
+      font-size: 0.72rem;
+      padding: 0.1rem 0.45rem;
+      border-radius: 10px;
+      font-weight: 700;
+      margin-left: 0.2rem;
+    }
+
+    .sessions-modal-window {
+      max-width: 680px;
+      width: 95%;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      gap: 1.4rem;
+    }
+
+    .sessions-modal-body {
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .sessions-top-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      padding-bottom: 0.8rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .primary-glow-btn {
+      background: linear-gradient(135deg, var(--pink-core), var(--purple-accent));
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: #ffffff;
+      font-weight: 600;
+      padding: 0.55rem 1.2rem;
+      border-radius: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(236, 72, 153, 0.35);
+      transition: all 0.2s ease;
+    }
+
+    .primary-glow-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(236, 72, 153, 0.5);
+    }
+
+    .sessions-total-count {
+      font-size: 0.84rem;
+      color: var(--text-dim);
+    }
+
+    .sessions-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      max-height: 52vh;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .session-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.95rem 1.2rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 18px;
+      backdrop-filter: blur(16px);
+      transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+    }
+
+    .session-card:hover {
+      background: rgba(236, 72, 153, 0.14);
+      border-color: rgba(244, 114, 182, 0.55);
+      transform: translateX(4px);
+    }
+
+    .session-card.active {
+      background: rgba(236, 72, 153, 0.22);
+      border: 1.5px solid var(--pink-glow);
+      box-shadow: 0 4px 20px rgba(236, 72, 153, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+    }
+
+    .session-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .session-card-title {
+      font-weight: 600;
+      font-size: 0.96rem;
+      color: var(--text-pure);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .session-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+
+    .session-card-badge {
+      background: rgba(255, 255, 255, 0.12);
+      padding: 0.15rem 0.5rem;
+      border-radius: 8px;
+      color: var(--text-soft);
+    }
+
+    .session-card.active .session-card-badge {
+      background: var(--pink-core);
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .session-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-left: 0.8rem;
+    }
+
+    .session-switch-btn {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      padding: 0.4rem 0.85rem;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .session-card:hover .session-switch-btn {
+      background: var(--pink-core);
+    }
+
+    .session-del-btn {
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.4);
+      cursor: pointer;
+      padding: 0.35rem 0.5rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      transition: all 0.15s ease;
+    }
+
+    .session-del-btn:hover {
+      color: #f87171;
+      background: rgba(239, 68, 68, 0.2);
     }
 
     /* =========================================================================
@@ -1328,7 +1494,8 @@
           <span class="slider"></span>
         </label>
       </label>
-      <button class="glass-btn btn-text-hide" id="clearChatBtn" title="เริ่มบทสนทนาใหม่ (ล้างประวัติการคุย)">🧹 <span class="btn-label">เริ่มใหม่</span></button>
+      <button class="glass-btn" id="sessionsOpenBtn" title="ดูประวัติเซสชั่นย้อนหลังทั้งหมด">📜 <span class="btn-label">ประวัติ</span> <span class="session-badge" id="sessionCountBadge">0</span></button>
+      <button class="glass-btn" id="newSessionBtn" title="เริ่มบทสนทนาใหม่ (เซสชั่นเดิมถูกเก็บไว้เสมอ)">➕ <span class="btn-label">แชตใหม่</span></button>
       <button class="glass-btn btn-text-hide" id="testVoiceBtn" title="ทดสอบเสียง">🔊 <span class="btn-label">ทดสอบเสียง</span></button>
       <button class="glass-btn icon-only" id="configOpenBtn" title="ตั้งค่าระบบ (Voice & AI Config)">⚙️</button>
     </div>
@@ -1526,6 +1693,27 @@
     </div>
   </div>
 
+  <!-- =========================================================================
+       SESSIONS MODAL WINDOW (หน้าต่างประวัติเซสชั่นย้อนหลัง)
+       ========================================================================= -->
+  <div class="modal-overlay" id="sessionsModal">
+    <div class="modal-window sessions-modal-window">
+      <div class="modal-header">
+        <h2>📜 ประวัติเซสชั่นการสนทนาย้อนหลัง</h2>
+        <button class="modal-close-btn" id="sessionsCloseBtn" title="ปิดหน้าต่าง">✕</button>
+      </div>
+      <div class="sessions-modal-body">
+        <div class="sessions-top-actions">
+          <button class="glass-btn primary-glow-btn" id="drawerNewChatBtn">➕ เริ่มเซสชั่นใหม่ (New Chat)</button>
+          <span class="sessions-total-count" id="sessionsTotalCount">มีทั้งหมด 0 เซสชั่น</span>
+        </div>
+        <div class="sessions-list" id="sessionsList">
+          <!-- Dynamic Session Items -->
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification -->
   <div class="toast-pill" id="toastPill">✅ บันทึกการตั้งค่าเรียบร้อยแล้วค่ะบอส 💖</div>
 
@@ -1655,6 +1843,227 @@
       }
     }
     loadConfig();
+
+    // -------------------------------------------------------------------------
+    // 💬 Multi-Session & Persistent Chat History Engine
+    // -------------------------------------------------------------------------
+    let currentChatHistory = [];
+    let currentActiveSessionId = '';
+    let allSessionsList = [];
+
+    const sessionsModal = document.getElementById('sessionsModal');
+    const sessionsOpenBtn = document.getElementById('sessionsOpenBtn');
+    const sessionsCloseBtn = document.getElementById('sessionsCloseBtn');
+    const newSessionBtn = document.getElementById('newSessionBtn');
+    const drawerNewChatBtn = document.getElementById('drawerNewChatBtn');
+    const sessionsList = document.getElementById('sessionsList');
+    const sessionCountBadge = document.getElementById('sessionCountBadge');
+    const sessionsTotalCount = document.getElementById('sessionsTotalCount');
+
+    function renderHistoryMessages(messages) {
+      if (!messages || messages.length === 0) {
+        chatBox.innerHTML = `
+          <div class="msg-row">
+            <div class="msg-bubble maymint">
+              🌸 <strong>มายมิ้นท์:</strong> สวัสดีค่ะบอส! มายมิ้นท์พร้อมดูแลบอสแล้วนะคะ จะพิมพ์คุยหรือกดปุ่มไมค์พูดคุยกับมายได้ทันทีเลยค่ะบอส 💖✨
+            </div>
+          </div>`;
+        return;
+      }
+
+      chatBox.innerHTML = '';
+      for (const m of messages) {
+        appendChatMessage(m.sender, m.text, m.tool_events, m.audio_url, false);
+      }
+      setTimeout(() => {
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }, 30);
+    }
+
+    async function loadSessions() {
+      try {
+        const res = await fetch('/api/sessions');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            currentActiveSessionId = data.active_session_id;
+            allSessionsList = data.sessions || [];
+            if (sessionCountBadge) sessionCountBadge.innerText = allSessionsList.length;
+            if (sessionsTotalCount) sessionsTotalCount.innerText = `มีทั้งหมด ${allSessionsList.length} เซสชั่น`;
+          }
+        }
+      } catch (err) {
+        console.warn('Load sessions error:', err);
+      }
+    }
+
+    function renderSessionsList() {
+      if (!sessionsList) return;
+      if (allSessionsList.length === 0) {
+        sessionsList.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-dim);">ยังไม่มีประวัติเซสชั่นย้อนหลังค่ะ</div>`;
+        return;
+      }
+      sessionsList.innerHTML = '';
+      allSessionsList.forEach(s => {
+        const card = document.createElement('div');
+        const isActive = s.id === currentActiveSessionId;
+        card.className = `session-card ${isActive ? 'active' : ''}`;
+        
+        const dateStr = new Date(s.updated_at * 1000).toLocaleString('th-TH', {
+          dateStyle: 'medium',
+          timeStyle: 'short'
+        });
+
+        card.innerHTML = `
+          <div class="session-info">
+            <div class="session-card-title">${escapeHtml(s.title || 'บทสนทนา')}</div>
+            <div class="session-card-meta">
+              <span>🕒 ${dateStr}</span>
+              <span class="session-card-badge">💬 ${s.message_count || 0} ข้อความ</span>
+              ${isActive ? '<span style="color:#4ade80; font-weight:600;">🟢 กำลังเปิดอยู่</span>' : ''}
+            </div>
+          </div>
+          <div class="session-actions" onclick="event.stopPropagation();">
+            ${!isActive ? `<button class="session-switch-btn" onclick="switchToSession('${s.id}')">📂 เปิดดู</button>` : ''}
+            <button class="session-del-btn" title="ลบเซสชั่นนี้" onclick="deleteSession('${s.id}')">🗑️</button>
+          </div>
+        `;
+        card.onclick = () => {
+          if (!isActive) switchToSession(s.id);
+        };
+        sessionsList.appendChild(card);
+      });
+    }
+
+    async function openSessionsModal() {
+      await loadSessions();
+      renderSessionsList();
+      if (sessionsModal) sessionsModal.classList.add('open');
+    }
+
+    function closeSessionsModal() {
+      if (sessionsModal) sessionsModal.classList.remove('open');
+    }
+
+    async function createNewSession() {
+      try {
+        const res = await fetch('/api/sessions/new', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          currentActiveSessionId = data.active_session_id;
+          currentChatHistory = [];
+          try {
+            localStorage.removeItem('maymint_chat_history');
+          } catch(e) {}
+          renderHistoryMessages([]);
+          closeSessionsModal();
+          showToast('✨ เริ่มเซสชั่นใหม่เรียบร้อยแล้วค่ะบอส (เซสชั่นเดิมถูกเก็บไว้ในประวัติ) 💖');
+          loadSessions();
+        }
+      } catch (err) {
+        console.error('Create new session error:', err);
+      }
+    }
+
+    async function switchToSession(sid) {
+      try {
+        const res = await fetch('/api/sessions/switch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sid })
+        });
+        const data = await res.json();
+        if (data.success) {
+          currentActiveSessionId = data.active_session_id;
+          currentChatHistory = data.history || [];
+          try {
+            localStorage.setItem('maymint_chat_history', JSON.stringify(currentChatHistory));
+          } catch(e) {}
+          renderHistoryMessages(currentChatHistory);
+          closeSessionsModal();
+          const title = data.session?.title || 'ที่เลือก';
+          showToast(`📂 เปิดเซสชั่น "${title}" เรียบร้อยแล้วค่ะบอส 💖`);
+          loadSessions();
+        }
+      } catch (err) {
+        console.error('Switch session error:', err);
+      }
+    }
+
+    async function deleteSession(sid) {
+      if (!confirm('ยืนยันการลบเซสชั่นนี้ใช่ไหมคะบอส?')) return;
+      try {
+        const res = await fetch('/api/sessions/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sid })
+        });
+        const data = await res.json();
+        if (data.success) {
+          await loadSessions();
+          renderSessionsList();
+          showToast('🗑️ ลบเซสชั่นเรียบร้อยแล้วค่ะ');
+          if (sid === currentActiveSessionId) {
+            loadChatHistory();
+          }
+        }
+      } catch (err) {
+        console.error('Delete session error:', err);
+      }
+    }
+
+    async function loadChatHistory() {
+      // 1. Instant cache load from localStorage (0ms display on refresh)
+      try {
+        const cached = localStorage.getItem('maymint_chat_history');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            currentChatHistory = parsed;
+            renderHistoryMessages(currentChatHistory);
+          }
+        }
+      } catch (err) {
+        console.warn('LocalStorage history load error:', err);
+      }
+
+      // 2. Fetch fresh history from server
+      try {
+        const res = await fetch('/api/history');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.history)) {
+            currentChatHistory = data.history;
+            try {
+              localStorage.setItem('maymint_chat_history', JSON.stringify(currentChatHistory));
+            } catch(e) {}
+            renderHistoryMessages(currentChatHistory);
+          }
+        }
+      } catch (err) {
+        console.warn('Server history fetch error:', err);
+      }
+      loadSessions();
+    }
+
+    function recordHistoryMessage(sender, text, toolEvents = null, audioUrl = null) {
+      const item = {
+        id: `msg_${Date.now()}_${sender === 'user' ? 'u' : 'a'}`,
+        timestamp: Math.floor(Date.now() / 1000),
+        sender: sender,
+        text: text,
+        tool_events: toolEvents,
+        audio_url: audioUrl
+      };
+      currentChatHistory.push(item);
+      try {
+        localStorage.setItem('maymint_chat_history', JSON.stringify(currentChatHistory));
+      } catch(e) {}
+      loadSessions();
+    }
+
+    // Trigger initial history & sessions load
+    loadChatHistory();
 
     // Sliders Live Feedback
     cfgSpeedSlider.addEventListener('input', (e) => {
@@ -1837,12 +2246,15 @@
         startWaveform();
       };
 
+      let lastRecognizedTranscript = '';
+
       recognition.onresult = (event) => {
         let transcript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           transcript += event.results[i][0].transcript;
         }
         if (transcript) {
+          lastRecognizedTranscript = transcript;
           micHint.innerText = `ได้ยิน: "${transcript}"`;
         }
       };
@@ -1853,8 +2265,9 @@
         micRipple.style.opacity = '0';
         stopWaveform();
 
-        const finalText = micHint.innerText.replace('ได้ยิน: "', '').replace('"', '').trim();
-        if (finalText && !finalText.startsWith('คลิกปุ่มไมค์') && !finalText.startsWith('กำลังฟัง')) {
+        const finalText = (lastRecognizedTranscript || '').trim();
+        lastRecognizedTranscript = '';
+        if (finalText) {
           submitUserSpeech(finalText);
         } else {
           resetStages();
@@ -1893,49 +2306,70 @@
     });
 
     // 5. Submit Speech / Text
+    let isProcessing = false;
+
     async function submitUserSpeech(text) {
+      if (isProcessing || !text || !text.trim()) return;
+      isProcessing = true;
+
+      if (sendTextBtn) {
+        sendTextBtn.disabled = true;
+        sendTextBtn.style.opacity = '0.6';
+        sendTextBtn.innerHTML = '<span>กำลังคิด... 🧠</span>';
+      }
+
       appendChatMessage('user', text);
+      recordHistoryMessage('user', text);
       setStage(2, '✍️ [สเต็ป 2/5] ถอดความเสียงสำเร็จ กำลังส่งวิเคราะห์...');
 
-      setTimeout(async () => {
+      try {
         setStage(3, `🧠 [สเต็ป 3/5] สมอง ${cfgModelSelect.value} กำลังคิดคำตอบ...`);
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            text: text,
+            voice: cfgVoiceSelect.value,
+            speed: (parseInt(cfgSpeedSlider.value) >= 0 ? '+' : '') + parseInt(cfgSpeedSlider.value) + '%',
+            pitch: (parseInt(cfgPitchSlider.value) >= 0 ? '+' : '') + parseInt(cfgPitchSlider.value) + 'Hz',
+            model: cfgModelSelect.value,
+            temperature: parseFloat(cfgTempSlider.value)
+          })
+        });
+        const data = await res.json();
 
-        try {
-          const res = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              text: text,
-              voice: cfgVoiceSelect.value,
-              speed: (parseInt(cfgSpeedSlider.value) >= 0 ? '+' : '') + parseInt(cfgSpeedSlider.value) + '%',
-              pitch: (parseInt(cfgPitchSlider.value) >= 0 ? '+' : '') + parseInt(cfgPitchSlider.value) + 'Hz',
-              model: cfgModelSelect.value,
-              temperature: parseFloat(cfgTempSlider.value)
-            })
-          });
-          const data = await res.json();
+        if (data.reply_text) {
+          appendChatMessage('maymint', data.reply_text, data.tool_events, data.audio_url);
+          recordHistoryMessage('maymint', data.reply_text, data.tool_events, data.audio_url);
 
-          if (data.reply_text) {
-            appendChatMessage('maymint', data.reply_text, data.tool_events, data.audio_url);
-
-            if (data.timings) {
-              timingsBadge.innerText = `⏱️ LLM: ${data.timings.llm_seconds}s | TTS: ${data.timings.tts_seconds}s | รวม: ${data.timings.total_seconds}s`;
-            }
-
-            if (autoSpeakToggle.checked && data.audio_url) {
-              setStage(4, '🎙️ [สเต็ป 4/5] สร้างเสียงพูด Edge-TTS เสร็จสิ้น...');
-              playAudioResponse(data.audio_url);
-            } else {
-              setStage(5, '✅ ตอบคำถามเรียบร้อยแล้วค่ะ');
-              setTimeout(resetStages, 3000);
-            }
+          if (data.timings) {
+            timingsBadge.innerText = `⏱️ LLM: ${data.timings.llm_seconds}s | TTS: ${data.timings.tts_seconds}s | รวม: ${data.timings.total_seconds}s`;
           }
-        } catch (err) {
-          console.error('Chat error:', err);
-          appendChatMessage('maymint', 'ขอโทษด้วยนะคะบอส มีข้อผิดพลาดในการเชื่อมต่อเครือข่ายค่ะ 🥺');
+
+          if (autoSpeakToggle.checked && data.audio_url) {
+            setStage(4, '🎙️ [สเต็ป 4/5] สร้างเสียงพูด Edge-TTS เสร็จสิ้น...');
+            playAudioResponse(data.audio_url);
+          } else {
+            setStage(5, '✅ ตอบคำถามเรียบร้อยแล้วค่ะ');
+            setTimeout(resetStages, 3000);
+          }
+        } else {
+          const errMsg = data.error || 'ขอโทษด้วยนะคะบอส มายไม่ได้รับข้อความตอบกลับจากระบบค่ะ 🥺';
+          appendChatMessage('maymint', errMsg);
           resetStages();
         }
-      }, 300);
+      } catch (err) {
+        console.error('Chat error:', err);
+        appendChatMessage('maymint', 'ขอโทษด้วยนะคะบอส มีข้อผิดพลาดในการเชื่อมต่อเครือข่ายค่ะ 🥺');
+        resetStages();
+      } finally {
+        isProcessing = false;
+        if (sendTextBtn) {
+          sendTextBtn.disabled = false;
+          sendTextBtn.style.opacity = '1';
+          sendTextBtn.innerHTML = '<span>ส่ง 🚀</span>';
+        }
+      }
     }
 
     // 6. Play Audio (Mobile & Desktop Safari/Chrome Friendly)
@@ -1968,7 +2402,7 @@
       maymintAudioPlayer.onerror = (err) => {
         console.error('Audio play error:', err);
         stopWaveform();
-        audioPlayingStatus.innerText = '⚠️ ไม่สามารถเล่นเสียงได้';
+        audioPlayingStatus.innerText = '⚠️ ไม่สามารถเล่นเสียงได้ (ไฟล์เสียงอาจหมดอายุแล้วค่ะ)';
         stopAudioBtn.style.display = 'none';
         hideMobileAudioPrompt();
         resetStages();
@@ -2089,24 +2523,19 @@
       }
     });
 
-    // Clear Chat Button
-    document.getElementById('clearChatBtn').addEventListener('click', async () => {
-      try {
-        await fetch('/api/clear-history', { method: 'POST' });
-        chatBox.innerHTML = `
-          <div class="msg-row">
-            <div class="msg-bubble maymint">
-              🌸 <strong>มายมิ้นท์:</strong> มายเริ่มแชตใหม่ให้เรียบร้อยแล้วค่ะบอส! พร้อมลุยงานจริงจัง คิด วางแผน หรือเขียนโค้ดเรื่องใหม่ได้เต็มที่เลยน้าา 💖✨
-            </div>
-          </div>`;
-        showToast('🧹 ล้างประวัติการคุยเรียบร้อยแล้วค่ะ');
-      } catch (err) {
-        console.error('Clear chat error:', err);
-      }
-    });
+    // Event Listeners for Sessions Management
+    if (sessionsOpenBtn) sessionsOpenBtn.addEventListener('click', openSessionsModal);
+    if (sessionsCloseBtn) sessionsCloseBtn.addEventListener('click', closeSessionsModal);
+    if (newSessionBtn) newSessionBtn.addEventListener('click', createNewSession);
+    if (drawerNewChatBtn) drawerNewChatBtn.addEventListener('click', createNewSession);
+    if (sessionsModal) {
+      sessionsModal.addEventListener('click', (e) => {
+        if (e.target === sessionsModal) closeSessionsModal();
+      });
+    }
 
     // Helper: Append Message with Rich Markdown Rendering & Terminal Events
-    function appendChatMessage(sender, text, toolEvents = null, audioUrl = null) {
+    function appendChatMessage(sender, text, toolEvents = null, audioUrl = null, autoScroll = true) {
       const row = document.createElement('div');
       row.className = 'msg-row';
       const bubble = document.createElement('div');
@@ -2152,7 +2581,7 @@
         }
 
         const replayBtnHtml = (audioUrl && sender !== 'user') 
-          ? `<button class="play-bubble-audio-btn" onclick="playAudioResponse('${escapeHtml(audioUrl)}')" title="กดฟังเสียงคำตอบนี้">🔊 ฟังเสียงคำตอบนี้</button>` 
+          ? `<button class="play-bubble-audio-btn" data-audio-url="${escapeHtml(audioUrl)}" onclick="playAudioResponse(this.getAttribute('data-audio-url'))" title="กดฟังเสียงคำตอบนี้">🔊 ฟังเสียงคำตอบนี้</button>` 
           : '';
 
         bubble.innerHTML = `🌸 <strong>มายมิ้นท์:</strong> ${toolsHtml}<div class="markdown-body">${contentHtml}</div>${replayBtnHtml}`;
@@ -2160,7 +2589,9 @@
 
       row.appendChild(bubble);
       chatBox.appendChild(row);
-      chatBox.scrollTop = chatBox.scrollHeight;
+      if (autoScroll) {
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
     }
 
     function escapeHtml(string) {

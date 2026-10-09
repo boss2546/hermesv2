@@ -15,6 +15,11 @@
    - **Hermes Core Integration:** ปลั๊กอิน `hermes-agent/plugins/realtime_voice/` พร้อม Custom Tools (`voice_speak`, `voice_transcribe`, `voice_status`), Hook `post_llm_call` และคำสั่ง `/voice`
    - **Liquid Glass Web Dashboard:** เว็บแดชบอร์ดพอร์ต `9229` สไตล์ Liquid Glass โปร่งแสงระดับพรีเมียม, ภาพพื้นหลัง Dreamscape Alpine Cottage Sunset, Audio Visualizer, และกล่องตั้งค่าคอนฟิก (⚙️) ควบคุมเสียง ความเร็ว ความแหลมทุ้ม และเอฟเฟกต์กระจกแบบเรียลไทม์
 
+8. **Google Workspace All-in-One Enterprise Scopes & Google Tasks Integration (2026-10-06):**
+   - **Full 13 Scopes Authorization:** Gmail (Read, Send, Modify), Calendar, Drive, Contacts (Read/Write), Spreadsheets, Documents, Tasks, Presentations, Forms, Meet Space
+   - **Custom Tools Ecosystem:** `google_workspace_gmail`, `google_workspace_drive`, `google_workspace_calendar`, `google_workspace_sheets_docs`, และ `google_workspace_tasks` (List, Create, Complete, Delete)
+   - **Automated Deep Test:** 17/17 (100% PASS) ทดสอบการอ่าน-เขียนทุกบริการแบบสด พร้อมจัดการ Range ภาษาไทยอัตโนมัติ
+
 ---
 
 ## 🚀 สถาปัตยกรรมโปรเจกต์ Hermes v2

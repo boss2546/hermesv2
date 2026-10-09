@@ -29,16 +29,21 @@ import os
 import sys
 from pathlib import Path
 
-try:
-    import pm
-except ImportError:
-    # A copied skill must not install into an unrelated Python environment.
-    pm = None
-
-# Ensure sibling modules (_hermes_home) are importable when run standalone.
 _SCRIPTS_DIR = str(Path(__file__).resolve().parent)
 if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
+
+# Ensure hermes-agent root is in sys.path so pm can be imported
+for p in Path(__file__).resolve().parents:
+    if (p / "pm").is_dir():
+        if str(p) not in sys.path:
+            sys.path.insert(0, str(p))
+        break
+
+try:
+    import pm
+except ImportError:
+    pm = None
 
 from _hermes_home import display_hermes_home, get_hermes_home
 
@@ -53,9 +58,14 @@ SCOPES = [
     "https://www.googleapis.com/auth/gmail.modify",
     "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/contacts",
     "https://www.googleapis.com/auth/contacts.readonly",
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/documents",
+    "https://www.googleapis.com/auth/tasks",
+    "https://www.googleapis.com/auth/presentations",
+    "https://www.googleapis.com/auth/forms.body",
+    "https://www.googleapis.com/auth/meetings.space.created",
 ]
 
 # OAuth redirect for "out of band" manual code copy flow.
@@ -110,13 +120,19 @@ def install_deps():
 
 
 def _ensure_deps():
-    """Let PM check imports and stop if activation needs a new process."""
-    if pm is None:
-        print("ERROR: Run this script in the Hermes environment; use hermes setup first.")
-        sys.exit(1)
+    """Let PM check imports, or verify direct google imports."""
+    if pm is not None:
+        try:
+            pm.ensure_import("google")
+            return
+        except Exception:
+            pass
+
     try:
-        pm.ensure_import("google")
-    except Exception as exc:
+        import google_auth_oauthlib.flow  # noqa: F401
+        import google.oauth2.credentials  # noqa: F401
+        import googleapiclient.discovery  # noqa: F401
+    except ImportError as exc:
         print(f"ERROR: Google dependencies unavailable: {exc}")
         sys.exit(1)
 

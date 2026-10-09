@@ -19,6 +19,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import urllib.request
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
@@ -52,6 +53,15 @@ except Exception:
         execute_smart_home_tool = None
 
 try:
+    from google_workspace import GOOGLE_WORKSPACE_TOOLS, execute_google_workspace_tool  # type: ignore
+except Exception:
+    try:
+        from plugins.google_workspace import GOOGLE_WORKSPACE_TOOLS, execute_google_workspace_tool  # type: ignore
+    except Exception:
+        GOOGLE_WORKSPACE_TOOLS = []
+        execute_google_workspace_tool = None
+
+try:
     from voice_engine import engine, DEFAULT_GATEWAY_URL, _resolve_api_key  # type: ignore
 except ImportError:
     from ..voice_engine import engine, DEFAULT_GATEWAY_URL, _resolve_api_key  # type: ignore
@@ -63,8 +73,123 @@ WEB_DIR = CURRENT_DIR
 PORT = 9229
 BING_CACHE: Dict[str, Any] = {"url": "", "title": "", "timestamp": 0}
 
-# Conversational Multi-Turn Memory
+# Conversational Multi-Turn Memory & Disk Persistence
+CHAT_HISTORY_PATH = CURRENT_DIR.parent / "chat_history.json"
+_history_lock = threading.RLock()
+
+def load_chat_history() -> List[Dict[str, Any]]:
+    """Load persistent chat history from JSON file."""
+    if CHAT_HISTORY_PATH.exists():
+        try:
+            with open(CHAT_HISTORY_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return data
+        except Exception as e:
+            logger.warning("Could not read chat_history.json: %s", e)
+    return []
+
+def save_chat_history(history: List[Dict[str, Any]]):
+    """Save persistent chat history to JSON file (truncated to last 150 items) thread-safely and atomically."""
+    with _history_lock:
+        try:
+            truncated = history[-150:]
+            tmp_path = CHAT_HISTORY_PATH.with_suffix(".tmp")
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(truncated, f, ensure_ascii=False, indent=2)
+            tmp_path.replace(CHAT_HISTORY_PATH)
+        except Exception as e:
+            logger.error("Could not save chat_history.json: %s", e)
+
+RICH_CHAT_HISTORY: List[Dict[str, Any]] = load_chat_history()
 CONVERSATION_HISTORY: List[Dict[str, str]] = []
+for msg in RICH_CHAT_HISTORY:
+    role = "user" if msg.get("sender") == "user" else "assistant"
+    content = msg.get("text", "")
+    if content:
+        CONVERSATION_HISTORY.append({"role": role, "content": content})
+
+# Multi-Session Management (Permanent Session Archiving & Switching)
+SESSIONS_DIR = CURRENT_DIR.parent / "sessions"
+SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+CURRENT_SESSION_FILE = CURRENT_DIR.parent / "current_session_id.txt"
+
+def get_active_session_id() -> str:
+    if CURRENT_SESSION_FILE.exists():
+        try:
+            sid = CURRENT_SESSION_FILE.read_text(encoding="utf-8").strip()
+            if sid:
+                return sid
+        except Exception:
+            pass
+    # Default to recovered session if available, else new timestamp
+    default_id = "session_20261005_190640" if (SESSIONS_DIR / "session_20261005_190640.json").exists() else f"session_{int(time.time())}"
+    try:
+        CURRENT_SESSION_FILE.write_text(default_id, encoding="utf-8")
+    except Exception:
+        pass
+    return default_id
+
+ACTIVE_SESSION_ID = get_active_session_id()
+
+def save_session_data(session_id: str, messages: List[Dict[str, Any]], title: str = None):
+    """Save session to sessions/{session_id}.json with auto-generated title."""
+    with _history_lock:
+        session_file = SESSIONS_DIR / f"{session_id}.json"
+        existing = {}
+        if session_file.exists():
+            try:
+                with open(session_file, "r", encoding="utf-8") as f:
+                    existing = json.load(f)
+            except Exception:
+                pass
+
+        if not title:
+            if existing.get("title"):
+                title = existing["title"]
+            else:
+                first_user_msg = next((m.get("text") for m in messages if m.get("sender") == "user"), None)
+                if first_user_msg:
+                    title = first_user_msg[:35] + ("..." if len(first_user_msg) > 35 else "")
+                else:
+                    title = f"เซสชั่น {time.strftime('%d/%m/%Y %H:%M', time.localtime())}"
+
+        created_at = existing.get("created_at", int(time.time()))
+        session_data = {
+            "id": session_id,
+            "title": title,
+            "created_at": created_at,
+            "updated_at": int(time.time()),
+            "message_count": len(messages),
+            "messages": messages[-150:]
+        }
+        try:
+            tmp = session_file.with_suffix(".tmp")
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(session_data, f, ensure_ascii=False, indent=2)
+            tmp.replace(session_file)
+        except Exception as e:
+            logger.error("Could not save session file: %s", e)
+
+def list_all_sessions() -> List[Dict[str, Any]]:
+    """List all available chat sessions sorted by updated_at descending."""
+    with _history_lock:
+        sessions = []
+        for p in SESSIONS_DIR.glob("session_*.json"):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    sessions.append({
+                        "id": data.get("id", p.stem),
+                        "title": data.get("title", "บทสนทนา"),
+                        "created_at": data.get("created_at", int(p.stat().st_mtime)),
+                        "updated_at": data.get("updated_at", int(p.stat().st_mtime)),
+                        "message_count": data.get("message_count", len(data.get("messages", [])))
+                    })
+            except Exception:
+                pass
+        sessions.sort(key=lambda x: x.get("updated_at", 0), reverse=True)
+        return sessions
 
 # Dynamic Runtime Configuration with persistent config.txt & config.json support
 CONFIG_TXT_PATH = CURRENT_DIR.parent / "config.txt"
@@ -282,6 +407,9 @@ AVAILABLE_TOOLS: List[Dict[str, Any]] = [
 if SMART_HOME_TOOLS:
     AVAILABLE_TOOLS.extend(SMART_HOME_TOOLS)
 
+if GOOGLE_WORKSPACE_TOOLS:
+    AVAILABLE_TOOLS.extend(GOOGLE_WORKSPACE_TOOLS)
+
 
 def execute_tool(name: str, arguments: Dict[str, Any], project_root: Path) -> Dict[str, Any]:
     """Execute local system tools with structured output and full system-wide permissions."""
@@ -423,6 +551,14 @@ def execute_tool(name: str, arguments: Dict[str, Any], project_root: Path) -> Di
                 return {"error": str(exc)}
         return {"error": "Smart home plugin is not loaded"}
 
+    elif name.startswith("google_workspace_"):
+        if execute_google_workspace_tool:
+            try:
+                return execute_google_workspace_tool(name, arguments)
+            except Exception as exc:
+                return {"error": str(exc)}
+        return {"error": "Google Workspace plugin is not loaded"}
+
     return {"error": f"Unknown tool: {name}"}
 
 
@@ -449,13 +585,12 @@ def strip_emojis(text: str) -> str:
     return cleaned.strip()
 
 
-def clean_text_for_speech(text: str, max_chars: int = 320) -> str:
+def clean_text_for_speech(text: str, max_chars: int = 140) -> str:
     """Clean and summarize text for natural, fast, and smooth speech synthesis.
     The visual chat window displays the full markdown text and code blocks,
     while the voice speaks a natural, warm summary/introduction to prevent long synthesis latency.
     """
     # Remove markdown code blocks completely for speech
-    cleaned = re.sub(r"```[\w\-]*\n[\s\S]*?```", "", text)
     cleaned = re.sub(r"```[\s\S]*?```", "", text)
     # Remove inline code marks
     cleaned = re.sub(r"`([^`]+)`", r"\1", cleaned)
@@ -466,21 +601,24 @@ def clean_text_for_speech(text: str, max_chars: int = 320) -> str:
     cleaned = re.sub(r"[*#_~>]", "", cleaned)
     # Strip emojis completely so TTS won't read emoji names
     cleaned = strip_emojis(cleaned)
+    # Fix isolated Thai repetition mark (ๆ) which causes Azure TTS parser drops
+    cleaned = re.sub(r"\s+ๆ", "ๆ", cleaned)
     # Collapse multiple whitespaces
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
 
     if not cleaned:
-        return "มายจัดเตรียมโค้ดและรายละเอียดทั้งหมดไว้ให้บนหน้าจอเรียบร้อยแล้วนะคะบอส"
+        return "มายจัดเตรียมรายละเอียดทั้งหมดไว้ให้บนหน้าจอเรียบร้อยแล้วนะคะบอส"
 
     # If the text is longer than max_chars, take a clean sentence/phrase cut
     if len(cleaned) > max_chars:
         cut = cleaned[:max_chars]
         last_punct = max(cut.rfind("ค่ะ"), cut.rfind("นะคะ"), cut.rfind("น้า"), cut.rfind(". "), cut.rfind("!"))
-        if last_punct > 120:
-            cut = cut[:last_punct + 4].strip()
+        if last_punct > 50:
+            punct_len = 4 if cut[last_punct:last_punct+4] == "นะคะ" else 3
+            cut = cut[:last_punct + punct_len].strip()
         else:
             cut = cut.rstrip()
-        cleaned = cut + " ... มายเตรียมโค้ดและเนื้อหาทั้งหมดไว้ให้บนหน้าจอแล้วนะคะบอส ลองดูได้เลยน้า"
+        cleaned = cut + " มายเตรียมเนื้อหาทั้งหมดไว้ให้บนหน้าจอแล้วนะคะบอส"
 
     return strip_emojis(cleaned)
 
@@ -542,9 +680,20 @@ def get_system_prompt() -> str:
 3. **การสั่งเปิดฉากอัตโนมัติ:** เมื่อบอสบอกว่าจะนอนแล้ว ดูหนัง หรือออกจากบ้าน ให้เรียกใช้ smart_home_trigger_scene
 4. **การตอบกลับ:** ตอบรับด้วยความอบอุ่น น่ารัก อ่อนหวาน (เช่น "มายปรับแอร์เป็น 25 องศาให้แล้วนะคะบอส เย็นสบายแน่นอนน้า") และปฏิบัติตามกฎห้ามมีอีโมจิอย่างเคร่งครัด
 """
+    google_workspace_rules = """
+---
+## 🌐 การจัดการ Google Workspace (Gmail, Calendar, Drive, Docs, Sheets, Tasks):
+1. **อีเมล (Gmail):** เมื่อบอสสั่งให้เช็คเมล ค้นหาเมล หรืออ่านเนื้อหา ให้เรียกใช้ google_workspace_gmail (action='search' หรือ 'get') เมื่อบอสสั่งส่งเมลหรือตอบกลับ ให้เรียก action='send' หรือ 'reply'
+2. **ปฏิทินนัดหมาย (Google Calendar):** เมื่อบอสถามตารางงาน นัดหมาย หรือสั่งลงตารางนัด ให้เรียกใช้ google_workspace_calendar (action='list', 'create', 'update', 'delete')
+3. **สิ่งที่ต้องทำ (Google Tasks):** เมื่อบอสสั่งจดสิ่งที่ต้องทำ ดูรายการงาน หรือติ๊กงานเสร็จ ให้เรียกใช้ google_workspace_tasks (action='list', 'create', 'complete', 'delete')
+4. **ไฟล์และไดรฟ์ (Google Drive):** เมื่อบอสสั่งค้นหาไฟล์ ตรวจสอบโฟลเดอร์ หรืออัปโหลด/ดาวน์โหลด ให้เรียกใช้ google_workspace_drive (action='search', 'list', 'create_folder', 'upload', 'download')
+5. **เอกสารและสเปรดชีต (Docs & Sheets):** เมื่อบอสสั่งอ่านหรือบันทึกข้อมูลลงตาราง Excel/Sheets หรือเอกสาร Docs ให้เรียกใช้ google_workspace_sheets_docs
+6. **การตอบกลับ:** ลงมือทำทันทีด้วยเครื่องมือจริง แล้วสรุปผลลัพธ์ให้บอสฟังด้วยน้ำเสียงอ่อนหวาน อบอุ่น ชัดเจน และห้ามมีอีโมจิในข้อความเด็ดขาด
+"""
     custom_prompt = RUNTIME_CONFIG.get("custom_prompt", "").strip()
     custom_section = f"\n\n---\n## 💌 คำสั่งและบทบาทพิเศษที่บอสกำหนดไว้ (Custom Prompt):\n{custom_prompt}\n" if custom_prompt else ""
-    return base_context + custom_section + conversation_and_work_rules + terminal_rules + smart_home_rules
+    return base_context + custom_section + conversation_and_work_rules + terminal_rules + smart_home_rules + google_workspace_rules
+
 
 
 def get_bing_wallpaper() -> Dict[str, str]:
@@ -612,6 +761,44 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(wallpaper).encode())
             return
 
+        elif self.path == "/api/history":
+            with _history_lock:
+                history_snapshot = list(RICH_CHAT_HISTORY)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": True, "history": history_snapshot}, ensure_ascii=False).encode("utf-8"))
+            return
+
+        elif self.path == "/api/sessions":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "success": True,
+                "active_session_id": ACTIVE_SESSION_ID,
+                "sessions": list_all_sessions()
+            }, ensure_ascii=False).encode("utf-8"))
+            return
+
+        elif self.path.startswith("/api/sessions/"):
+            sid = self.path.replace("/api/sessions/", "").split("?")[0].strip()
+            session_file = SESSIONS_DIR / f"{sid}.json"
+            if not session_file.exists():
+                self.send_error(404, "Session not found")
+                return
+            try:
+                data = json.loads(session_file.read_text(encoding="utf-8"))
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "session": data}, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_error(500, f"Error reading session: {e}")
+            return
+
         elif self.path.startswith("/audio/"):
             self._serve_audio(is_head=False)
             return
@@ -668,6 +855,7 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             self.wfile.write(audio_path.read_bytes())
 
     def do_POST(self):
+        global ACTIVE_SESSION_ID
         content_len = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(content_len)
 
@@ -678,9 +866,93 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
 
         if self.path == "/api/chat":
             self._handle_chat(payload)
+        elif self.path == "/api/sessions/new":
+            with _history_lock:
+                if RICH_CHAT_HISTORY:
+                    save_session_data(ACTIVE_SESSION_ID, RICH_CHAT_HISTORY)
+                ACTIVE_SESSION_ID = f"session_{int(time.time())}"
+                try:
+                    CURRENT_SESSION_FILE.write_text(ACTIVE_SESSION_ID, encoding="utf-8")
+                except Exception:
+                    pass
+                RICH_CHAT_HISTORY.clear()
+                CONVERSATION_HISTORY.clear()
+                save_chat_history(RICH_CHAT_HISTORY)
+            self._send_json({
+                "success": True,
+                "active_session_id": ACTIVE_SESSION_ID,
+                "sessions": list_all_sessions()
+            })
+        elif self.path == "/api/sessions/switch":
+            sid = payload.get("session_id", "").strip()
+            session_file = SESSIONS_DIR / f"{sid}.json"
+            if not session_file.exists():
+                self._send_json({"error": "Session not found"}, status=404)
+                return
+            with _history_lock:
+                if RICH_CHAT_HISTORY:
+                    save_session_data(ACTIVE_SESSION_ID, RICH_CHAT_HISTORY)
+                try:
+                    session_data = json.loads(session_file.read_text(encoding="utf-8"))
+                except Exception as e:
+                    self._send_json({"error": f"Failed to load session: {e}"}, status=500)
+                    return
+                ACTIVE_SESSION_ID = sid
+                try:
+                    CURRENT_SESSION_FILE.write_text(ACTIVE_SESSION_ID, encoding="utf-8")
+                except Exception:
+                    pass
+                RICH_CHAT_HISTORY.clear()
+                RICH_CHAT_HISTORY.extend(session_data.get("messages", []))
+                CONVERSATION_HISTORY.clear()
+                for msg in RICH_CHAT_HISTORY[-20:]:
+                    role = "user" if msg.get("sender") == "user" else "assistant"
+                    content = msg.get("text", "")
+                    if content:
+                        CONVERSATION_HISTORY.append({"role": role, "content": content})
+                save_chat_history(RICH_CHAT_HISTORY)
+            self._send_json({
+                "success": True,
+                "active_session_id": ACTIVE_SESSION_ID,
+                "session": session_data,
+                "history": RICH_CHAT_HISTORY
+            })
+        elif self.path == "/api/sessions/delete":
+            sid = payload.get("session_id", "").strip()
+            session_file = SESSIONS_DIR / f"{sid}.json"
+            with _history_lock:
+                if session_file.exists():
+                    try:
+                        session_file.unlink()
+                    except Exception:
+                        pass
+                if sid == ACTIVE_SESSION_ID:
+                    ACTIVE_SESSION_ID = f"session_{int(time.time())}"
+                    try:
+                        CURRENT_SESSION_FILE.write_text(ACTIVE_SESSION_ID, encoding="utf-8")
+                    except Exception:
+                        pass
+                    RICH_CHAT_HISTORY.clear()
+                    CONVERSATION_HISTORY.clear()
+                    save_chat_history(RICH_CHAT_HISTORY)
+            self._send_json({
+                "success": True,
+                "active_session_id": ACTIVE_SESSION_ID,
+                "sessions": list_all_sessions()
+            })
         elif self.path == "/api/clear-history":
-            CONVERSATION_HISTORY.clear()
-            self._send_json({"success": True, "message": "Conversation history cleared"})
+            with _history_lock:
+                if RICH_CHAT_HISTORY:
+                    save_session_data(ACTIVE_SESSION_ID, RICH_CHAT_HISTORY)
+                ACTIVE_SESSION_ID = f"session_{int(time.time())}"
+                try:
+                    CURRENT_SESSION_FILE.write_text(ACTIVE_SESSION_ID, encoding="utf-8")
+                except Exception:
+                    pass
+                RICH_CHAT_HISTORY.clear()
+                CONVERSATION_HISTORY.clear()
+                save_chat_history(RICH_CHAT_HISTORY)
+            self._send_json({"success": True, "message": "Previous session safely archived, new session started."})
         elif self.path == "/api/config":
             self._handle_save_config(payload)
         elif self.path == "/api/tts":
@@ -743,8 +1015,13 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
 
         # Stage 3: LLM Thinking + Tool Execution (PowerShell, Files, System Info)
         t1 = time.time()
-        reply_text, tool_events = self._query_agent_with_tools(user_text, model=model, temperature=temperature)
-        timings["llm_seconds"] = round(time.time() - t1, 2)
+        try:
+            reply_text, tool_events = self._query_agent_with_tools(user_text, model=model, temperature=temperature)
+            timings["llm_seconds"] = round(time.time() - t1, 2)
+        except Exception as e:
+            logger.error("LLM processing error: %s", e)
+            self._send_json({"error": f"เกิดข้อผิดพลาดในการประมวลผล LLM: {str(e)}"}, status=500)
+            return
 
         # Stage 4: TTS Synthesis (Microsoft Edge-TTS with natural speech cleaning)
         t2 = time.time()
@@ -762,6 +1039,27 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
 
         timings["total_seconds"] = round(time.time() - t_start, 2)
 
+        # Persist rich conversation history to disk
+        user_msg = {
+            "id": f"msg_{int(t_start * 1000)}_u",
+            "timestamp": int(t_start),
+            "sender": "user",
+            "text": user_text
+        }
+        asst_msg = {
+            "id": f"msg_{int(time.time() * 1000)}_a",
+            "timestamp": int(time.time()),
+            "sender": "maymint",
+            "text": reply_text,
+            "tool_events": tool_events,
+            "audio_url": audio_url,
+            "timings": timings
+        }
+        with _history_lock:
+            RICH_CHAT_HISTORY.append(user_msg)
+            RICH_CHAT_HISTORY.append(asst_msg)
+            save_chat_history(RICH_CHAT_HISTORY)
+            save_session_data(ACTIVE_SESSION_ID, RICH_CHAT_HISTORY)
         response_data = {
             "success": True,
             "user_text": user_text,

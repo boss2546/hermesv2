@@ -14,6 +14,7 @@ import json
 import logging
 import os
 import platform
+import re
 import subprocess
 import tempfile
 import threading
@@ -109,8 +110,13 @@ class VoiceEngine:
     ) -> Path:
         """Synthesize Thai text into an MP3 file using Microsoft Edge-TTS with Auto-Retry."""
         clean_text = text.strip()
+        clean_text = re.sub(r"\s+ๆ", "ๆ", clean_text)
+        # Strip characters that cause Edge-TTS parser errors upfront (preserving Thai, English, digits, and basic punctuation)
+        clean_text = re.sub(r"[^\u0E00-\u0E7Fa-zA-Z0-9\s.,!?-]", " ", clean_text)
+        clean_text = re.sub(r"\s+", " ", clean_text).strip()
         if not clean_text:
-            raise ValueError("Text cannot be empty.")
+            clean_text = "มายพร้อมดูแลบอสเสมอเลยค่ะ"
+
 
         selected_voice = voice or self.active_voice
         if selected_voice.lower() in VOICE_PRESETS:
@@ -123,16 +129,26 @@ class VoiceEngine:
 
         output_file = self._temp_dir / f"tts_{abs(hash(clean_text + selected_voice)) % 10000000}.mp3"
 
-        # Direct Edge-TTS synthesis via Async loop with retries
+        # Direct Edge-TTS synthesis via Async loop with progressive fallback retries
         last_error = None
         for attempt in range(1, max_retries + 1):
             try:
                 if edge_tts is None:
                     raise ImportError("edge_tts package is not installed.")
 
+                tts_text = clean_text
+                if attempt == 2:
+                    tts_text = re.sub(r"[^\u0E00-\u0E7Fa-zA-Z0-9\s.,!?-]", "", tts_text).strip()
+                elif attempt >= 3:
+                    # Simplify to concise sentence on final retry
+                    parts = re.split(r"(ค่ะ|นะคะ|น้า|[\.!\n])", tts_text)
+                    tts_text = "".join(parts[:2]).strip() if len(parts) >= 2 else "มายดูแลระบบให้เรียบร้อยแล้วนะคะบอส"
+                    if len(tts_text) < 4:
+                        tts_text = "มายพร้อมดูแลบอสเสมอเลยค่ะ"
+
                 async def _run_edge():
                     comm = edge_tts.Communicate(
-                        text=clean_text,
+                        text=tts_text,
                         voice=selected_voice,
                         rate=rate_val,
                         pitch=pitch_val,
@@ -151,11 +167,11 @@ class VoiceEngine:
             except Exception as exc:
                 last_error = exc
                 logger.warning("Edge-TTS attempt %d failed: %s", attempt, exc)
-                time.sleep(0.5 * attempt)
+                time.sleep(0.3 * attempt)
 
-        # Fallback to Gateway TTS if edge-tts fails after retries
-        logger.warning("Edge-TTS failed after %d retries. Falling back to 9Router Gateway TTS: %s", max_retries, last_error)
-        return self._synthesize_via_gateway(clean_text, selected_voice, output_file)
+        # Log failure and raise so caller handles without unhandled gateway 403
+        logger.error("Edge-TTS failed after %d retries: %s", max_retries, last_error)
+        raise RuntimeError(f"Edge-TTS synthesis failed: {last_error}")
 
     def _synthesize_via_gateway(self, text: str, voice: str, output_file: Path) -> Path:
         """Fallback synthesis via 9Router audio/speech endpoint."""

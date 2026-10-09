@@ -54,6 +54,13 @@ temp/
 *.wav
 *.ogg
 TUNNEL_URL.txt
+chat_history.json
+**/sessions/*.json
+!**/sessions/.gitkeep
+**/current_session_id.txt
+scratch/
+*client_secret*.json
+*token*.json
 
 
 # IDE specific cache (but keep team rules)
