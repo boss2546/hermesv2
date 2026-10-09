@@ -578,6 +578,42 @@ AVAILABLE_TOOLS: List[Dict[str, Any]] = [
                 "properties": {}
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "manage_knowledge_lexicon",
+            "description": "จัดการคลังคำสั่งและคำศัพท์ (Knowledge Lexicon) เพื่อเพิ่มคำศัพท์ใหม่, คำสั่งใหม่, อุปกรณ์ใหม่ หรือคำที่มักพูดเพี้ยน (aliases) เข้าสู่ระบบถาวร ใช้เมื่อบอสบอกให้จำคำใหม่, สอนคำศัพท์ใหม่ หรือสั่งให้เพิ่มอุปกรณ์/คำสั่งเข้าคลังความรู้",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["add", "search", "list"],
+                        "description": "การกระทำ: 'add' (เพิ่ม/อัปเดตคำใหม่), 'search' (ค้นหาคำ), 'list' (ดูสรุปจำนวนคำ)"
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": ["commands", "devices", "workspace", "technical", "identity", "corrections"],
+                        "description": "หมวดหมู่: commands (คำสั่ง), devices (อุปกรณ์/Smart Home), workspace (Google Workspace), technical (ศัพท์ Dev), identity (บุคคล), corrections (คำเพี้ยน)"
+                    },
+                    "term": {
+                        "type": "string",
+                        "description": "คำที่ถูกต้อง (เช่น 'พัดลมห้องโถง', 'เปิดเครื่องฟอกอากาศ')"
+                    },
+                    "aliases": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "รายการคำพ้องเสียงหรือคำที่คนมักพูดเพี้ยน (เช่น ['พัดลมโถง', 'พัดลมเพดาน'])"
+                    },
+                    "desc": {
+                        "type": "string",
+                        "description": "คำอธิบายหน้าที่หรือความหมายของคำนี้"
+                    }
+                },
+                "required": ["action"]
+            }
+        }
     }
 ]
 
@@ -735,6 +771,37 @@ def execute_tool(name: str, arguments: Dict[str, Any], project_root: Path) -> Di
             except Exception as exc:
                 return {"error": str(exc)}
         return {"error": "Google Workspace plugin is not loaded"}
+
+    elif name == "manage_knowledge_lexicon":
+        if not lexicon_mgr:
+            return {"error": "Lexicon manager is not loaded"}
+        action = arguments.get("action", "add")
+        if action == "add":
+            term = arguments.get("term", "").strip()
+            cat = arguments.get("category", "commands")
+            aliases = arguments.get("aliases", [])
+            desc = arguments.get("desc", "")
+            if not term:
+                return {"error": "term is required"}
+            item = lexicon_mgr.add_or_update_item(category=cat, term=term, aliases=aliases, desc=desc)
+            return {
+                "status": "success",
+                "message": f"บันทึก '{term}' ลงในคลังความรู้หมวด '{cat}' เรียบร้อยแล้วค่ะบอส",
+                "item": item,
+                "total_items": lexicon_mgr.get_summary_stats().get("total_items")
+            }
+        elif action == "search":
+            q = arguments.get("term", "").strip().lower()
+            all_data = lexicon_mgr.get_all().get("categories", {})
+            results = []
+            for cat_key, cat_val in all_data.items():
+                for it in cat_val.get("items", []):
+                    if q in it.get("term", "").lower() or any(q in a.lower() for a in it.get("aliases", [])):
+                        results.append(it)
+            return {"status": "success", "results": results}
+        elif action == "list":
+            return {"status": "success", "stats": lexicon_mgr.get_summary_stats()}
+        return {"error": f"Unknown action: {action}"}
 
     return {"error": f"Unknown tool: {name}"}
 
