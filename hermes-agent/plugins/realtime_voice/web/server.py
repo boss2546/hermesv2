@@ -1335,11 +1335,16 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             self._send_json({"error": str(e)}, status=500)
 
     def _send_json(self, data: Dict[str, Any], status: int = 200):
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.end_headers()
-        self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
+        try:
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
+        except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
+            logger.debug("Client disconnected before receiving JSON response.")
+        except Exception as e:
+            logger.warning("Error sending JSON response: %s", e)
 
 
 def run_server():
