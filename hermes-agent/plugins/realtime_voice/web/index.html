@@ -2317,12 +2317,13 @@
             const tierBadge = data.cognitive_tier === 'deep' ? '🧠 คิดลึกซึ้ง' : (data.cognitive_tier === 'fast' ? '⚡ ตอบไว' : '');
             const modelName = (data.model || '').replace('ag/', '');
             const featBrief = (data.cognitive_features && data.cognitive_features.length > 0) ? ` [${data.cognitive_features[0].split('(')[0].replace('Deep Domain: ', '').trim()}]` : '';
-            timingsBadge.innerText = `${tierBadge ? tierBadge + featBrief + ' (' + modelName + ') | ' : ''}⏱️ LLM: ${data.timings.llm_seconds}s | TTS: ${data.timings.tts_seconds}s | รวม: ${data.timings.total_seconds}s`;
+            const chunkInfo = (data.timings.tts_chunks && data.timings.tts_chunks > 1) ? ` (${data.timings.tts_chunks} ท่อนต่อเนื่อง)` : '';
+            timingsBadge.innerText = `${tierBadge ? tierBadge + featBrief + ' (' + modelName + ') | ' : ''}⏱️ LLM: ${data.timings.llm_seconds}s | TTS: ${data.timings.tts_seconds}s${chunkInfo} | รวม: ${data.timings.total_seconds}s`;
           }
 
-
           if (autoSpeakToggle.checked && data.audio_url) {
-            setStage(4, '🎙️ [สเต็ป 4/5] สร้างเสียงพูด Edge-TTS เสร็จสิ้น...');
+            const chunkDesc = (data.timings && data.timings.tts_chunks > 1) ? ` ${data.timings.tts_chunks} ท่อนต่อเนื่อง` : '';
+            setStage(4, `🎙️ [สเต็ป 4/5] สร้างเสียงพูดต่อเนื่อง${chunkDesc} เสร็จสิ้น...`);
             playAudioResponse(data.audio_url);
           } else {
             setStage(5, '✅ ตอบคำถามเรียบร้อยแล้วค่ะ');
@@ -2367,7 +2368,8 @@
       maymintAudioPlayer.load();
 
       setStage(5, '🔊 [สเต็ป 5/5] มายมิ้นท์กำลังพูดออกเสียง...');
-      audioPlayingStatus.innerText = `🔊 กำลังพูดเสียง: ${cfgVoiceSelect.value}`;
+      audioPlayingStatus.innerText = `🔊 กำลังพูดเสียง: ${cfgVoiceSelect.value} (อ่านครบถ้วนต่อเนื่อง)`;
+
       stopAudioBtn.style.display = 'inline-block';
       startWaveform();
 

@@ -22,11 +22,13 @@ import sys
 import threading
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import requests
+
 
 # Add hermes-agent root to sys.path
 CURRENT_DIR = Path(__file__).resolve().parent
@@ -751,42 +753,169 @@ def strip_emojis(text: str) -> str:
     return cleaned.strip()
 
 
-def clean_text_for_speech(text: str, max_chars: int = 140) -> str:
-    """Clean and summarize text for natural, fast, and smooth speech synthesis.
-    The visual chat window displays the full markdown text and code blocks,
-    while the voice speaks a natural, warm summary/introduction to prevent long synthesis latency.
+def clean_text_for_speech_full(text: str) -> str:
+    """Thoroughly cleans and prepares text for speech synthesis:
+    - Strips code blocks, command-line prompts, CLI tool execution logs completely
+    - Strips markdown tables, URLs, formatting noise
+    - Retains full conversational and explanatory sentences without artificial length cutoffs
     """
-    # Remove markdown code blocks completely for speech
+    if not text:
+        return "มายจัดเตรียมรายละเอียดทั้งหมดไว้ให้บนหน้าจอเรียบร้อยแล้วนะคะบอส"
+
+    # 1. Remove markdown fenced code blocks completely
     cleaned = re.sub(r"```[\s\S]*?```", "", text)
-    # Remove inline code marks
-    cleaned = re.sub(r"`([^`]+)`", r"\1", cleaned)
-    # Remove URLs
+
+    # 2. Remove markdown tables (lines with | ... |)
+    cleaned = re.sub(r"^\s*\|.*\|\s*$", "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"^\s*\|[-:| ]+\|\s*$", "", cleaned, flags=re.MULTILINE)
+
+    # 3. Remove command-line prompts and terminal output lines
+    cli_pattern = r"^\s*(?:\$|>|#|PS\s+[A-Z]:\\.*?>)\s*.*$"
+    cleaned = re.sub(cli_pattern, "", cleaned, flags=re.MULTILINE)
+
+    # Lines starting with standard CLI tools or shell scripts
+    cli_cmds = r"^\s*(?:git|npm|pip|python|python3|node|docker|kubectl|curl|wget|cd|ls|dir|cat|rm|mkdir)\s+.*$"
+    cleaned = re.sub(cli_cmds, "", cleaned, flags=re.MULTILINE)
+
+    # Remove command execution logs (Exit: 0, [INFO], Error: ...)
+    cleaned = re.sub(r"^\s*(?:Exit:\s*\d+|\[INFO\]|\[ERROR\]|\[DEBUG\]|STDOUT:|STDERR:).*$", "", cleaned, flags=re.MULTILINE)
+
+    # 4. Remove inline code that looks like commands or file paths
+    def clean_inline_code(match):
+        code = match.group(1).strip()
+        if re.search(r"[\\/]|^-|^\w+\.(?:py|js|ts|json|yaml|txt|md|sh|exe)", code):
+            return ""
+        return f" {code} "
+
+    cleaned = re.sub(r"`([^`]+)`", clean_inline_code, cleaned)
+
+    # 5. Remove URLs
     cleaned = re.sub(r"https?://\S+", "", cleaned)
-    # Remove markdown header hashes and list prefixes that sound awkward
+
+    # 6. Remove markdown structural elements: headers (#), bullet dashes/stars (*, -, +), blockquotes (>)
     cleaned = re.sub(r"^[#*>\-\d.]+\s+", "", cleaned, flags=re.MULTILINE)
     cleaned = re.sub(r"[*#_~>]", "", cleaned)
-    # Strip emojis completely so TTS won't read emoji names
+    cleaned = re.sub(r"^---+$", "", cleaned, flags=re.MULTILINE)
+
+    # 7. Strip emojis completely
     cleaned = strip_emojis(cleaned)
-    # Fix isolated Thai repetition mark (ๆ) which causes Azure TTS parser drops
+
+    # 8. Fix Thai repetition mark (ๆ)
     cleaned = re.sub(r"\s+ๆ", "ๆ", cleaned)
-    # Collapse multiple whitespaces
-    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+
+    # 9. Clean up whitespace
+    cleaned = re.sub(r"\n{2,}", "\n", cleaned)
+    cleaned = re.sub(r"[ ]{2,}", " ", cleaned)
+    cleaned = cleaned.strip()
 
     if not cleaned:
         return "มายจัดเตรียมรายละเอียดทั้งหมดไว้ให้บนหน้าจอเรียบร้อยแล้วนะคะบอส"
 
-    # If the text is longer than max_chars, take a clean sentence/phrase cut
-    if len(cleaned) > max_chars:
-        cut = cleaned[:max_chars]
-        last_punct = max(cut.rfind("ค่ะ"), cut.rfind("นะคะ"), cut.rfind("น้า"), cut.rfind(". "), cut.rfind("!"))
-        if last_punct > 50:
-            punct_len = 4 if cut[last_punct:last_punct+4] == "นะคะ" else 3
-            cut = cut[:last_punct + punct_len].strip()
-        else:
-            cut = cut.rstrip()
-        cleaned = cut + " มายเตรียมเนื้อหาทั้งหมดไว้ให้บนหน้าจอแล้วนะคะบอส"
+    return cleaned
 
-    return strip_emojis(cleaned)
+
+def split_into_speech_chunks(clean_text: str, max_chunk_len: int = 140) -> List[str]:
+    """Splits clean text into natural spoken chunks for multi-round parallel synthesis.
+    Splits at natural sentence boundaries (newlines, polite particles, periods)
+    without breaking words awkwardly.
+    """
+    if len(clean_text) <= max_chunk_len:
+        return [clean_text]
+
+    paragraphs = [p.strip() for p in clean_text.split("\n") if p.strip()]
+    raw_sentences = []
+
+    # Regex for Thai/English sentence breaks: ค่ะ, นะคะ, น้า, งับ, ครับ, ., !, ?
+    sentence_splitter = re.compile(r"((?:นะคะ|ค่ะ|น้า|งับ|ครับ|[.!?])(?:\s+|$))")
+
+    for para in paragraphs:
+        tokens = sentence_splitter.split(para)
+        current = ""
+        for i in range(0, len(tokens) - 1, 2):
+            part = tokens[i] + tokens[i+1]
+            if len(current) + len(part) <= max_chunk_len:
+                current += part
+            else:
+                if current.strip():
+                    raw_sentences.append(current.strip())
+                current = part
+        if len(tokens) % 2 == 1 and tokens[-1].strip():
+            rem = tokens[-1].strip()
+            if len(current) + len(rem) <= max_chunk_len:
+                current += rem
+            else:
+                if current.strip():
+                    raw_sentences.append(current.strip())
+                current = rem
+        if current.strip():
+            raw_sentences.append(current.strip())
+
+    # Merge very small chunks (< 30 chars) into neighboring chunks if possible
+    final_chunks = []
+    buffer = ""
+    for s in raw_sentences:
+        if not buffer:
+            buffer = s
+        elif len(buffer) + len(s) + 1 <= max_chunk_len:
+            buffer += " " + s
+        else:
+            final_chunks.append(buffer)
+            buffer = s
+    if buffer:
+        final_chunks.append(buffer)
+
+    return final_chunks if final_chunks else [clean_text]
+
+
+def synthesize_speech_multiround(
+    text: str,
+    voice: str = "th-TH-PremwadeeNeural",
+    speed: str = "+0%",
+    pitch: str = "+0Hz"
+) -> Tuple[Path, List[str], float]:
+    """Synthesizes text in parallel rounds and merges them into one continuous seamless MP3.
+    Guarantees full reading without artificial truncation and no gaps in audio playback.
+    """
+    clean_text = clean_text_for_speech_full(text)
+    chunks = split_into_speech_chunks(clean_text, max_chunk_len=140)
+
+    t0 = time.time()
+    temp_dir = Path(tempfile.gettempdir()) / "hermes_voice"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+
+    if len(chunks) == 1:
+        f = engine.synthesize_speech(chunks[0], voice=voice, speed=speed, pitch=pitch)
+        return f, chunks, time.time() - t0
+
+    # Function to synthesize a single chunk
+    def synth_chunk(chunk_idx: int, chunk_str: str) -> Tuple[int, bytes]:
+        f = engine.synthesize_speech(chunk_str, voice=voice, speed=speed, pitch=pitch)
+        return chunk_idx, f.read_bytes()
+
+    # Parallel multi-round synthesis across chunks
+    results = []
+    with ThreadPoolExecutor(max_workers=min(len(chunks), 6)) as executor:
+        futures = [executor.submit(synth_chunk, idx, c) for idx, c in enumerate(chunks)]
+        for fut in futures:
+            results.append(fut.result())
+
+    # Sort in order of original chunks
+    results.sort(key=lambda x: x[0])
+
+    # Merge audio bytes into a continuous seamless MP3
+    merged_bytes = b"".join([r[1] for r in results])
+    master_hash = abs(hash(clean_text + voice + speed)) % 10000000
+    master_file = temp_dir / f"tts_continuous_{master_hash}.mp3"
+    master_file.write_bytes(merged_bytes)
+
+    duration = time.time() - t0
+    return master_file, chunks, duration
+
+
+def clean_text_for_speech(text: str, max_chars: int = 140) -> str:
+    """Backwards-compatible wrapper returning full clean speech text."""
+    return clean_text_for_speech_full(text)
+
 
 
 def get_system_prompt() -> str:
@@ -1205,19 +1334,24 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             self._send_json({"error": f"เกิดข้อผิดพลาดในการประมวลผล LLM: {str(e)}"}, status=500)
             return
 
-        # Stage 4: TTS Synthesis (Microsoft Edge-TTS with natural speech cleaning)
+        # Stage 4: Multi-Round Continuous TTS Synthesis (อ่านครบถ้วน ตัดคำสั่ง/โค้ดออก เชื่อมต่อไร้รอยต่อ)
         t2 = time.time()
         try:
-            spoken_text = clean_text_for_speech(reply_text)
-            if not spoken_text:
-                spoken_text = "มายแสดงเนื้อหาให้บนหน้าจอแล้วนะคะบอส"
-            audio_file = engine.synthesize_speech(spoken_text, voice=voice, speed=speed, pitch=pitch)
+            audio_file, chunks, synth_elapsed = synthesize_speech_multiround(
+                reply_text,
+                voice=voice,
+                speed=speed,
+                pitch=pitch
+            )
             audio_url = f"/audio/{audio_file.name}"
-            timings["tts_seconds"] = round(time.time() - t2, 2)
+            timings["tts_seconds"] = round(synth_elapsed, 2)
+            timings["tts_chunks"] = len(chunks)
         except Exception as e:
-            logger.error("TTS failed: %s", e)
+            logger.error("Multi-round TTS failed: %s", e)
             audio_url = ""
             timings["tts_seconds"] = round(time.time() - t2, 2)
+            timings["tts_chunks"] = 0
+
 
         timings["total_seconds"] = round(time.time() - t_start, 2)
 
@@ -1456,7 +1590,7 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         return fallback_reply, tool_events
 
     def _handle_tts(self, payload: Dict[str, Any]):
-        """Direct TTS endpoint with custom speed & pitch."""
+        """Direct TTS endpoint with custom speed & pitch (supports multi-round synthesis)."""
         text = payload.get("text", "").strip()
         voice = payload.get("voice") or RUNTIME_CONFIG.get("voice", "th-TH-PremwadeeNeural")
         speed = payload.get("speed") or RUNTIME_CONFIG.get("speed", "+0%")
@@ -1466,14 +1600,17 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             return
 
         try:
-            audio_file = engine.synthesize_speech(text, voice=voice, speed=speed, pitch=pitch)
+            audio_file, chunks, elapsed = synthesize_speech_multiround(text, voice=voice, speed=speed, pitch=pitch)
             self._send_json({
                 "success": True,
                 "audio_url": f"/audio/{audio_file.name}",
                 "voice": voice,
+                "chunks_count": len(chunks),
+                "duration_seconds": round(elapsed, 2)
             })
         except Exception as e:
             self._send_json({"error": str(e)}, status=500)
+
 
     def _handle_stt(self, payload: Dict[str, Any]):
         """Direct STT endpoint."""
