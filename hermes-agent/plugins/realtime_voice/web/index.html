@@ -2581,6 +2581,8 @@
       return new Blob([view], { type: 'audio/wav' });
     }
 
+    let speechSilenceTimer = null;
+    let maxRecordingSafetyTimer = null;
     let vadSpeechDetected = false;
     let vadLastSpeechTime = Date.now();
 
@@ -2600,6 +2602,9 @@
       } catch (e) {}
       stopWaveform();
 
+      if (speechSilenceTimer) { clearTimeout(speechSilenceTimer); speechSilenceTimer = null; }
+      if (maxRecordingSafetyTimer) { clearTimeout(maxRecordingSafetyTimer); maxRecordingSafetyTimer = null; }
+
       isRecording = true;
       vadSpeechDetected = false;
       vadLastSpeechTime = Date.now();
@@ -2613,11 +2618,19 @@
       const isContinuous = continuousModeToggle && continuousModeToggle.checked;
       micHint.innerText = isContinuous
         ? '🎧 [โหมดคุยต่อเนื่อง] กำลังฟังเสียงบอส... (พูดคุยได้เลยค่ะ)'
-        : 'กำลังฟังเสียงบอส... (พูดจบแล้วระบบจะประมวลผลทันทีค่ะ)';
+        : 'กำลังฟังเสียงบอส... (พูดจบแล้วระบบจะส่งให้อัตโนมัติทันทีค่ะ)';
       setStage(1, isContinuous ? '🎙️ [คุยต่อเนื่อง] กำลังฟังเสียงบอส...' : '🎙️ [สเต็ป 1/5] กำลังฟังเสียงบอส...');
       startWaveform();
 
-      // 1. Start High-Fidelity AudioContext PCM Recorder (Zero Loopback & Client-side VAD)
+      // Safety timeout: If 10 seconds of absolute silence with no speech, auto-cancel
+      maxRecordingSafetyTimer = setTimeout(() => {
+        if (isRecording && !lastRecognizedTranscript && !vadSpeechDetected) {
+          micHint.innerText = 'ไม่พบเสียงพูด ปิดไมค์อัตโนมัติค่ะบอส';
+          stopListening();
+        }
+      }, 10000);
+
+      // 1. Start High-Fidelity AudioContext PCM Recorder (Zero Loopback & Universal VAD)
       try {
         if (!micMediaStream || !micMediaStream.active) {
           micMediaStream = await navigator.mediaDevices.getUserMedia({
@@ -2648,21 +2661,21 @@
             const outputData = e.outputBuffer.getChannelData(0);
             outputData.fill(0);
 
-            // Client-Side Voice Activity Detector (VAD) for Hands-Free Continuous Mode
+            // Universal RMS Voice Activity Detector (VAD) for both modes
             let sumSquares = 0;
             for (let i = 0; i < inputData.length; i++) {
               sumSquares += inputData[i] * inputData[i];
             }
             const rms = Math.sqrt(sumSquares / inputData.length);
 
-            const isCont = continuousModeToggle && continuousModeToggle.checked;
-            if (isCont) {
-              if (rms > 0.015) {
-                vadSpeechDetected = true;
-                vadLastSpeechTime = Date.now();
-              } else if (vadSpeechDetected && (Date.now() - vadLastSpeechTime > 1500)) {
-                // User finished sentence and paused comfortably for 1.5s -> Auto conclude
-                vadSpeechDetected = false;
+            if (rms > 0.015) {
+              vadSpeechDetected = true;
+              vadLastSpeechTime = Date.now();
+            } else if (vadSpeechDetected && (Date.now() - vadLastSpeechTime > 1400)) {
+              // 1.4s of silence after speaking audio -> auto submit!
+              vadSpeechDetected = false;
+              if (isRecording) {
+                console.log('Audio VAD silence detected, auto-submitting...');
                 stopListening();
               }
             }
@@ -2674,7 +2687,7 @@
         console.warn('Microphone AudioContext init error:', micErr);
       }
 
-      // 2. Start Web Speech Recognition if available (For Instant Live Visual Preview)
+      // 2. Start Web Speech Recognition if available (For Instant Live Visual Preview & Auto-Send Silence Timer)
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
         try {
@@ -2694,14 +2707,27 @@
             if (fullText) {
               lastRecognizedTranscript = fullText.trim();
               micHint.innerText = `ได้ยิน: "${lastRecognizedTranscript}"`;
+              vadSpeechDetected = true;
+              vadLastSpeechTime = Date.now();
+
+              // 🔥 AUTO-SEND: Reset 1.2s silence timer. When user pauses for 1.2s, auto-submit!
+              if (speechSilenceTimer) clearTimeout(speechSilenceTimer);
+              speechSilenceTimer = setTimeout(() => {
+                if (isRecording) {
+                  console.log('Speech silence detected, auto-submitting:', lastRecognizedTranscript);
+                  stopListening();
+                }
+              }, 1200);
             }
           };
 
           speechRecognitionInstance.onend = () => {
             if (isRecording) {
-              const isCont = continuousModeToggle && continuousModeToggle.checked;
-              if (!isCont) {
-                try { speechRecognitionInstance.start(); } catch(e) {}
+              // If speech was recognized, Chrome finished endpointing -> submit now!
+              if (lastRecognizedTranscript && lastRecognizedTranscript.length > 0) {
+                stopListening();
+              } else if (pcmSampleLength > 16000 && vadSpeechDetected) {
+                stopListening();
               }
             }
           };
@@ -2723,6 +2749,16 @@
     async function stopListening() {
       if (!isRecording) return;
       isRecording = false;
+
+      if (speechSilenceTimer) {
+        clearTimeout(speechSilenceTimer);
+        speechSilenceTimer = null;
+      }
+      if (maxRecordingSafetyTimer) {
+        clearTimeout(maxRecordingSafetyTimer);
+        maxRecordingSafetyTimer = null;
+      }
+
       micButton.classList.remove('recording');
       micRipple.style.opacity = '0';
       stopWaveform();
