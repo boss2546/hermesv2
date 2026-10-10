@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "updated_at": 1791617638,
+  "updated_at": 1791617903,
   "description": "คลังคำสั่งและคำศัพท์สำหรับถอดความเสียง ป้องกันคำเพี้ยน และจัดระเบียบบริบทระบบ",
   "categories": {
     "commands": {
@@ -283,13 +283,16 @@
           "id": "ws_tasks",
           "term": "Google Tasks",
           "aliases": [
-            "กูเกิลแทสก์",
             "กูเกิลทาสก์",
+            "รายการงาน",
+            "กูเกิลเทาส์",
+            "กูเกิล ทาสก์",
             "แทสก์",
-            "รายการงาน"
+            "กูเกิลแทสก์"
           ],
           "desc": "ระบบบันทึก To-Do List และรายการสิ่งที่ต้องทำ",
-          "category": "workspace"
+          "category": "workspace",
+          "updated_at": 1791617835
         }
       ]
     },
@@ -408,13 +411,42 @@
           "term": "Neuphonic",
           "category": "technical",
           "aliases": [
+            "นิวโฟนิค",
             "นิวโฟนิก",
             "Neuphonic AI"
           ],
           "desc": "An ultra-responsive text-to-speech and voice AI platform supporting voice cloning and conversational agents.",
           "source": "autonomous_ai_harvester",
           "auto_learned": true,
-          "created_at": 1791617638
+          "created_at": 1791617638,
+          "updated_at": 1791617873
+        },
+        {
+          "id": "tec_auto_898245",
+          "term": "Nouphonic",
+          "category": "technical",
+          "aliases": [
+            "นูโฟนิก"
+          ],
+          "desc": "ชื่อเครื่องมือสร้างเสียง AI และโคลนเสียง (Voice cloning)",
+          "source": "autonomous_ai_harvester",
+          "auto_learned": true,
+          "created_at": 1791617898
+        },
+        {
+          "id": "tec_auto_902605",
+          "term": "ระบบคู่ขนาน",
+          "category": "technical",
+          "aliases": [
+            "ระบบคู่ขนานที่ 2",
+            "ระบบคู่ขนานที่ 1",
+            "ระบบคู่ขนานที่ 3"
+          ],
+          "desc": "ชื่อระบบทดสอบเฉพาะกิจที่ใช้ในการประมวลผลแบบคู่ขนาน",
+          "source": "autonomous_ai_harvester",
+          "auto_learned": true,
+          "created_at": 1791617902,
+          "updated_at": 1791617903
         }
       ]
     },
