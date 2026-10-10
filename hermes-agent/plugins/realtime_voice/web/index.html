@@ -1790,6 +1790,14 @@
             </select>
           </div>
 
+          <div class="form-group full-width">
+            <label>เครื่องยนต์ถอดความเสียง (Speech-to-Text STT):</label>
+            <select id="cfgSttEngine">
+              <option value="gemini" selected>⭐ AI Gemini 2.5 Flash (Studio Lossless WAV 44.1k/48k - แนะนำ แม่นยำสูงสุด 100% พร้อมคลังคำศัพท์ 💖)</option>
+              <option value="webspeech">⚡ Web Speech API (ถอดความด่วนผ่านเบราว์เซอร์ Chrome)</option>
+            </select>
+          </div>
+
           <div class="form-group">
             <label>ความเร็วเสียง (Speed): <span id="cfgSpeedDisplay" class="range-val">+0%</span></label>
             <div class="range-wrapper">
@@ -2039,6 +2047,7 @@
     const configOpenBtn = document.getElementById('configOpenBtn');
     const configCloseBtn = document.getElementById('configCloseBtn');
     const cfgVoiceSelect = document.getElementById('cfgVoiceSelect');
+    const cfgSttEngine = document.getElementById('cfgSttEngine');
     const cfgSpeedSlider = document.getElementById('cfgSpeedSlider');
     const cfgSpeedDisplay = document.getElementById('cfgSpeedDisplay');
     const cfgPitchSlider = document.getElementById('cfgPitchSlider');
@@ -2078,6 +2087,9 @@
         const cfg = await res.json();
         
         cfgVoiceSelect.value = cfg.voice || 'th-TH-PremwadeeNeural';
+        if (cfgSttEngine) {
+          cfgSttEngine.value = localStorage.getItem('maymint_stt_engine') || 'gemini';
+        }
         
         const speedNum = parseInt(cfg.speed) || 0;
         cfgSpeedSlider.value = speedNum;
@@ -2422,6 +2434,9 @@
         });
         const data = await res.json();
         if (data.success) {
+          if (cfgSttEngine) {
+            localStorage.setItem('maymint_stt_engine', cfgSttEngine.value);
+          }
           applyWallpaper(payload.wallpaper_mode);
           configModal.classList.remove('open');
           showToast('✅ บันทึกการตั้งค่าระบบเรียบร้อยแล้วค่ะบอส 💖');
@@ -2434,6 +2449,10 @@
     // Reset Defaults
     cfgResetBtn.addEventListener('click', () => {
       cfgVoiceSelect.value = 'th-TH-PremwadeeNeural';
+      if (cfgSttEngine) {
+        cfgSttEngine.value = 'gemini';
+        localStorage.setItem('maymint_stt_engine', 'gemini');
+      }
       cfgSpeedSlider.value = 0;
       cfgSpeedDisplay.innerText = '+0%';
       cfgPitchSlider.value = 0;
@@ -2507,13 +2526,24 @@
     let speechRecognitionInstance = null;
     let consecutiveSilenceCount = 0;
 
-    // Helper: Convert Raw PCM Float32 to High-Fidelity 16-bit Mono WAV Blob (Preserves Native Sample Rate)
+    // Helper: Convert Raw PCM Float32 to High-Fidelity 16-bit Mono WAV Blob with Studio Peak Normalization
     function encodePcmToWav(buffers, totalLength, inputSampleRate) {
       const merged = new Float32Array(totalLength);
       let offset = 0;
       for (let i = 0; i < buffers.length; i++) {
         merged.set(buffers[i], offset);
         offset += buffers[i].length;
+      }
+
+      // Studio Peak Normalization / Safe Auto-Gain (Brings quiet voices up cleanly without clipping)
+      let maxPeak = 0;
+      for (let i = 0; i < merged.length; i++) {
+        const absVal = Math.abs(merged[i]);
+        if (absVal > maxPeak) maxPeak = absVal;
+      }
+      let gain = 1.0;
+      if (maxPeak > 0.01 && maxPeak < 0.75) {
+        gain = Math.min(3.2, 0.85 / maxPeak);
       }
 
       // Preserve native AudioContext sample rate (e.g. 44.1kHz or 48kHz) losslessly without aliasing distortion
@@ -2543,13 +2573,16 @@
 
       let pcmOffset = 44;
       for (let i = 0; i < merged.length; i++) {
-        let s = Math.max(-1, Math.min(1, merged[i]));
+        let s = Math.max(-1, Math.min(1, merged[i] * gain));
         view.setInt16(pcmOffset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
         pcmOffset += 2;
       }
 
       return new Blob([view], { type: 'audio/wav' });
     }
+
+    let vadSpeechDetected = false;
+    let vadLastSpeechTime = Date.now();
 
     async function startListening() {
       if (isRecording) return;
@@ -2568,6 +2601,9 @@
       stopWaveform();
 
       isRecording = true;
+      vadSpeechDetected = false;
+      vadLastSpeechTime = Date.now();
+
       micButton.classList.add('recording');
       micRipple.style.opacity = '1';
       lastRecognizedTranscript = '';
@@ -2581,7 +2617,7 @@
       setStage(1, isContinuous ? '🎙️ [คุยต่อเนื่อง] กำลังฟังเสียงบอส...' : '🎙️ [สเต็ป 1/5] กำลังฟังเสียงบอส...');
       startWaveform();
 
-      // 1. Start High-Fidelity AudioContext PCM Recorder (Fallback for all browsers/networks)
+      // 1. Start High-Fidelity AudioContext PCM Recorder (Zero Loopback & Client-side VAD)
       try {
         if (!micMediaStream || !micMediaStream.active) {
           micMediaStream = await navigator.mediaDevices.getUserMedia({
@@ -2607,6 +2643,29 @@
             const inputData = e.inputBuffer.getChannelData(0);
             pcmBuffers.push(new Float32Array(inputData));
             pcmSampleLength += inputData.length;
+
+            // Zero out output channel to eliminate microphone acoustic loopback/echo
+            const outputData = e.outputBuffer.getChannelData(0);
+            outputData.fill(0);
+
+            // Client-Side Voice Activity Detector (VAD) for Hands-Free Continuous Mode
+            let sumSquares = 0;
+            for (let i = 0; i < inputData.length; i++) {
+              sumSquares += inputData[i] * inputData[i];
+            }
+            const rms = Math.sqrt(sumSquares / inputData.length);
+
+            const isCont = continuousModeToggle && continuousModeToggle.checked;
+            if (isCont) {
+              if (rms > 0.015) {
+                vadSpeechDetected = true;
+                vadLastSpeechTime = Date.now();
+              } else if (vadSpeechDetected && (Date.now() - vadLastSpeechTime > 1500)) {
+                // User finished sentence and paused comfortably for 1.5s -> Auto conclude
+                vadSpeechDetected = false;
+                stopListening();
+              }
+            }
           };
           micSourceNode.connect(micProcessorNode);
           micProcessorNode.connect(micAudioContext.destination);
@@ -2615,7 +2674,7 @@
         console.warn('Microphone AudioContext init error:', micErr);
       }
 
-      // 2. Start Web Speech Recognition if available (For Instant Live Text Preview)
+      // 2. Start Web Speech Recognition if available (For Instant Live Visual Preview)
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
         try {
@@ -2624,7 +2683,7 @@
           }
           speechRecognitionInstance = new SpeechRecognition();
           speechRecognitionInstance.lang = 'th-TH';
-          speechRecognitionInstance.continuous = false;
+          speechRecognitionInstance.continuous = true;
           speechRecognitionInstance.interimResults = true;
 
           speechRecognitionInstance.onresult = (event) => {
@@ -2640,14 +2699,17 @@
 
           speechRecognitionInstance.onend = () => {
             if (isRecording) {
-              stopListening();
+              const isCont = continuousModeToggle && continuousModeToggle.checked;
+              if (!isCont) {
+                try { speechRecognitionInstance.start(); } catch(e) {}
+              }
             }
           };
 
           speechRecognitionInstance.onerror = (event) => {
             console.warn('SpeechRecognition error:', event.error);
             if (event.error !== 'no-speech' && event.error !== 'aborted') {
-              micHint.innerText = '🎙️ สำรองด้วย AI 9Router Audio STT...';
+              micHint.innerText = '🎙️ กำลังบันทึกเสียง Lossless ส่งเข้า AI Gemini...';
             }
           };
 
@@ -2685,17 +2747,45 @@
       pcmSampleLength = 0;
       lastRecognizedTranscript = '';
 
-      // Priority 1: If Web Speech API captured text cleanly, submit directly!
+      const preferredEngine = (cfgSttEngine ? cfgSttEngine.value : null) || localStorage.getItem('maymint_stt_engine') || 'gemini';
+
+      // Primary Route: High-Fidelity Server-Side Multimodal STT (Gemini 2.5 Flash with Studio Lossless Audio)
+      if (preferredEngine === 'gemini' && currentBuffers.length > 0 && currentLength > 3200) {
+        micHint.innerText = '🎙️ กำลังถอดความเสียงด้วย AI Gemini 2.5 Flash (Lossless Studio Audio)...';
+        setStage(2, '✍️ [สเต็ป 2/5] ถอดความเสียงด้วย AI Gemini 2.5 Flash...');
+        try {
+          const wavBlob = encodePcmToWav(currentBuffers, currentLength, sampleRate);
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64Data = reader.result ? reader.result.split(',')[1] : null;
+            if (base64Data) {
+              consecutiveSilenceCount = 0;
+              submitUserSpeech(null, base64Data);
+            } else if (finalText && finalText.length > 0) {
+              consecutiveSilenceCount = 0;
+              submitUserSpeech(finalText);
+            } else {
+              handleNoSpeechFallback();
+            }
+          };
+          reader.readAsDataURL(wavBlob);
+          return;
+        } catch (encErr) {
+          console.error('WAV encoding error, falling back to Web Speech text:', encErr);
+        }
+      }
+
+      // Secondary Route: Web Speech API (if explicitly preferred by user or if audio buffer is too short)
       if (finalText && finalText.length > 0) {
         consecutiveSilenceCount = 0;
         submitUserSpeech(finalText);
         return;
       }
 
-      // Priority 2: High-Fidelity Server-Side Multimodal STT using lossless WAV audio (Gemini 2.5 Flash)
+      // Fallback if audio buffer exists (even if preferredEngine was webspeech but produced no text)
       if (currentBuffers.length > 0 && currentLength > 3200) {
-        micHint.innerText = '🎙️ กำลังถอดความเสียงด้วย AI 9Router Multimodal...';
-        setStage(2, '✍️ [สเต็ป 2/5] ถอดความเสียงด้วย AI 9Router...');
+        micHint.innerText = '🎙️ สำรองด้วย AI Gemini 2.5 Flash STT...';
+        setStage(2, '✍️ [สเต็ป 2/5] ถอดความเสียงด้วย AI Gemini 2.5 Flash...');
         try {
           const wavBlob = encodePcmToWav(currentBuffers, currentLength, sampleRate);
           const reader = new FileReader();

@@ -318,6 +318,10 @@ class VoiceEngine:
                 text = data["choices"][0]["message"]["content"].strip()
 
         raw_transcript = text.strip()
+        # Clean quotes and common AI transcript prefixes
+        raw_transcript = re.sub(r"^(?:ข้อความที่ได้ยิน(?:คือ)?|ถอดความ(?:ได้ว่า)?|คำพูด(?:คือ)?|Transcript:)\s*[:：]\s*", "", raw_transcript, flags=re.IGNORECASE).strip()
+        if (raw_transcript.startswith('"') and raw_transcript.endswith('"')) or (raw_transcript.startswith("'") and raw_transcript.endswith("'")):
+            raw_transcript = raw_transcript[1:-1].strip()
 
         # Double-Shield: Apply Lexicon Normalization to eliminate any residual phonetic distortions
         if lexicon_mgr is not None:
