@@ -1427,15 +1427,16 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             t0 = time.time()
             try:
                 audio_bytes = base64.b64decode(audio_b64)
-                user_text = engine.transcribe_audio(audio_bytes)
+                user_text = engine.transcribe_audio(audio_bytes).strip()
                 timings["stt_seconds"] = round(time.time() - t0, 2)
+                logger.info("Transcribed audio_b64 input: '%s' (%.2fs)", user_text, timings["stt_seconds"])
             except Exception as e:
                 logger.error("STT failed: %s", e)
-                user_text = "สวัสดีค่ะบอส"
-                timings["stt_seconds"] = round(time.time() - t0, 2)
+                self._send_json({"error": f"ไม่สามารถถอดความเสียงของบอสได้ค่ะ: {str(e)}"}, status=500)
+                return
 
         if not user_text:
-            self._send_json({"error": "No text or audio provided"}, status=400)
+            self._send_json({"error": "ไม่พบข้อความหรือเสียงพูด กรุณาลองพูดใหม่อีกครั้งนะคะบอส"}, status=400)
             return
 
         # Double Shield: Apply Knowledge Lexicon Normalization to eliminate speech recognition errors

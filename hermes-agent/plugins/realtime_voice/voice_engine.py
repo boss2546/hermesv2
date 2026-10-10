@@ -240,6 +240,18 @@ class VoiceEngine:
             else:
                 prompt = "ฟังเสียงนี้แล้วถอดความภาษาไทยออกมา ตอบเฉพาะข้อความที่ได้ยินเท่านั้น ห้ามมีคำอธิบายเพิ่มเติม:"
 
+        # Auto-detect audio format from magic bytes for robust cross-browser STT
+        if audio_bytes.startswith(b"RIFF"):
+            audio_format = "wav"
+        elif audio_bytes.startswith(b"\x1a\x45\xdf\xa3"):
+            audio_format = "webm"
+        elif b"ftyp" in audio_bytes[:16]:
+            audio_format = "mp4"
+        elif audio_bytes.startswith(b"ID3") or audio_bytes.startswith(b"\xff\xfb") or audio_bytes.startswith(b"\xff\xf3"):
+            audio_format = "mp3"
+        else:
+            audio_format = "wav"
+
         audio_b64 = base64.b64encode(audio_bytes).decode("ascii")
 
         payload = {
@@ -253,7 +265,7 @@ class VoiceEngine:
                             "type": "input_audio",
                             "input_audio": {
                                 "data": audio_b64,
-                                "format": "mp3",
+                                "format": audio_format,
                             },
                         },
                     ],

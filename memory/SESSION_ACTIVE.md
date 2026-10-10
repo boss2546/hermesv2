@@ -311,6 +311,26 @@
     - ✅ ระบบเบื้องหลังตรวจจับและบันทึกอัตโนมัติ: `[devices] 'เครื่องฟอกอากาศไดกิ้น' (Aliases: ['ไดกิ้น', 'แอร์ฟอกอากาศ'])`
     - ✅ ยอดคลังคำศัพท์เพิ่มขึ้นจาก 49 เป็น 50 รายการโดยอัตโนมัติ 100%
   - **Git Sync:** บันทึกและพุชขึ้นกิ่ง `feature/web-ui-redesign`
+- [x] **สเต็ป 25: ระบบสนทนาต่อเนื่องอัตโนมัติ (Hands-Free Continuous Mode) & สถาปัตยกรรม Hybrid STT สำรองบันทึกเสียง 16kHz PCM WAV เมื่อ WebSpeech หลุด (PASS 100%)**
+  - **ปัญหาที่บอสพบ:** คุยต่อเนื่องไม่ได้, ส่งข้อความเสร็จแล้วกดปุ่มไมค์ต่อไม่ได้, เสียงไม่ยอมแปลงเป็นข้อความ
+  - **สาเหตุทางเทคนิค (Root Causes Identified):**
+    1. *Stuck Mic State & Single Instance Deadlock:* `SpeechRecognition` เดิมสร้างอ็อบเจกต์เดี่ยวไว้ตอนโหลดหน้าเว็บ เมื่อเกิดข้อผิดพลาดหรือกดรัวๆ จะค้าง state `InvalidStateError` ทำให้กดไมค์ไม่ติด
+    2. *Transcript Overwrite Bug:* การวนลูปอ่าน `event.results` เริ่มจาก `event.resultIndex` ทำให้คำพูดท่อนแรกถูกข้อความท่อนหลังทับหายไปจนเหลือข้อความว่างเปล่า
+    3. *ขาดระบบสำรองบันทึกเสียง (Zero Audio Fallback):* เดิมพึ่งพา `webkitSpeechRecognition` ของ Google เพียงอย่างเดียว หากเน็ตสะดุดหรือเปิดบน Safari/เบราว์เซอร์อื่น ระบบจะไม่ถอดความเสียงให้เลย
+    4. *ไม่มี Hands-Free Loop:* เมื่อเสียงพูดของมายมิ้นท์จบ ไมค์จะดับสนิท บอสต้องเอื้อมมือกดปุ่มไมค์ใหม่ทุกครั้ง
+  - **การแก้ไขและอัปเกรดระดับสถาปัตยกรรม (Full Solutions):**
+    1. **🔄 Hands-Free Continuous Mode (โหมดคุยต่อเนื่อง):** เพิ่มสวิตช์ Toggle `🔄 คุยต่อเนื่อง` บน Header และบันทึกค่าลง `localStorage` เมื่อมายมิ้นท์พูดจบ (`onended`) ระบบจะเว้นจังหวะ 600ms ป้องกันเสียงสะท้อน แล้วเปิดไมค์ฟังบอสต่ออัตโนมัติทันที
+    2. **🎙️ Hybrid Dual-Layer STT Engine (Web Speech + 16kHz WAV Recorder):**
+       - สร้าง AudioContext ดักจับ raw PCM stream พร้อมฟังก์ชัน `encodePcmToWav` แปลงเป็น 16kHz 16-bit Mono WAV ในเบราว์เซอร์
+       - หาก Web Speech API อ่านคำพูดได้เร็ว -> ส่งข้อความทันที (0ms Latency)
+       - หาก Web Speech API ค้างหรืออ่านไม่ได้ -> สลับส่งไฟล์เสียง WAV ตรงไปยัง `/api/chat` (หรือ `/api/stt`) เพื่อให้สมองกล 9Router Gemini Multimodal ถอดความเป็นภาษาไทยพร้อมปรับคำเพี้ยนด้วย Knowledge Lexicon อัตโนมัติ 100%
+    3. **🛡️ Safe Mic Lifecycle State Machine:** ครอบ `try...catch` ทุกการเริ่มฟังเสียง, สร้าง `new SpeechRecognition()` สดใหม่ทุกเซสชั่น, เคลียร์สถานะการเล่นเสียงและสถานะประมวลผลก่อนเริ่มฟัง ป้องกันปุ่มค้างถาวร
+    4. **🔊 Automatic Audio Format Detection ใน `voice_engine.py`:** เพิ่มการตรวจจับ Magic Bytes (`RIFF` -> `wav`, `\x1a\x45\xdf\xa3` -> `webm`, `ftyp` -> `mp4`, `ID3` -> `mp3`) ให้อัตโนมัติ
+  - **ผลการทดสอบระบบรวม (`scratch/test_voice_full_suite.py` - PASS 100%):**
+    - ✅ Test 1: DOM Elements (continuousModeToggle, encodePcmToWav) โหลดสมบูรณ์
+    - ✅ Test 2: ส่งข้อความคุย -> มายมิ้นท์ตอบกลับพร้อมไฟล์เสียง TTS ไร้รอยต่อ
+    - ✅ Test 3: ส่งไฟล์เสียง WAV ตรงไปยัง `/api/stt` -> ถอดความได้ถูกต้องสมบูรณ์แบบ
+    - ✅ Test 4: End-to-End Chat ด้วยเสียง `audio_b64` ตรง -> Server ถอดความและตอบกลับด้วยเสียงเรียบร้อย 100%
 
 ---
 

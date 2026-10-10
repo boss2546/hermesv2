@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "updated_at": 1791537700,
+  "updated_at": 1791617638,
   "description": "คลังคำสั่งและคำศัพท์สำหรับถอดความเสียง ป้องกันคำเพี้ยน และจัดระเบียบบริบทระบบ",
   "categories": {
     "commands": {
@@ -402,6 +402,19 @@
           ],
           "desc": "รหัสสิทธิ์ยืนยันตัวตนความปลอดภัย OAuth2 / Bearer",
           "category": "technical"
+        },
+        {
+          "id": "tec_auto_638523",
+          "term": "Neuphonic",
+          "category": "technical",
+          "aliases": [
+            "นิวโฟนิก",
+            "Neuphonic AI"
+          ],
+          "desc": "An ultra-responsive text-to-speech and voice AI platform supporting voice cloning and conversational agents.",
+          "source": "autonomous_ai_harvester",
+          "auto_learned": true,
+          "created_at": 1791617638
         }
       ]
     },
