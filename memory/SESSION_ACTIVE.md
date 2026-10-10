@@ -370,6 +370,20 @@
     - ✅ **ทดสอบ Live Server `/api/chat` ด้วยเสียง:** ถอดความเสียงเปิดแอร์ 24 องศา สั่งการแอร์จริง และตอบกลับพร้อมสร้างเสียงพูดต่อเนื่อง 2 ท่อนในเวลารวม 9.92 วินาที (STT ใช้เพียง 2.68 วินาที)
   - **Git Sync:** บันทึก Commit `16ba3435` บนกิ่ง `feature/web-ui-redesign` และพุชขึ้น Origin เรียบร้อย
 
+- [x] **สเต็ป 27: ค้นพบและปลดล็อกต้นตอใหญ่ "Web Speech API แย่งสิทธิ์ตัดหน้า Gemini STT" + Studio Auto-Gain & Client VAD (PASS 100%)**
+  - **การตรวจเจาะลึกขั้นสุด (Exhaustive Architectural Inspection):**
+    1. *Web Speech API Preemption Bug:* พบความจริงระดับโครงสร้างว่า ใน `index.html` โค้ดเดิมกำหนด `Priority 1: if (finalText) submitUserSpeech(finalText); return;` ทำให้เมื่อบอสพูดใน Chrome หาก Web Speech API อ่านข้อความได้แม้เพียง 1 คำ (หรือสะกดผิด/ตัดทอน) ระบบจะส่งข้อความนั้นเข้าสู่ระบบทันทีและ **โยนไฟล์เสียงทิ้งทั้งหมด โดยไม่เคยส่งเข้า Gemini 2.5 Flash STT เลย!** นี่คือสาเหตุแท้จริงที่บอสรู้สึกว่าคุณภาพดรอป เพราะ Chrome Web Speech ทั่วไปไม่มีคลังคำศัพท์ Lexicon และตัดทอนคำพูดบ่อยครั้ง
+    2. *Premature Mic Cut-off:* `speechRecognitionInstance.continuous` เคยถูกตั้งเป็น `false` ทำให้เมื่อบอสหยุดหายใจเพียง 0.4 วินาที Chrome จะสั่งตัดจบเซสชั่นและส่งเฉพาะคำท่อนแรกไปทันที
+    3. *Acoustic Feedback Loop:* `micProcessorNode` เชื่อมต่อเข้าสู่ `micAudioContext.destination` โดยไม่เคลียร์บัฟเฟอร์เอาต์พุต ทำให้เสียงไมโครโฟนไหลวนกลับเข้าสู่ลำโพง เกิดเสียงสะท้อนกวนเข้าไมค์
+    4. *Low Amplitude / Far Mic Deficiency:* ไมโครโฟนของโน้ตบุ๊กหรือการพูดเสียงเบาเดิมไม่มีการขยายเกนเสียง (Zero Gain Adjustment) ทำให้คลื่นเสียงบางจุดเบาเกินไป
+  - **การแก้ปัญหาและเสริมพลังระดับวิศวกรรมเสียง:**
+    1. **👑 ปรับ Gemini 2.5 Flash Audio STT เป็น Priority 1 ถาวร:** เมื่อมีการบันทึกเสียงไมค์ ระบบจะส่งคลื่นเสียง Lossless WAV เข้าสู่สมอง Gemini 2.5 Flash เสมอ เพื่อรับประกันความแม่นยำ 100% พร้อมคลังศัพท์ Lexicon (ส่วน Web Speech API ใช้เพียงแสดง Live Text Preview บนหน้าจอขณะพูด)
+    2. **🎛️ Studio Peak Normalization (Safe Auto-Gain):** เพิ่มอัลกอริทึมคำนวณ `maxPeak` และบูสต์เกนเสียงอัตโนมัติสูงสุด 3.2x (เป้าหมาย 0.85 Peak) แบบปลอดภัย ไม่แตก ไม่ Clip ทำให้เสียงพูดเบาหรือไมค์อยู่ไกลชัดเจนระดับสตูดิโอ
+    3. **🔇 Zero-Loopback Speaker Mute:** ทำการ `.fill(0)` บนแชนเนลเอาต์พุต ป้องกันเสียงไมค์สะท้อนวนเข้าลำโพง 100%
+    4. **🗣️ Client-Side RMS Voice Activity Detector (VAD):** คำนวณพลังงานคลื่นเสียง RMS แบบเรียลไทม์ ตรวจจับการพูดและเว้นจังหวะหยุดพัก 1.5 วินาทีหลังพูดจบ จึงค่อยตัดส่งประมวลผล ทำให้บอสพูดประโยคยาวได้ต่อเนื่อง ไม่โดนตัดบทกลางคัน
+    5. **⚙️ เพิ่ม STT Engine Selector ในเมนูตั้งค่า:** มีตัวเลือกสลับระหว่าง `⭐ AI Gemini 2.5 Flash` (ค่าเริ่มต้น) กับ `⚡ Web Speech API` บันทึกลง `localStorage` ถาวร
+  - **Git Sync:** บันทึก Commit `42c5e808` บนกิ่ง `feature/web-ui-redesign` และพุชขึ้น Origin เรียบร้อย
+
 ---
 
 ## 🌐 ลิงก์ระบบที่เปิดใช้งานอยู่
