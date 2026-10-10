@@ -152,7 +152,6 @@
           "id": "dev_ac",
           "term": "แอร์",
           "aliases": [
-            "แอ",
             "แอร์ห้องนอน",
             "เครื่องปรับอากาศ"
           ],
@@ -422,18 +421,6 @@
           "updated_at": 1791617873
         },
         {
-          "id": "tec_auto_898245",
-          "term": "Nouphonic",
-          "category": "technical",
-          "aliases": [
-            "นูโฟนิก"
-          ],
-          "desc": "ชื่อเครื่องมือสร้างเสียง AI และโคลนเสียง (Voice cloning)",
-          "source": "autonomous_ai_harvester",
-          "auto_learned": true,
-          "created_at": 1791617898
-        },
-        {
           "id": "tec_auto_902605",
           "term": "ระบบคู่ขนาน",
           "category": "technical",
@@ -462,7 +449,6 @@
             "มายมิน",
             "มายมิ่น",
             "น้องมาย",
-            "มาย",
             "Maymint"
           ],
           "desc": "แฟนสาวคู่คิดและเลขาประจำตัวของบอส",

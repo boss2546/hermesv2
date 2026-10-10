@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_VOICE = "th-TH-PremwadeeNeural"
 DEFAULT_GATEWAY_URL = "https://api.meuu.club/v1"
 DEFAULT_MASTER_KEY = "sk-07ccde1e709eb2ca-e05r6c-a11b5d7c"
-DEFAULT_STT_MODEL = "ag/gemini-3.8-flash-high"
+DEFAULT_STT_MODEL = "ag/gemini-2.5-flash"
 
 VOICE_PRESETS: Dict[str, str] = {
     "premwadee": "th-TH-PremwadeeNeural",
@@ -172,7 +172,17 @@ class VoiceEngine:
                             if chunk["type"] == "audio":
                                 f.write(chunk["data"])
 
-                asyncio.run(_run_edge())
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    loop = None
+
+                if loop and loop.is_running():
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                        pool.submit(asyncio.run, _run_edge()).result()
+                else:
+                    asyncio.run(_run_edge())
 
                 if output_file.exists() and output_file.stat().st_size > 500:
                     logger.info("Synthesized %s bytes using Direct Edge-TTS (Attempt %d)", output_file.stat().st_size, attempt)

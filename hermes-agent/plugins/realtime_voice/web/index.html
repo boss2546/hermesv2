@@ -2507,7 +2507,7 @@
     let speechRecognitionInstance = null;
     let consecutiveSilenceCount = 0;
 
-    // Helper: Convert Raw PCM Float32 to Standard 16kHz 16-bit Mono WAV Blob
+    // Helper: Convert Raw PCM Float32 to High-Fidelity 16-bit Mono WAV Blob (Preserves Native Sample Rate)
     function encodePcmToWav(buffers, totalLength, inputSampleRate) {
       const merged = new Float32Array(totalLength);
       let offset = 0;
@@ -2516,23 +2516,9 @@
         offset += buffers[i].length;
       }
 
-      // Downsample to 16,000 Hz if input is higher (e.g. 44.1k or 48k)
-      const targetSampleRate = 16000;
-      let samples16k;
-      if (inputSampleRate === targetSampleRate) {
-        samples16k = merged;
-      } else {
-        const ratio = inputSampleRate / targetSampleRate;
-        const newLength = Math.round(totalLength / ratio);
-        samples16k = new Float32Array(newLength);
-        for (let i = 0; i < newLength; i++) {
-          const origIdx = Math.floor(i * ratio);
-          samples16k[i] = merged[origIdx] || 0;
-        }
-      }
-
-      // 16-bit PCM WAV (44-byte container header + 2 bytes per sample)
-      const wavBuffer = new ArrayBuffer(44 + samples16k.length * 2);
+      // Preserve native AudioContext sample rate (e.g. 44.1kHz or 48kHz) losslessly without aliasing distortion
+      const sampleRate = inputSampleRate || 44100;
+      const wavBuffer = new ArrayBuffer(44 + merged.length * 2);
       const view = new DataView(wavBuffer);
 
       function writeString(v, off, str) {
@@ -2542,22 +2528,22 @@
       }
 
       writeString(view, 0, 'RIFF');
-      view.setUint32(4, 36 + samples16k.length * 2, true);
+      view.setUint32(4, 36 + merged.length * 2, true);
       writeString(view, 8, 'WAVE');
       writeString(view, 12, 'fmt ');
       view.setUint32(16, 16, true);                         // Subchunk1Size
       view.setUint16(20, 1, true);                          // AudioFormat (PCM = 1)
       view.setUint16(22, 1, true);                          // NumChannels (1 = Mono)
-      view.setUint32(24, targetSampleRate, true);           // SampleRate
-      view.setUint32(28, targetSampleRate * 2, true);       // ByteRate
-      view.setUint16(32, 2, true);                          // BlockAlign
+      view.setUint32(24, sampleRate, true);                 // SampleRate (Native 44.1k/48k)
+      view.setUint32(28, sampleRate * 2, true);             // ByteRate (SampleRate * 1 * 16 / 8)
+      view.setUint16(32, 2, true);                          // BlockAlign (1 * 16 / 8)
       view.setUint16(34, 16, true);                         // BitsPerSample
       writeString(view, 36, 'data');
-      view.setUint32(40, samples16k.length * 2, true);
+      view.setUint32(40, merged.length * 2, true);
 
       let pcmOffset = 44;
-      for (let i = 0; i < samples16k.length; i++) {
-        let s = Math.max(-1, Math.min(1, samples16k[i]));
+      for (let i = 0; i < merged.length; i++) {
+        let s = Math.max(-1, Math.min(1, merged[i]));
         view.setInt16(pcmOffset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
         pcmOffset += 2;
       }
@@ -2706,7 +2692,7 @@
         return;
       }
 
-      // Priority 2: Fallback to Server-Side Multimodal STT using recorded 16kHz WAV audio
+      // Priority 2: High-Fidelity Server-Side Multimodal STT using lossless WAV audio (Gemini 2.5 Flash)
       if (currentBuffers.length > 0 && currentLength > 3200) {
         micHint.innerText = '🎙️ กำลังถอดความเสียงด้วย AI 9Router Multimodal...';
         setStage(2, '✍️ [สเต็ป 2/5] ถอดความเสียงด้วย AI 9Router...');

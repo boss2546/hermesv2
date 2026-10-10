@@ -582,30 +582,24 @@ class KnowledgeLexiconManager:
     def generate_stt_system_prompt(self) -> str:
         """Generate high-density domain knowledge instructions for Gemini STT models.
         
-        Injects canonical spellings of commands, devices, workspace tools, tech terms, and names
-        to prevent phonetically similar hallucinations.
+        Injects canonical spellings of devices, workspace tools, tech terms, and names
+        to prevent phonetically similar hallucinations without distorting natural conversational intent.
         """
         data = self.load()
         cats = data.get("categories", {})
 
-        # Extract representative terms from each category
-        cmd_terms = [it.get("term") for it in cats.get("commands", {}).get("items", []) if it.get("term")]
         dev_terms = [it.get("term") for it in cats.get("devices", {}).get("items", []) if it.get("term")]
         ws_terms = [it.get("term") for it in cats.get("workspace", {}).get("items", []) if it.get("term")]
         tech_terms = [it.get("term") for it in cats.get("technical", {}).get("items", []) if it.get("term")]
         id_terms = [it.get("term") for it in cats.get("identity", {}).get("items", []) if it.get("term")]
 
         prompt = (
-            "คุณคือระบบถอดความเสียงภาษาไทยความแม่นยำสูง (Precision STT Engine)\n"
-            "คำสั่งสำคัญ:\n"
-            "1. ถอดความคำพูดภาษาไทยให้ตรงกับความเป็นจริงทุกคำ ห้ามแต่งเติม ห้ามสรุป และห้ามใส่ความคิดเห็น\n"
-            "2. จงใช้ 'คลังคำศัพท์และคำสั่งเฉพาะทาง' ต่อไปนี้เป็นเกณฑ์อ้างอิงสะกดคำที่ถูกต้อง เพื่อป้องกันคำเพี้ยน:\n"
-            f"   - คำสั่ง: {', '.join(cmd_terms[:8])}\n"
-            f"   - อุปกรณ์และสมาร์ทโฮม: {', '.join(dev_terms[:6])}\n"
-            f"   - Google Workspace: {', '.join(ws_terms[:6])}\n"
-            f"   - ศัพท์เทคนิคและระบบ: {', '.join(tech_terms[:8])}\n"
-            f"   - ชื่อและอัตลักษณ์: {', '.join(id_terms[:4])}\n"
-            "3. ตอบเฉพาะข้อความที่ได้ยินจากเสียงเท่านั้น ห้ามมีคำอธิบายเพิ่มเติมใดๆ ทั้งสิ้น:"
+            "ถอดความเสียงภาษาไทยที่ได้ยินออกมาเป็นข้อความตัวอักษรอย่างถูกต้อง แม่นยำ และตรงตามเสียงพูดจริงทุกคำ\n"
+            "ข้อกำหนดสำคัญ:\n"
+            "1. ถอดความคำพูดอย่างเป็นธรรมชาติ ตรงตามที่ผู้พูดพูดจริง ห้ามสรุปความ ห้ามแต่งเติม และห้ามแปลงเป็นคำสั่งอื่น\n"
+            "2. หากมีชื่ออุปกรณ์ ศัพท์เฉพาะทาง หรือชื่อบริการ ให้สะกดตามรูปคำที่ถูกต้อง เช่น "
+            f"{', '.join(tech_terms[:6])}, {', '.join(ws_terms[:4])}, {', '.join(dev_terms[:4])}, {', '.join(id_terms[:2])}\n"
+            "3. ตอบเฉพาะข้อความที่ได้ยินเท่านั้น ห้ามมีคำอธิบายเพิ่มเติมใดๆ"
         )
         return prompt
 
@@ -617,7 +611,7 @@ class KnowledgeLexiconManager:
         
         Applies:
         1. Explicit Regex corrections from the 'corrections' category.
-        2. Alias replacements from all categories (e.g. 'เปิดแอ' -> 'เปิดแอร์', 'กูเกิลไดรฟ์' -> 'Google Drive').
+        2. Alias replacements from entity categories (excluding 'commands' to prevent altering conversational user intent).
         
         Returns:
             Tuple[str, List[Dict[str, str]]]: (normalized_text, list_of_applied_corrections)
@@ -650,9 +644,10 @@ class KnowledgeLexiconManager:
                 except Exception as re_err:
                     logger.debug("Regex error for rule %s: %s", item.get("id"), re_err)
 
-        # Step 2: Run alias-to-canonical term mapping from all categories
+        # Step 2: Run alias-to-canonical term mapping from entity categories
         for cat_key, cat_data in cats.items():
-            if cat_key == "corrections":
+            # CRITICAL: Exclude 'corrections' (handled above) and 'commands' (never replace conversational user sentences with command labels!)
+            if cat_key in ("corrections", "commands"):
                 continue
             for item in cat_data.get("items", []):
                 canonical = item.get("term", "")
@@ -664,8 +659,13 @@ class KnowledgeLexiconManager:
                 for alias in sorted_aliases:
                     if not alias or alias == canonical:
                         continue
+                    
+                    # SAFETY GUARD: Ignore short ambiguous Thai words (< 4 chars) to prevent severe collisions
+                    # e.g., "แอ" colliding with "แอป", "แอบ"; "มาย" colliding with "มากมาย"
+                    if len(alias) < 4 and not alias.isascii():
+                        continue
+
                     # Match exact word boundaries or non-alphanumeric borders
-                    # For Thai, we search for literal substring occurrences where appropriate
                     if alias in normalized:
                         escaped_alias = re.escape(alias)
                         if canonical.startswith(alias) and len(canonical) > len(alias):
