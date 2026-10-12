@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "updated_at": 1791617903,
+  "updated_at": 1791690724,
   "description": "คลังคำสั่งและคำศัพท์สำหรับถอดความเสียง ป้องกันคำเพี้ยน และจัดระเบียบบริบทระบบ",
   "categories": {
     "commands": {
@@ -434,6 +434,30 @@
           "auto_learned": true,
           "created_at": 1791617902,
           "updated_at": 1791617903
+        },
+        {
+          "id": "tec_auto_724548",
+          "term": "Action First",
+          "category": "technical",
+          "aliases": [
+            "แอคชั่นเฟิร์ส"
+          ],
+          "desc": "รูปแบบการทำงานของระบบที่เรียกใช้เครื่องมือทำงานจริงในรอบคำสั่งทันที",
+          "source": "autonomous_ai_harvester",
+          "auto_learned": true,
+          "created_at": 1791690724
+        },
+        {
+          "id": "tec_auto_724577",
+          "term": "Edge-TTS",
+          "category": "technical",
+          "aliases": [
+            "เอดจ์ทีทีเอส"
+          ],
+          "desc": "เซอร์วิสสำหรับแปลงข้อความให้เป็นเสียงพูด (Text-to-Speech)",
+          "source": "autonomous_ai_harvester",
+          "auto_learned": true,
+          "created_at": 1791690724
         }
       ]
     },
