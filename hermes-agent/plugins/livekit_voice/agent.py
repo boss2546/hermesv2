@@ -23,9 +23,11 @@ if PLUGINS_DIR.exists():
     sys.path.insert(0, str(PLUGINS_DIR))
 
 from livekit.agents import (
+    AgentSession,
     AutoSubscribe,
     JobContext,
     WorkerOptions,
+    WorkerPermissions,
     cli,
     function_tool,
     voice
@@ -101,14 +103,17 @@ async def entrypoint(ctx: JobContext):
             voice="th-TH-PremwadeeNeural"
         ),
         tools=tools,
-        allow_interruptions=True,
     )
 
-    agent.start(ctx.room)
-    logger.info("Maymint Agent started in room: %s", ctx.room.name)
+    session = AgentSession()
+    await session.start(room=ctx.room, agent=agent)
+    logger.info("Maymint AgentSession started in room: %s", ctx.room.name)
 
     # Greeting audio via WebRTC
-    await agent.say("สวัสดีค่ะบอส น้องมายมิ้นท์เชื่อมต่อสายสดผ่านเว็บอาร์ทีซีเรียบร้อยแล้วนะคะ วันนี้มีอะไรให้มายช่วยดูแลไหมคะ", allow_interruptions=True)
+    try:
+        await session.say("สวัสดีค่ะบอส น้องมายมิ้นท์เชื่อมต่อสายสดผ่านเว็บอาร์ทีซีเรียบร้อยแล้วนะคะ วันนี้มีอะไรให้มายช่วยดูแลไหมคะ")
+    except Exception as e:
+        logger.warning("Greeting speech note: %s", e)
 
 if __name__ == "__main__":
     cli.run_app(
@@ -117,6 +122,7 @@ if __name__ == "__main__":
             ws_url="ws://127.0.0.1:7880",
             api_key="devkey",
             api_secret="secret",
-            agent_name="MaymintLiveKitAgent"
+            permissions=WorkerPermissions(can_update_metadata=True),
         )
     )
+
