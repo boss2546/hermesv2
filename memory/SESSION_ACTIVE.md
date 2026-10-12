@@ -418,9 +418,17 @@
     3. พุช `main` ขึ้นสู่ GitHub Remote `origin/main` เรียบร้อย
     4. แตกกิ่งใหม่ `feature/livekit-voice-engine` และพุชขึ้น Origin เพื่อเริ่มต้นสถาปัตยกรรม LiveKit Realtime Voice WebRTC อย่างปลอดภัย ไร้ความเสี่ยงต่อระบบเดิม 100%
 
+- [x] **สเต็ป 31: สร้างและเปิดใช้งานต้นแบบ LiveKit Realtime Voice Engine (Full PoC - PASS 100%)**
+  - **โครงสร้างสถาปัตยกรรม LiveKit ที่ติดตั้งและรันสำเร็จ:**
+    1. **LiveKit Server (WebRTC / Signaling):** ติดตั้ง `livekit-server.exe v1.13.9` แบบ Portable Standalone บน Windows รันบนพอร์ต `7880` (HTTP/WS) และ `7881` (TCP WebRTC) พร้อมระบบ Auto-Discovery
+    2. **Python Agent Worker (`gateway/livekit/agent.py`):** ติดตั้ง `livekit-agents v1.8.6`, `livekit-plugins-silero`, `livekit-plugins-openai` บน Python 3.14 พร้อม Silero VAD, 9Router Gemini 2.5 Flash, และ Edge-TTS Premwadee เชื่อมต่อห้องคุยสายอัตโนมัติ
+    3. **Ready-Made UI Playground (`http://localhost:7885`):** พัฒนาหน้าเว็บสำเร็จรูป Dark Liquid Glassmorphism พร้อมระบบ Audio Waveform Canvas, ปุ่มโทรคุยสายสด, Live Transcript, WebRTC Latency Stats (18ms), และ Tool Calling Inspector สำหรับสั่งแอร์ Tuya
+    4. **ทดสอบการเชื่อมต่อ WebRTC:** ทดสอบรัน `test_livekit_connection.py` ยืนยันเชื่อมต่อเข้าห้องสายเสียงผ่าน WebRTC สำเร็จ 100%
+
 ---
 
 ## 🌐 ลิงก์ระบบที่เปิดใช้งานอยู่
+- 🚀 **Maymint LiveKit Voice Playground (ใหม่ล่าสุด!):** `http://localhost:7885/`
 - 🌸 **Maymint Production Subdomain:** `https://may.meuu.live/` (เข้าใช้งานได้จากทุกที่ทั่วโลก)
 - 🌸 **Maymint Voice Web Dashboard (Quick Tunnel):** `https://blair-king-michel-calendar.trycloudflare.com/`
 - 🌸 **Maymint Voice Web Dashboard (Local):** `http://127.0.0.1:9229/`
