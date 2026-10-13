@@ -54,15 +54,27 @@ temp/
 *.wav
 *.ogg
 TUNNEL_URL.txt
+LIVEKIT_PUBLIC_URL.txt
 chat_history.json
 **/sessions/*.json
 !**/sessions/.gitkeep
+# Binaries, archives & executables
+*.exe
+*.zip
+*.tar.gz
+*.7z
+
+# Cloned standalone gateways
+gateway/livekit/agents-playground/
+gateway/tuya-smart-ir-gateway/
+
+# Next.js build
+.next/
+out/
 **/current_session_id.txt
 scratch/
 *client_secret*.json
 *token*.json
-
-
 # IDE specific cache (but keep team rules)
 .idea/
 .vscode/*
