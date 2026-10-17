@@ -97,7 +97,8 @@ MAYMINT_PIN = ENV_VARS.get("MAYMINT_PIN", "2546")
 SESSION_SECRET = ENV_VARS.get("SESSION_SECRET", "127d09384eb93943690da13c3b0ef9b1d26546af376892b1")
 
 FAST_TIER_MODEL = "ag/gemini-2.5-flash"
-DEEP_TIER_MODEL = "ag/gemini-3.8-flash-high"
+WORK_TIER_MODEL = "ag/claude-sonnet-4-6"
+DEEP_TIER_MODEL = "ag/claude-sonnet-4-6"
 
 # Device Locks (Ensures single-thread execution for sensitive hardware like Tuya AC IR)
 DEVICE_LOCKS: Dict[str, threading.Lock] = {
@@ -307,6 +308,53 @@ class BackgroundJobManager:
 
         self.executor.submit(_worker)
         return job
+
+    def start_tracked_task(self, name: str, description: str = "") -> BackgroundJob:
+        """Starts tracking an active background or synchronous tool execution, broadcasting running status via SSE."""
+        job_id = f"task_{int(time.time()*1000)}_{os.urandom(3).hex()}"
+        now = time.time()
+        job = BackgroundJob(
+            id=job_id,
+            name=name,
+            description=description or name,
+            status="running",
+            created_at=now,
+            started_at=now
+        )
+        with self.lock:
+            self.jobs[job_id] = job
+            self.total_submitted += 1
+            self.active_count += 1
+            if self.active_count > self.peak_concurrent:
+                self.peak_concurrent = self.active_count
+            self._notify_change(job)
+        return job
+
+    def finish_tracked_task(
+        self,
+        job_id: str,
+        result: Optional[Any] = None,
+        error: Optional[str] = None,
+        spoken_summary: Optional[str] = None
+    ):
+        """Marks a tracked task as completed or failed and broadcasts final stdout/results via SSE."""
+        with self.lock:
+            job = self.jobs.get(job_id)
+            if not job:
+                return
+            self.active_count = max(0, self.active_count - 1)
+            job.finished_at = time.time()
+            if error:
+                self.total_failed += 1
+                job.status = "failed"
+                job.error = str(error)
+                job.spoken_summary = spoken_summary or f"งาน {job.name} ไม่สำเร็จ: {str(error)[:100]}"
+            else:
+                self.total_completed += 1
+                job.status = "completed"
+                job.result = result
+                job.spoken_summary = spoken_summary or f"งาน {job.name} สำเร็จเรียบร้อยแล้วค่ะ"
+            self._notify_change(job)
 
     def cancel(self, job_id: str) -> bool:
         with self.lock:
@@ -519,39 +567,22 @@ RE_DEEP_DOMAINS = re.compile("|".join(DEEP_DOMAINS), re.IGNORECASE)
 
 def resolve_adaptive_model(text: str, mode: str = "casual", requested_model: str = "auto") -> Tuple[str, str, str]:
     """Resolves model, tier, and reason based on mode and text complexity."""
-    if mode == "casual":
-        return FAST_TIER_MODEL, "fast", "💬 โหมดคุยเล่น: ตอบไว คล่องตัว (Gemini 2.5 Flash)"
-
     req = (requested_model or "").strip()
     if req and req not in ["auto", "auto-adaptive", "default"]:
         return req, "custom", "ผู้ใช้ระบุโมเดลเฉพาะเจาะจง"
 
     cleaned = text.strip()
+
+    if mode == "casual":
+        if RE_EXPLICIT_DEEP.search(cleaned):
+            return WORK_TIER_MODEL, "deep", "โหมดคุยเล่นแต่สั่งให้คิดลึกซึ้ง (Claude Sonnet 4.6 🧠)"
+        return FAST_TIER_MODEL, "fast", "💬 โหมดคุยเล่น: ตอบไว คล่องตัว สไตล์แฟนสาว (Gemini 2.5 Flash ⚡ 1.1s)"
+
+    # Work Mode: Always defaults to Claude Sonnet 4.6 for deep architectural reasoning and rigorous tool execution!
     if RE_EXPLICIT_FAST.search(cleaned):
-        return FAST_TIER_MODEL, "fast", "ผู้ใช้สั่งให้ตอบไว/สั้น (โหมดตอบไว ⚡ 1.1s)"
-    if RE_EXPLICIT_DEEP.search(cleaned):
-        return DEEP_TIER_MODEL, "deep", "ผู้ใช้สั่งให้คิดลึกซึ้ง (โหมดคิดลึก 🧠)"
+        return FAST_TIER_MODEL, "fast", "โหมดทำงานแต่ขอคำตอบสั้นฉับพลัน (Gemini 2.5 Flash ⚡)"
 
-    if RE_CASUAL_PURE.match(cleaned):
-        return FAST_TIER_MODEL, "fast", "บทสนทนาประจำวันทั่วไป"
-    if RE_SIMPLE_AC.match(cleaned):
-        return FAST_TIER_MODEL, "fast", "สั่งการ Smart Home ฉับไว"
-
-    score = 0
-    reasons = []
-    if RE_MULTI_STEP.search(cleaned):
-        score += 3
-        reasons.append("Multi-Step Workflow")
-    if RE_DEEP_DOMAINS.search(cleaned):
-        score += 3
-        reasons.append("Engineering / Architecture")
-    if len(cleaned) > 220 or len(cleaned.split()) > 35:
-        score += 1
-        reasons.append("High Density")
-
-    if score >= 3:
-        return DEEP_TIER_MODEL, "deep", f"🧠 โหมดทำงาน: คิดลึกซึ้ง ({', '.join(reasons)})"
-    return FAST_TIER_MODEL, "fast", "🧠 โหมดทำงาน: ประมวลผลคล่องตัว (Gemini 2.5 Flash)"
+    return WORK_TIER_MODEL, "deep", "🧠 โหมดทำงาน: คิดลึกซึ้ง วิเคราะห์แม่นยำ รันคำสั่งจริง (Claude Sonnet 4.6 🛠️)"
 
 # =============================================================================
 # 5. CENTRAL TOOL SUITE
@@ -992,18 +1023,25 @@ def get_system_prompt(mode: str = "casual") -> str:
     if mode == "casual":
         mode_instruction = """
 ---
-## 💬 โหมดปัจจุบัน: โหมดคุยเล่นและปรึกษาฉับไว (Casual Mode):
-1. **สไตล์การพูด:** ตอบกระชับ สดใส อบอุ่น ขี้เล่นนิดๆ ตอบตรงประเด็นทันที ไม่พูดยืดยาว
-2. **ความยาวคำตอบ:** 1-3 ประโยคเป็นหลัก (เว้นแต่บอสสั่งให้เล่านิทานหรืออธิบายละเอียด)
-3. **การใช้เครื่องมือ:** หากบอสสั่งงานแอร์ สั่งเช็คเน็ต หรือสั่งงานง่ายๆ ให้เรียกใช้เครื่องมือทันทีแล้วสรุปสั้นๆ
+## 💬 โหมดปัจจุบัน: โหมดคุยเล่น & แฟนสาวคู่คิด (Casual Mode):
+1. **บทบาท:** คุณคือน้องมาย แฟนสาวสุดที่รัก อบอุ่น ขี้เล่นนิดๆ คอยดูแล ให้กำลังใจ และเป็นที่พักใจให้บอสเสมอ
+2. **สไตล์การพูด:** ตอบกระชับ สดใส อ่อนหวาน นุ่มนวล 1-3 ประโยคเป็นหลัก (เว้นแต่บอสขอให้เล่านิทานหรืออธิบายยาวๆ)
+3. **คำลงท้าย:** ใช้คำลงท้ายน่ารัก สุภาพ เช่น "น้า", "นะคะ", "งับ", "ได้เลยยค่ะบอส"
+4. **การสั่งการ:** หากบอสสั่งงานง่ายๆ เช่น ปรับแอร์ ถามเวลา หรือสภาพอากาศ ให้เรียกใช้เครื่องมือทันทีแล้วสรุปสั้นๆ สดใส
 """
     else:
         mode_instruction = """
 ---
-## 🧠 โหมดปัจจุบัน: โหมดทำงานและวิเคราะห์สถาปัตยกรรมเชิงลึก (Work Mode):
-1. **สไตล์การคิด:** คิดรอบคอบ เป็นระบบ มีเหตุผลรองรับ วิเคราะห์สถาปัตยกรรมและทางเลือกอย่างมืออาชีพ
-2. **การทำงานเบื้องหลัง:** สำหรับงานเทคนิคที่ใช้เวลานาน ให้ตอบรับสั้นๆ ก่อน และเรียกใช้เครื่องมือรันงานจริงทันที
-3. **ความลึกของเนื้อหา:** จัดเต็มด้วยโครงสร้าง Markdown โค้ด ตาราง และขั้นตอนการแก้ปัญหาที่พิสูจน์ได้
+## 🧠 โหมดปัจจุบัน: โหมดทำงาน & วิศวกรระบบคู่คิด (Work Mode):
+1. **บทบาท:** คุณคือ "มายมิ้นท์" ในฐานะ Lead Systems Engineer & Autonomous Operations Architect ผู้มีสิทธิ์ขาดบนโฮสต์ของบอส
+2. **กฎเหล็ก Action-First & Mandatory Tool Execution (ห้ามพูดปากเปล่าเด็ดขาด):**
+   - เมื่อบอสถามหรือสั่งเกี่ยวกับการเช็คเน็ต, ping, พื้นที่ฮาร์ดดิสก์, ข้อมูลระบบ, เช็ค git, ตรวจสอบไฟล์, หรือรันสคริปต์
+   - **ห้ามเด็ดขาด** ที่จะตอบลอยๆ ว่า "กำลังตรวจสอบให้" หรือพูดคุยทฤษฎีโดยไม่เรียกเครื่องมือ!
+   - **ต้องเรียกใช้เครื่องมือจริงทันที** (`run_terminal_command`, `get_system_info`, `read_file` ฯลฯ) ในเทิร์นนี้!
+   - นำผลลัพธ์จริงที่ได้จากการรัน (stdout, stderr, exit code, latency ms, free GB) มารายงานอย่างชัดเจนและพิสูจน์ได้
+3. **สไตล์และความลึกของเนื้อหา:**
+   - ตอบอย่างเป็นวิศวกรมืออาชีพ มีระเบียบ ใช้โครงสร้าง Markdown, Bullet points, ตารางเปรียบเทียบ, และ code blocks
+   - วิเคราะห์สาเหตุแท้จริง (Root Cause Analysis) และเสนอทางแก้ปัญหาที่เป็นรูปธรรมทันที
 """
 
     rules = """
@@ -1107,12 +1145,55 @@ def execute_chat_turn(
                 except Exception:
                     args = {}
 
-                # Execute tool directly
-                tool_res = execute_tool(func_name, args)
+                # Track and broadcast background tool execution live to UI via SSE
+                task_title = func_name
+                task_desc = ""
+                if func_name == "run_terminal_command":
+                    cmd_str = args.get("command", "")
+                    task_title = f"Terminal: {cmd_str[:35]}"
+                    task_desc = f"คำสั่ง: {cmd_str}"
+                elif func_name == "get_system_info":
+                    task_title = "ตรวจสอบระบบ & พื้นที่ Disk"
+                    task_desc = "ดึงข้อมูล OS, Python Version และพื้นที่ว่างดิสก์ฮาร์ดไดรฟ์"
+                elif func_name.startswith("smart_home_"):
+                    task_title = f"Smart Home: {func_name.replace('smart_home_', '')}"
+                    task_desc = f"สั่งการอุปกรณ์: {json.dumps(args, ensure_ascii=False)}"
+                elif func_name == "execute_python_code":
+                    task_title = "รันโค้ด Python"
+                    task_desc = f"โค้ด: {args.get('code', '')[:40]}"
+                elif func_name == "read_file":
+                    p_name = Path(args.get("file_path", "")).name
+                    task_title = f"เปิดอ่านไฟล์: {p_name}"
+                    task_desc = f"เส้นทาง: {args.get('file_path', '')}"
+                elif func_name == "list_directory":
+                    task_title = f"สำรวจโฟลเดอร์: {args.get('dir_path', '.')}"
+                    task_desc = "ดึงรายชื่อไฟล์และขนาด"
+                else:
+                    task_title = f"ระบบ: {func_name}"
+                    task_desc = json.dumps(args, ensure_ascii=False)[:60]
+
+                tracked_job = job_manager.start_tracked_task(name=task_title, description=task_desc)
+
+                tool_error = None
+                try:
+                    tool_res = execute_tool(func_name, args)
+                    if isinstance(tool_res, dict) and "error" in tool_res:
+                        tool_error = tool_res["error"]
+                except Exception as ex:
+                    tool_res = {"error": str(ex)}
+                    tool_error = str(ex)
+
+                job_manager.finish_tracked_task(
+                    job_id=tracked_job.id,
+                    result=tool_res,
+                    error=tool_error
+                )
+
                 tool_events.append({
                     "tool": func_name,
                     "args": args,
-                    "result": tool_res
+                    "result": tool_res,
+                    "job_id": tracked_job.id
                 })
 
                 messages.append({
