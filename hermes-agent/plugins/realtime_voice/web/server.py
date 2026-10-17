@@ -417,6 +417,10 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         # Authenticated endpoints
         if path == "/api/chat":
             self._handle_chat(payload)
+        elif path == "/api/voice/process":
+            self._handle_voice_process(payload)
+        elif path == "/api/voice/transcribe":
+            self._handle_voice_transcribe(payload)
         elif path == "/api/jobs/submit":
             if not maymint_brain:
                 self._send_json({"error": "Maymint Brain not loaded"}, status=500)
@@ -584,6 +588,100 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
 
         except Exception as e:
             logger.error("Chat completion error: %s", e)
+            self._send_json({"error": str(e)}, status=500)
+
+    def _handle_voice_process(self, payload: Dict[str, Any]):
+        """Processes recorded audio from browser: STT Transcription -> LLM Brain -> TTS Speech."""
+        audio_b64 = payload.get("audio_base64") or payload.get("audio") or ""
+        mode = payload.get("mode", "casual")
+        voice = payload.get("voice") or RUNTIME_CONFIG.get("voice", "th-TH-PremwadeeNeural")
+        speed = payload.get("speed") or RUNTIME_CONFIG.get("speed", "+0%")
+        pitch = payload.get("pitch") or RUNTIME_CONFIG.get("pitch", "+0Hz")
+        auto_speak = payload.get("auto_speak", RUNTIME_CONFIG.get("auto_speak", True))
+
+        if not audio_b64:
+            self._send_json({"error": "audio_base64 is required"}, status=400)
+            return
+
+        if not engine:
+            self._send_json({"error": "VoiceEngine not initialized"}, status=500)
+            return
+
+        try:
+            # Strip data URL prefix if present (e.g. data:audio/webm;base64,...)
+            if "," in audio_b64:
+                audio_b64 = audio_b64.split(",", 1)[1]
+            audio_bytes = base64.b64decode(audio_b64)
+
+            # Step 1: Speech-to-Text via 9Router Multimodal Gemini 2.5 Flash
+            t_start = time.time()
+            transcript = engine.transcribe_audio(audio_bytes)
+            stt_duration = round(time.time() - t_start, 2)
+            logger.info("Transcribed audio (%d bytes) in %.2fs: '%s'", len(audio_bytes), stt_duration, transcript)
+
+            if not transcript or not transcript.strip():
+                self._send_json({
+                    "success": False,
+                    "transcript": "",
+                    "message": "ไม่สามารถตรวจจับเสียงพูดได้ชัดเจนค่ะบอส กรุณาลองพูดอีกครั้งนะคะ 🥺",
+                    "stt_duration": stt_duration
+                })
+                return
+
+            # Step 2: Cognitive Chat Turn via Unified Maymint Brain
+            turn_result = maymint_brain.execute_chat_turn(user_text=transcript, mode=mode)
+            clean_speech = turn_result.get("speech_text", "")
+
+            # Step 3: Text-to-Speech synthesis
+            audio_url = None
+            if auto_speak and clean_speech:
+                try:
+                    f_path, chunks, dur = synthesize_speech_multiround(clean_speech, voice=voice, speed=speed, pitch=pitch)
+                    audio_url = f"/audio/{f_path.name}"
+                except Exception as tts_e:
+                    logger.warning("Voice TTS generation warning: %s", tts_e)
+
+            response_data = {
+                "success": True,
+                "transcript": transcript,
+                "stt_duration": stt_duration,
+                "reply": turn_result.get("text", ""),
+                "speech_text": clean_speech,
+                "audio_url": audio_url,
+                "tool_events": turn_result.get("tool_events", []),
+                "cognitive_tier": turn_result.get("cognitive_tier", "fast"),
+                "model_used": turn_result.get("model_used", "ag/gemini-2.5-flash"),
+                "mode": mode
+            }
+            self._send_json(response_data)
+
+        except Exception as e:
+            logger.error("Voice processing error: %s", e)
+            self._send_json({"error": str(e), "message": f"เกิดข้อผิดพลาดในการประมวลผลเสียง: {e}"}, status=500)
+
+    def _handle_voice_transcribe(self, payload: Dict[str, Any]):
+        """Transcribes audio payload only without executing chat turn."""
+        audio_b64 = payload.get("audio_base64") or payload.get("audio") or ""
+        if not audio_b64:
+            self._send_json({"error": "audio_base64 is required"}, status=400)
+            return
+        if not engine:
+            self._send_json({"error": "VoiceEngine not initialized"}, status=500)
+            return
+        try:
+            if "," in audio_b64:
+                audio_b64 = audio_b64.split(",", 1)[1]
+            audio_bytes = base64.b64decode(audio_b64)
+            t_start = time.time()
+            transcript = engine.transcribe_audio(audio_bytes)
+            stt_duration = round(time.time() - t_start, 2)
+            self._send_json({
+                "success": True,
+                "transcript": transcript,
+                "audio_size_bytes": len(audio_bytes),
+                "duration_seconds": stt_duration
+            })
+        except Exception as e:
             self._send_json({"error": str(e)}, status=500)
 
     def _handle_save_config(self, payload: Dict[str, Any]):

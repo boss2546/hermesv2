@@ -972,10 +972,110 @@
       animation: slideUpToast 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
       transition: opacity 0.3s ease, transform 0.3s ease;
     }
-    @keyframes slideUpToast {
-      from { opacity: 0; transform: translateY(20px) scale(0.9); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
+    /* Mic Diagnostic & Echo Controls */
+    .mic-diag-panel {
+      width: 100%;
+      background: rgba(18, 12, 32, 0.68);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 0.65rem 1rem;
+      margin: 0.75rem 0 0.5rem 0;
+      backdrop-filter: blur(14px);
     }
+    .diag-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+    }
+    .diag-meter-box {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex: 1;
+      min-width: 200px;
+    }
+    .diag-icon {
+      font-size: 1.1rem;
+    }
+    .diag-meter-text {
+      font-size: 0.78rem;
+      color: #cbd5e1;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .diag-bar-track {
+      flex: 1;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+    .diag-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #10b981 0%, #38bdf8 60%, #ec4899 100%);
+      border-radius: 6px;
+      transition: width 0.08s ease-out;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+    }
+    .diag-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .glass-btn.small {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.76rem;
+      border-radius: 12px;
+    }
+    .glass-btn.highlight {
+      background: rgba(236, 72, 153, 0.25);
+      border-color: rgba(244, 114, 182, 0.5);
+      color: #fdf2f8;
+    }
+    .glass-btn.highlight:hover:not(:disabled) {
+      background: rgba(236, 72, 153, 0.45);
+      box-shadow: 0 0 12px rgba(236, 72, 153, 0.5);
+    }
+    .glass-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* Logs Modal & Terminal */
+    .log-line {
+      margin-bottom: 4px;
+      word-break: break-word;
+      display: flex;
+      gap: 0.4rem;
+      align-items: flex-start;
+      line-height: 1.45;
+    }
+    .log-time {
+      color: #64748b;
+      user-select: none;
+      white-space: nowrap;
+      font-size: 0.72rem;
+    }
+    .log-tag {
+      font-weight: bold;
+      padding: 0 4px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      white-space: nowrap;
+    }
+    .log-tag.mic { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+    .log-tag.audio { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56,189,248,0.3); }
+    .log-tag.stt { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+    .log-tag.brain { background: rgba(236, 72, 153, 0.2); color: #f472b6; border: 1px solid rgba(236,72,153,0.3); }
+    .log-tag.tts { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+    .log-tag.error { background: rgba(239, 68, 68, 0.25); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+    .log-msg { color: #f1f5f9; flex: 1; }
 
     /* Responsive Mobile Media Queries */
     @media (max-width: 768px) {
@@ -1100,6 +1200,7 @@
       </label>
 
       <button class="glass-btn" id="sessionsOpenBtn" title="ดูประวัติเซสชั่นย้อนหลัง">📜 <span id="sessionBadge">0</span></button>
+      <button class="glass-btn" id="logsOpenBtn" title="ดู System & Mic Logs แบบละเอียด">📋 Logs <span id="logsBadge" style="font-size:0.75rem; background:rgba(236,72,153,0.3); padding:2px 6px; border-radius:10px;">0</span></button>
       <button class="glass-btn" id="newSessionBtn" title="เริ่มบทสนทนาใหม่">➕ แชตใหม่</button>
       <button class="glass-btn icon-only" id="configOpenBtn" title="ตั้งค่าระบบ">⚙️</button>
     </div>
@@ -1160,6 +1261,27 @@
 
       <!-- Waveform Sticks -->
       <div class="waveform-capsule" id="visualizer"></div>
+
+      <!-- Real-Time Audio Level & Echo / Loopback Diagnostic Bar -->
+      <div class="mic-diag-panel" id="micDiagPanel">
+        <div class="diag-header-row">
+          <div class="diag-meter-box">
+            <span class="diag-icon" id="diagMicIcon">🎙️</span>
+            <span class="diag-meter-text" id="diagMeterText">ระดับเสียงไมค์: รอเริ่มพูด</span>
+            <div class="diag-bar-track">
+              <div class="diag-bar-fill" id="diagBarFill"></div>
+            </div>
+          </div>
+          <div class="diag-actions">
+            <button class="glass-btn small" id="micCheckBtn" title="ทดสอบไมค์ 3 วินาทีแล้วฟังเสียงกลับทันที">
+              ⚡ ทดสอบไมค์ (3s)
+            </button>
+            <button class="glass-btn small highlight" id="echoPlayBtn" title="ฟังเสียงที่อัดล่าสุดกลับมา" disabled>
+              🔊 ฟังเสียงตัวเอง
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- Quick Action Chips -->
       <div class="quick-chips-row">
@@ -1314,12 +1436,43 @@
     </div>
   </div>
 
+  <!-- System Logs & Diagnostics Modal -->
+  <div class="modal-overlay" id="logsModal">
+    <div class="modal-window" style="max-width: 780px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="font-size:1.15rem; font-weight:600; display:flex; align-items:center; gap:0.5rem;">
+            📋 System & Voice Logs <span class="session-count-badge" id="logsModalBadge">0 รายการ</span>
+          </h3>
+          <p style="font-size:0.8rem; color:var(--text-dim); margin-top:3px;">บันทึกสถานะการรับเสียงไมค์, STT, AI Brain และการสังเคราะห์เสียงแบบเรียลไทม์</p>
+        </div>
+        <button class="modal-close-btn" id="logsCloseBtn" title="ปิดหน้าต่าง">✕</button>
+      </div>
+
+      <div class="logs-toolbar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem; gap:0.5rem; flex-wrap:wrap;">
+        <div style="display:flex; gap:0.5rem;">
+          <button class="glass-btn small" id="logsCopyBtn">📋 คัดลอก Logs</button>
+          <button class="glass-btn small" id="logsClearBtn">🗑️ ล้าง Logs</button>
+        </div>
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <button class="glass-btn small" id="testSpeakerBtn" title="ทดสอบลำโพงหรือหูฟังว่ามีเสียงออกไหม">🔊 ทดสอบเสียงลำโพง</button>
+          <span style="font-size:0.75rem; color:#a1a1aa;" id="micStatusSummary">ไมค์: พร้อมใช้งาน</span>
+        </div>
+      </div>
+
+      <div class="terminal-logs-window" id="logsContainerBox" style="background:#09060f; border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:0.9rem; font-family:Consolas, Monaco, monospace; font-size:0.78rem; color:#e2e8f0; height:360px; overflow-y:auto; line-height:1.5;">
+        <!-- Log lines dynamically inserted here -->
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Container -->
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Audio Player Element for LiveKit and Fallback -->
   <audio id="livekitAudioPlayer" autoplay playsinline></audio>
   <audio id="maymintAudioPlayer" playsinline style="display:none;"></audio>
+  <audio id="echoAudioPlayer" playsinline style="display:none;"></audio>
 
   <!-- Scripts -->
   <script>
@@ -1358,6 +1511,47 @@
     const pinError = document.getElementById('pinError');
     const livekitAudioPlayer = document.getElementById('livekitAudioPlayer');
     const maymintAudioPlayer = document.getElementById('maymintAudioPlayer');
+    const echoAudioPlayer = document.getElementById('echoAudioPlayer');
+
+    // Logs & Mic Diagnostics DOM Elements
+    const logsModal = document.getElementById('logsModal');
+    const logsOpenBtn = document.getElementById('logsOpenBtn');
+    const logsCloseBtn = document.getElementById('logsCloseBtn');
+    const logsCopyBtn = document.getElementById('logsCopyBtn');
+    const logsClearBtn = document.getElementById('logsClearBtn');
+    const testSpeakerBtn = document.getElementById('testSpeakerBtn');
+    const logsContainerBox = document.getElementById('logsContainerBox');
+    const logsBadge = document.getElementById('logsBadge');
+    const logsModalBadge = document.getElementById('logsModalBadge');
+    const micStatusSummary = document.getElementById('micStatusSummary');
+
+    const diagBarFill = document.getElementById('diagBarFill');
+    const diagMeterText = document.getElementById('diagMeterText');
+    const micCheckBtn = document.getElementById('micCheckBtn');
+    const echoPlayBtn = document.getElementById('echoPlayBtn');
+
+    // Central Realtime Log Array & Dispatcher
+    let systemLogs = [];
+    function addSystemLog(tag, msg, type = 'info') {
+      const timeStr = new Date().toLocaleTimeString('th-TH');
+      systemLogs.push({ time: timeStr, tag, msg, type });
+      if (logsBadge) logsBadge.innerText = systemLogs.length;
+      if (logsModalBadge) logsModalBadge.innerText = `${systemLogs.length} รายการ`;
+
+      if (logsContainerBox) {
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        const tagClass = tag.toLowerCase().replace(/[^a-z]/g, '');
+        line.innerHTML = `
+          <span class="log-time">[${timeStr}]</span>
+          <span class="log-tag ${tagClass}">${escapeHtml(tag)}</span>
+          <span class="log-msg">${escapeHtml(msg)}</span>
+        `;
+        logsContainerBox.appendChild(line);
+        logsContainerBox.scrollTop = logsContainerBox.scrollHeight;
+      }
+      console.log(`[${timeStr}] [${tag}] ${msg}`);
+    }
 
     // Create 24 Wave Sticks
     for (let i = 0; i < 24; i++) {
@@ -1605,53 +1799,418 @@
       }
     }
 
+    // =========================================================================
+    // NATIVE AUDIO RECORDING, LEVEL METER & ECHO / MIC DIAGNOSTICS
+    // =========================================================================
+    let audioCtx = null;
+    let audioAnalyser = null;
+    let micMediaStream = null;
+    let mediaRecorder = null;
+    let recordedAudioChunks = [];
+    let lastRecordedBlob = null;
+    let lastRecordedAudioUrl = null;
+    let isRecordingAudio = false;
+    let animFrameId = null;
+    let isMicChecking = false;
+
+    // Web Audio Chime Speaker Test
+    function playSpeakerTestChime() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.65);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.65);
+        addSystemLog('TTS', 'เล่นเสียงทดสอบลำโพงสำเร็จ (Dual Chime 587Hz -> 880Hz)');
+        showToast('กำลังเล่นเสียงทดสอบลำโพงค่ะ 🔔', '🔊');
+      } catch (e) {
+        addSystemLog('ERROR', 'ไม่สามารถเล่นเสียงทดสอบลำโพงได้: ' + e.message);
+      }
+    }
+
+    // Realtime Audio Level & Waveform visualizer
+    function updateAudioLevel() {
+      if (!isRecordingAudio && !isMicChecking) {
+        if (diagBarFill) diagBarFill.style.width = '0%';
+        if (diagMeterText) diagMeterText.innerText = 'ระดับเสียงไมค์: รอเริ่มพูด';
+        stopWaveform();
+        return;
+      }
+      if (audioAnalyser) {
+        const dataArray = new Uint8Array(audioAnalyser.frequencyBinCount);
+        audioAnalyser.getByteFrequencyData(dataArray);
+
+        let sum = 0;
+        let peak = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+          if (dataArray[i] > peak) peak = dataArray[i];
+        }
+        const pct = Math.min(100, Math.round((peak / 255) * 100));
+
+        if (diagBarFill) diagBarFill.style.width = `${pct}%`;
+
+        // Update real frequency wave sticks
+        waveSticks.forEach((stick, idx) => {
+          const val = dataArray[idx % dataArray.length] || 0;
+          const h = 8 + Math.round((val / 255) * 28);
+          stick.style.height = `${h}px`;
+        });
+
+        if (diagMeterText) {
+          if (pct > 6) {
+            diagMeterText.innerText = `🎙️ ตรวจพบเสียงพูด: ${pct}% (ไมค์ทำงานปกติ)`;
+            diagMeterText.style.color = '#34d399';
+          } else {
+            diagMeterText.innerText = `🎙️ กำลังดักฟังเสียง... (${pct}%) พูดคุยได้เลยค่ะ`;
+            diagMeterText.style.color = '#cbd5e1';
+          }
+        }
+      }
+      animFrameId = requestAnimationFrame(updateAudioLevel);
+    }
+
+    // Start Voice Recording
+    async function startVoiceRecording() {
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('เบราว์เซอร์ไม่รองรับ Web Audio/Microphone API');
+        }
+
+        addSystemLog('MIC', 'กำลังขอสิทธิ์เข้าถึงไมโครโฟน...');
+        micMediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+
+        const track = micMediaStream.getAudioTracks()[0];
+        addSystemLog('MIC', `เชื่อมต่อไมโครโฟนสำเร็จ: ${track.label || 'Default Device'}`);
+        if (micStatusSummary) micStatusSummary.innerText = `ไมค์: ${track.label || 'พร้อมใช้งาน'}`;
+
+        // Initialize AudioContext
+        if (!audioCtx || audioCtx.state === 'closed') {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          await audioCtx.resume();
+        }
+        audioAnalyser = audioCtx.createAnalyser();
+        audioAnalyser.fftSize = 128;
+        const source = audioCtx.createMediaStreamSource(micMediaStream);
+        source.connect(audioAnalyser);
+
+        // Pick supported mimeType
+        let mimeType = 'audio/webm;codecs=opus';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          if (MediaRecorder.isTypeSupported('audio/webm')) mimeType = 'audio/webm';
+          else if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+          else mimeType = '';
+        }
+
+        recordedAudioChunks = [];
+        mediaRecorder = mimeType ? new MediaRecorder(micMediaStream, { mimeType }) : new MediaRecorder(micMediaStream);
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            recordedAudioChunks.push(e.data);
+          }
+        };
+
+        mediaRecorder.start(200);
+        isRecordingAudio = true;
+        micButton.classList.add('recording');
+        micRipple.style.opacity = '1';
+        micHint.innerText = '🎙️ กำลังฟังเสียงบอส... (แตะไมค์อีกครั้งเพื่อหยุดและส่ง)';
+        setStage(1, '🎙️ [กำลังฟังเสียง] พูดคุยได้เลยค่ะบอส...');
+        addSystemLog('RECORDER', `เริ่มบันทึกเสียง (${mediaRecorder.mimeType || 'default'})`);
+
+        updateAudioLevel();
+
+      } catch (err) {
+        addSystemLog('ERROR', `ขอสิทธิ์ไมค์ล้มเหลว: ${err.message}`);
+        showToast('กรุณากดอนุญาตให้ใช้ไมโครโฟนนะคะบอส 🥺', '⚠️');
+        micHint.innerText = 'กรุณากดอนุญาตการเข้าถึงไมโครโฟนในเบราว์เซอร์นะคะบอส';
+        isRecordingAudio = false;
+      }
+    }
+
+    // Stop Voice Recording and Send to Server STT
+    async function stopVoiceRecordingAndSend() {
+      if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+
+      isRecordingAudio = false;
+      micButton.classList.remove('recording');
+      micRipple.style.opacity = '0';
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      stopWaveform();
+
+      micHint.innerText = 'ส่งเสียงแล้ว กำลังถอดความเสียงด้วย AI...';
+      setStage(2, '✍️ [สเต็ป 2/5] ถอดความเสียงของบอสด้วย AI Gemini...');
+
+      mediaRecorder.onstop = async () => {
+        const mime = mediaRecorder.mimeType || 'audio/webm';
+        lastRecordedBlob = new Blob(recordedAudioChunks, { type: mime });
+        if (lastRecordedAudioUrl) URL.revokeObjectURL(lastRecordedAudioUrl);
+        lastRecordedAudioUrl = URL.createObjectURL(lastRecordedBlob);
+
+        // Stop all tracks
+        if (micMediaStream) {
+          micMediaStream.getTracks().forEach(t => t.stop());
+        }
+
+        const sizeKb = (lastRecordedBlob.size / 1024).toFixed(1);
+        addSystemLog('RECORDER', `บันทึกเสียงเสร็จสิ้น ขนาด: ${sizeKb} KB`);
+
+        // Enable echo test button
+        if (echoPlayBtn) {
+          echoPlayBtn.disabled = false;
+          echoPlayBtn.innerHTML = `🔊 ฟังเสียงตัวเอง (${sizeKb}KB)`;
+        }
+
+        if (lastRecordedBlob.size < 500) {
+          addSystemLog('ERROR', 'ไฟล์เสียงมีขนาดเล็กเกินไป (ไม่มีข้อมูลเสียง)');
+          showToast('ไม่พบข้อมูลเสียงพูดเลยค่ะบอส ลองพูดอีกครั้งนะคะ', '⚠️');
+          resetStages();
+          micHint.innerText = 'คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส';
+          return;
+        }
+
+        // Send to backend STT -> LLM -> TTS pipeline
+        try {
+          addSystemLog('STT', `ส่งไฟล์เสียง ${sizeKb} KB ไปยัง /api/voice/process...`);
+          const reader = new FileReader();
+          reader.readAsDataURL(lastRecordedBlob);
+          reader.onloadend = async () => {
+            const base64Audio = reader.result;
+            try {
+              const res = await authFetch('/api/voice/process', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  audio_base64: base64Audio,
+                  mode: currentMode,
+                  auto_speak: autoSpeakToggle ? autoSpeakToggle.checked : true
+                })
+              });
+              const data = await res.json();
+
+              if (!res.ok || !data.success) {
+                addSystemLog('ERROR', `ประมวลผลเสียงล้มเหลว: ${data.message || data.error || 'Server error'}`);
+                showToast(data.message || 'เกิดข้อผิดพลาดในการประมวลผลเสียงค่ะ 🥺', '❌');
+                resetStages();
+                micHint.innerText = 'คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส';
+                return;
+              }
+
+              // Render user's spoken transcript
+              const userTranscript = data.transcript || '';
+              addSystemLog('STT', `ถอดความสำเร็จ (${data.stt_duration || 0}s): "${userTranscript}"`);
+              appendChatMessage('user', `🎙️ ${userTranscript}`);
+
+              // Render tool events if any
+              if (data.tool_events && Array.isArray(data.tool_events)) {
+                data.tool_events.forEach(te => renderToolBadge(te.tool, te.result));
+              }
+
+              // Render Maymint's reply
+              setStage(3, '🧠 [สเต็ป 3/5] สมอง AI ตอบกลับเรียบร้อย...');
+              addSystemLog('BRAIN', `มายมิ้นท์ตอบกลับ (${data.cognitive_tier || 'fast'}) โมเดล: ${data.model_used || 'Gemini'}`);
+              appendChatMessage('maymint', data.reply);
+
+              // Auto speak reply audio
+              if (autoSpeakToggle && autoSpeakToggle.checked && data.audio_url) {
+                setStage(5, '🔊 [สเต็ป 5/5] มายมิ้นท์กำลังพูดออกเสียง...');
+                addSystemLog('TTS', `กำลังเล่นเสียงตอบกลับ: ${data.audio_url}`);
+                maymintAudioPlayer.src = data.audio_url;
+                maymintAudioPlayer.play().catch(e => {
+                  addSystemLog('TTS', 'Browser autoplay blocked audio: ' + e.message);
+                });
+              } else {
+                resetStages();
+              }
+
+              fetchSessionsList();
+              micHint.innerText = 'คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส';
+
+            } catch (postErr) {
+              addSystemLog('ERROR', `เชื่อมต่อ API voice/process ล้มเหลว: ${postErr.message}`);
+              showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เสียงได้ค่ะ 🥺', '❌');
+              resetStages();
+              micHint.innerText = 'คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส';
+            }
+          };
+        } catch (readErr) {
+          addSystemLog('ERROR', `อ่านไฟล์เสียงล้มเหลว: ${readErr.message}`);
+        }
+      };
+
+      mediaRecorder.stop();
+    }
+
+    // Playback Recorded Echo Audio
+    function playEchoAudio() {
+      if (!lastRecordedAudioUrl) {
+        showToast('ยังไม่มีเสียงที่บันทึกไว้ค่ะบอส ลองกดปุ่มทดสอบไมค์ 3s นะคะ', '⚠️');
+        return;
+      }
+      try {
+        echoAudioPlayer.src = lastRecordedAudioUrl;
+        echoAudioPlayer.play();
+        echoPlayBtn.innerHTML = '⏹️ กำลังฟังเสียงตัวเอง...';
+        echoPlayBtn.style.background = 'rgba(16, 185, 129, 0.4)';
+        addSystemLog('ECHO', 'เริ่มเล่นเสียงที่บอสอัดกลับมาออกลำโพง/หูฟัง...');
+        showToast('กำลังเล่นเสียงของบอสให้ฟังค่ะ 🔊', '💖');
+
+        echoAudioPlayer.onended = () => {
+          echoPlayBtn.innerHTML = '🔊 ฟังเสียงตัวเอง';
+          echoPlayBtn.style.background = '';
+          addSystemLog('ECHO', 'เล่นเสียงตัวเองจบแล้วค่ะ');
+        };
+      } catch (e) {
+        addSystemLog('ERROR', 'เล่นเสียงกลับล้มเหลว: ' + e.message);
+      }
+    }
+
+    // 3-Second Mic Check with Instant Auto-Playback
+    async function runMicCheck3s() {
+      if (isMicChecking || isRecordingAudio) return;
+
+      isMicChecking = true;
+      let countdown = 3;
+      micCheckBtn.disabled = true;
+      micCheckBtn.innerHTML = `🎙️ พูดเลย... (${countdown}s)`;
+      addSystemLog('MIC', 'เริ่มการทดสอบไมค์ 3 วินาที (Mic Check)...');
+      showToast('กรุณาพูดใส่ไมค์เลยค่ะ กำลังบันทึก 3 วินาที... 🎙️', '⚡');
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const trk = stream.getAudioTracks()[0];
+        addSystemLog('MIC', `ไมค์ที่ใช้ทดสอบ: ${trk.label || 'Default Mic'}`);
+
+        if (!audioCtx || audioCtx.state === 'closed') {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+        audioAnalyser = audioCtx.createAnalyser();
+        audioAnalyser.fftSize = 128;
+        const src = audioCtx.createMediaStreamSource(stream);
+        src.connect(audioAnalyser);
+
+        updateAudioLevel();
+
+        const chunks = [];
+        const rec = new MediaRecorder(stream);
+        rec.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+
+        rec.onstop = () => {
+          stream.getTracks().forEach(t => t.stop());
+          const blob = new Blob(chunks, { type: rec.mimeType || 'audio/webm' });
+          if (lastRecordedAudioUrl) URL.revokeObjectURL(lastRecordedAudioUrl);
+          lastRecordedAudioUrl = URL.createObjectURL(blob);
+          lastRecordedBlob = blob;
+
+          const sizeKb = (blob.size / 1024).toFixed(1);
+          addSystemLog('ECHO', `อัดเสียงทดสอบเสร็จสิ้น (${sizeKb} KB) กำลังเล่นกลับ...`);
+
+          if (echoPlayBtn) {
+            echoPlayBtn.disabled = false;
+            echoPlayBtn.innerHTML = `🔊 ฟังเสียงตัวเอง (${sizeKb}KB)`;
+          }
+
+          // Immediately play it back!
+          playEchoAudio();
+
+          micCheckBtn.disabled = false;
+          micCheckBtn.innerHTML = '⚡ ทดสอบไมค์ (3s)';
+          isMicChecking = false;
+        };
+
+        rec.start(100);
+
+        const iv = setInterval(() => {
+          countdown--;
+          if (countdown > 0) {
+            micCheckBtn.innerHTML = `🎙️ พูดเลย... (${countdown}s)`;
+          } else {
+            clearInterval(iv);
+            rec.stop();
+          }
+        }, 1000);
+
+      } catch (err) {
+        isMicChecking = false;
+        micCheckBtn.disabled = false;
+        micCheckBtn.innerHTML = '⚡ ทดสอบไมค์ (3s)';
+        addSystemLog('ERROR', `ทดสอบไมค์ไม่สำเร็จ: ${err.message}`);
+        showToast('ไม่สามารถเข้าถึงไมค์ได้ค่ะ: ' + err.message, '❌');
+      }
+    }
+
     // Mic Button Interaction
     micButton.addEventListener('click', async () => {
       // 1. Instant Interruption: If Maymint is speaking, tap mic to cut off immediately!
-      if (isMaymintSpeaking) {
-        if (livekitRoom) {
-          try {
-            const interruptMsg = JSON.stringify({ type: 'interrupt' });
-            livekitRoom.localParticipant.publishData(new TextEncoder().encode(interruptMsg));
-          } catch (e) {}
-        }
-        livekitAudioPlayer.pause();
+      if (isMaymintSpeaking || !maymintAudioPlayer.paused) {
+        maymintAudioPlayer.pause();
         isMaymintSpeaking = false;
         stopWaveform();
         micHint.innerText = '✋ ขัดจังหวะคำพูดแล้วค่ะ รับฟังบอสอยู่...';
         setStage(1, '🎙️ [ขัดจังหวะแล้ว] กำลังฟังเสียงบอส...');
+        addSystemLog('TTS', 'ผู้ใช้แตะไมค์เพื่อขัดจังหวะเสียงพูดของมายมิ้นท์');
         return;
       }
 
-      // 2. Toggle User Microphone (LiveKit Audio Stream)
-      if (!isMicLive) {
-        try {
-          if (!livekitRoom || livekitRoom.state !== 'connected') {
-            await initLiveKit();
-          }
-          await livekitRoom.localParticipant.setMicrophoneEnabled(true);
-          isMicLive = true;
-          micButton.classList.add('recording');
-          micRipple.style.opacity = '1';
-          micHint.innerText = '🎙️ กำลังฟังเสียงบอส... (พูดคุยได้เลยค่ะ แตะไมค์อีกครั้งเมื่อพูดเสร็จ)';
-          setStage(1, '🎙️ [LiveKit] กำลังฟังเสียงบอส...');
-          startWaveform();
-        } catch (e) {
-          micHint.innerText = 'กรุณาอนุญาตให้เข้าถึงไมโครโฟนนะคะบอส';
-        }
+      // 2. Toggle Voice Recording via MediaRecorder
+      if (!isRecordingAudio) {
+        await startVoiceRecording();
       } else {
-        // Mute mic after speaking
-        if (livekitRoom) {
-          await livekitRoom.localParticipant.setMicrophoneEnabled(false);
-        }
-        isMicLive = false;
-        micButton.classList.remove('recording');
-        micRipple.style.opacity = '0';
-        stopWaveform();
-        micHint.innerText = 'ส่งเสียงแล้ว กำลังประมวลผล...';
-        setStage(2, '✍️ [สเต็ป 2/5] ถอดความเสียงด้วย AI Gemini...');
+        await stopVoiceRecordingAndSend();
       }
     });
+
+    // Mic Diag Button Listeners
+    if (echoPlayBtn) echoPlayBtn.addEventListener('click', playEchoAudio);
+    if (micCheckBtn) micCheckBtn.addEventListener('click', runMicCheck3s);
+
+    // Logs Modal Handlers
+    function openLogsModal() {
+      if (logsModal) logsModal.classList.add('open');
+    }
+    function closeLogsModal() {
+      if (logsModal) logsModal.classList.remove('open');
+    }
+    if (logsOpenBtn) logsOpenBtn.addEventListener('click', openLogsModal);
+    if (logsCloseBtn) logsCloseBtn.addEventListener('click', closeLogsModal);
+    if (logsClearBtn) {
+      logsClearBtn.addEventListener('click', () => {
+        systemLogs = [];
+        if (logsContainerBox) logsContainerBox.innerHTML = '';
+        if (logsBadge) logsBadge.innerText = '0';
+        if (logsModalBadge) logsModalBadge.innerText = '0 รายการ';
+        showToast('ล้างประวัติ Logs เรียบร้อยแล้วค่ะ', '🗑️');
+      });
+    }
+    if (logsCopyBtn) {
+      logsCopyBtn.addEventListener('click', () => {
+        const text = systemLogs.map(l => `[${l.time}] [${l.tag}] ${l.msg}`).join('\n');
+        navigator.clipboard.writeText(text).then(() => {
+          showToast('คัดลอก Logs ทั้งหมดลงคลิปบอร์ดแล้วค่ะ 📋', '💖');
+        }).catch(() => {
+          showToast('ไม่สามารถคัดลอกได้ค่ะ', '❌');
+        });
+      });
+    }
+    if (testSpeakerBtn) testSpeakerBtn.addEventListener('click', playSpeakerTestChime);
 
     // =========================================================================
     // CHAT TRANSCRIPT & MESSAGE RENDERING
@@ -1927,11 +2486,18 @@
       });
     }
 
+    if (logsModal) {
+      logsModal.addEventListener('click', (e) => {
+        if (e.target === logsModal) closeLogsModal();
+      });
+    }
+
     // Escape Key Listener to dismiss open modals
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         if (sessionsModal && sessionsModal.classList.contains('open')) closeSessionsModal();
         if (configModal && configModal.classList.contains('open')) closeConfigModal();
+        if (logsModal && logsModal.classList.contains('open')) closeLogsModal();
       }
     });
 
@@ -2209,6 +2775,10 @@
     // Initialize application
     window.addEventListener('DOMContentLoaded', () => {
       setMode(currentMode);
+      addSystemLog('SYS', `เริ่มต้นระบบ Maymint Liquid Voice สำเร็จ (โหมด: ${currentMode})`);
+      addSystemLog('MIC', 'ระบบไมโครโฟนสแตนด์บายพร้อมทำงาน (แตะปุ่มไมค์ หรือกด ⚡ ทดสอบไมค์ เพื่อเริ่ม)');
+      addSystemLog('STT', 'ระบบแปลงเสียงพูด (STT): 9Router Multimodal Gemini 2.5 Flash พร้อมใช้งาน');
+      addSystemLog('TTS', 'ระบบสังเคราะห์เสียง (TTS): Microsoft Edge-TTS Studio (th-TH-PremwadeeNeural)');
       checkAuth();
     });
   </script>
