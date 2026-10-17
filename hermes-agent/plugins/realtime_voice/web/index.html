@@ -8,6 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0f0a17">
   <title>Maymint Realtime Voice — Liquid Glass</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌸</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -1236,11 +1237,23 @@
   <script>
     // State variables
     let currentMode = localStorage.getItem('maymint_mode') || 'casual';
+    let authToken = localStorage.getItem('maymint_auth_token') || '';
     let pinInput = '';
     let livekitRoom = null;
     let isMicLive = false;
     let isMaymintSpeaking = false;
     let isProcessing = false;
+
+    // Centralized Authenticated Fetch Helper
+    async function authFetch(url, options = {}) {
+      options.headers = options.headers || {};
+      if (authToken) {
+        options.headers['Authorization'] = `Bearer ${authToken}`;
+        options.headers['X-Maymint-Key'] = authToken;
+      }
+      options.credentials = 'include';
+      return fetch(url, options);
+    }
 
     // DOM Elements
     const micButton = document.getElementById('micButton');
@@ -1364,6 +1377,10 @@
         });
         const data = await res.json();
         if (data.success) {
+          if (data.token) {
+            authToken = data.token;
+            localStorage.setItem('maymint_auth_token', authToken);
+          }
           pinModal.style.display = 'none';
           initLiveKit();
           initJobStream();
@@ -1397,7 +1414,7 @@
     // Check Auth on page load
     async function checkAuth() {
       try {
-        const res = await fetch('/api/auth/check');
+        const res = await authFetch('/api/auth/check');
         const data = await res.json();
         if (!data.authenticated) {
           pinModal.style.display = 'flex';
@@ -1422,7 +1439,7 @@
 
       try {
         currentStatusText.innerText = "กำลังเชื่อมต่อระบบเสียงสด LiveKit...";
-        const res = await fetch('/api/livekit-token?identity=Boss&room=maymint-room');
+        const res = await authFetch('/api/livekit-token?identity=Boss&room=maymint-room');
         if (!res.ok) throw new Error('Token fetch failed');
         const config = await res.json();
 
@@ -1595,7 +1612,8 @@
       }
       fetchInitialJobs();
       try {
-        jobsEventSource = new EventSource('/api/jobs/stream');
+        const streamUrl = authToken ? `/api/jobs/stream?auth_token=${encodeURIComponent(authToken)}` : '/api/jobs/stream';
+        jobsEventSource = new EventSource(streamUrl);
         jobsEventSource.onmessage = (event) => {
           try {
             const job = JSON.parse(event.data);
@@ -1610,7 +1628,7 @@
 
     async function fetchInitialJobs() {
       try {
-        const res = await fetch('/api/jobs');
+        const res = await authFetch('/api/jobs');
         const data = await res.json();
         if (data.jobs) {
           data.jobs.forEach(j => activeJobsMap.set(j.id, j));
@@ -1670,7 +1688,7 @@
 
     async function cancelJob(jobId) {
       try {
-        const res = await fetch('/api/jobs/cancel', {
+        const res = await authFetch('/api/jobs/cancel', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ job_id: jobId })
@@ -1742,9 +1760,13 @@
     const configCancelBtn = document.getElementById('configCancelBtn');
     const configSaveBtn = document.getElementById('configSaveBtn');
 
-    function openSessionsModal() {
-      fetchSessionsList();
+    async function openSessionsModal() {
       if (sessionsModal) sessionsModal.classList.add('open');
+      const listEl = document.getElementById('sessionsList');
+      if (listEl && listEl.children.length === 0) {
+        listEl.innerHTML = `<div style="text-align:center; padding:1.5rem; color:var(--text-dim); font-size:0.85rem;">⏳ กำลังโหลดประวัติการสนทนา...</div>`;
+      }
+      await fetchSessionsList();
     }
     function closeSessionsModal() {
       if (sessionsModal) sessionsModal.classList.remove('open');
@@ -1832,7 +1854,7 @@
 
     async function fetchSessionsList() {
       try {
-        const res = await fetch('/api/sessions');
+        const res = await authFetch('/api/sessions');
         if (!res.ok) return;
         const data = await res.json();
         if (data.success) {
@@ -1880,7 +1902,7 @@
         return;
       }
       try {
-        const res = await fetch('/api/sessions/switch', {
+        const res = await authFetch('/api/sessions/switch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ session_id: sessionId })
@@ -1915,7 +1937,7 @@
 
     async function createNewSession() {
       try {
-        const res = await fetch('/api/sessions/new', {
+        const res = await authFetch('/api/sessions/new', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({})
@@ -1941,7 +1963,7 @@
 
     async function loadChatHistory() {
       try {
-        const res = await fetch('/api/history');
+        const res = await authFetch('/api/history');
         if (!res.ok) return;
         const data = await res.json();
         if (data.success && Array.isArray(data.history) && data.history.length > 0) {
@@ -1959,7 +1981,7 @@
 
     async function loadConfig() {
       try {
-        const res = await fetch('/api/config');
+        const res = await authFetch('/api/config');
         if (!res.ok) return;
         const cfg = await res.json();
         
@@ -2023,7 +2045,7 @@
       };
 
       try {
-        const res = await fetch('/api/config', {
+        const res = await authFetch('/api/config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -2056,7 +2078,7 @@
       setStage(3, '🧠 กำลังคิดคำตอบให้บอส...');
 
       try {
-        const res = await fetch('/api/chat', {
+        const res = await authFetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
