@@ -712,11 +712,39 @@ if SMART_HOME_TOOLS:
 if GOOGLE_WORKSPACE_TOOLS:
     AVAILABLE_TOOLS.extend(GOOGLE_WORKSPACE_TOOLS)
 
+# =============================================================================
+# SECURITY SHIELD: PROTECTED FILES & DESTRUCTIVE COMMAND GUARDRAILS
+# =============================================================================
+PROTECTED_FILES = ["โน็ต.txt", ".env", "google_token.json", ".auth_tokens.json", "id_rsa"]
+DESTRUCTIVE_COMMAND_PATTERNS = [
+    re.compile(r"\bformat\b\s+[a-z]:", re.I),
+    re.compile(r"\brmdir\b\s+.*?/s", re.I),
+    re.compile(r"\bdel\b\s+.*?/s", re.I),
+    re.compile(r"\bRemove-Item\b.*?(-Recurse|-Force)", re.I),
+    re.compile(r"\bdrop\s+database\b", re.I),
+    re.compile(r"\bnet\s+user\b.*?\s+/add", re.I),
+    re.compile(r"\breg\s+delete\b", re.I),
+]
+
+def is_protected_file(path_str: str) -> bool:
+    normalized = str(path_str).lower().replace("\\", "/")
+    return any(pf.lower() in normalized for pf in PROTECTED_FILES)
+
+def is_destructive_command(cmd_str: str) -> bool:
+    return any(pattern.search(cmd_str) for pattern in DESTRUCTIVE_COMMAND_PATTERNS)
+
 def execute_tool(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
     """Executes host tools synchronously with structured outputs and error trapping."""
     logger.info("Executing tool: %s with args: %s", name, arguments)
     if name == "run_terminal_command":
         cmd = arguments.get("command", "").strip()
+        if is_destructive_command(cmd):
+            logger.warning("Security Guardrail blocked destructive command: %s", cmd)
+            return {
+                "command": cmd,
+                "exit_code": 1,
+                "error": "Security Guardrail Violation: ไม่อนุญาตให้รันคำสั่งที่อาจส่งผลกระทบต่อระบบค่ะบอส 🛡️"
+            }
         cwd_arg = arguments.get("cwd", ".")
         target_cwd = Path(cwd_arg) if Path(cwd_arg).is_absolute() else (PROJECT_ROOT / cwd_arg).resolve()
         if not target_cwd.exists():
@@ -794,6 +822,9 @@ def execute_tool(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
     elif name == "read_file":
         p = Path(arguments.get("file_path", ""))
         target = p if p.is_absolute() else (PROJECT_ROOT / p).resolve()
+        if is_protected_file(str(target)):
+            logger.warning("Security Guardrail blocked read_file on protected file: %s", target)
+            return {"error": f"Security Guardrail Violation: ไม่อนุญาตให้เปิดอ่านไฟล์คุ้มครองความปลอดภัยสูงสุด ({target.name}) ค่ะ 🛡️"}
         max_lines = int(arguments.get("max_lines", 500))
         try:
             if not target.exists():
@@ -810,6 +841,9 @@ def execute_tool(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
     elif name == "write_file":
         p = Path(arguments.get("file_path", ""))
         target = p if p.is_absolute() else (PROJECT_ROOT / p).resolve()
+        if is_protected_file(str(target)):
+            logger.warning("Security Guardrail blocked write_file on protected file: %s", target)
+            return {"error": f"Security Guardrail Violation: ไม่อนุญาตให้เขียนทับไฟล์คุ้มครองความปลอดภัยสูงสุด ({target.name}) ค่ะ 🛡️"}
         content = arguments.get("content", "")
         try:
             target.parent.mkdir(parents=True, exist_ok=True)

@@ -389,6 +389,10 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         content_len = int(self.headers.get("Content-Length", 0))
+        if content_len > 10 * 1024 * 1024:
+            self._send_json({"error": "payload_too_large", "message": "Payload exceeds 10MB limit"}, status=413)
+            return
+
         body = self.rfile.read(content_len)
         try:
             payload = json.loads(body.decode("utf-8")) if body else {}
@@ -490,8 +494,12 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             self._send_json({"error": "Unknown API endpoint"}, status=404)
 
     def _handle_pin_auth(self, payload: Dict[str, Any]):
-        """Processes 4-digit PIN verification with 5-attempt/15-minute lockout."""
-        client_ip = self.client_address[0]
+        """Processes 4-digit PIN verification with 5-attempt/15-minute lockout and constant-time check."""
+        client_ip = (
+            self.headers.get("CF-Connecting-IP")
+            or self.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+            or self.client_address[0]
+        )
         now = time.time()
 
         with _auth_lock:
@@ -506,7 +514,7 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
                 return
 
             pin_in = str(payload.get("pin", "")).strip()
-            if pin_in == MAYMINT_PIN:
+            if secrets.compare_digest(pin_in, str(MAYMINT_PIN)):
                 FAILED_ATTEMPTS.pop(client_ip, None)
                 token = secrets.token_hex(24)
                 VALID_TOKENS.add(token)
@@ -604,7 +612,11 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             self._send_json({"error": str(e)}, status=500)
 
     def _serve_audio(self, is_head: bool = False):
-        fname = os.path.basename(self.path.split("?")[0])
+        raw_target = self.path.split("?")[0]
+        if ".." in raw_target or "\x00" in raw_target or "\\" in raw_target:
+            self.send_error(400, "Bad Request: Directory traversal attempt detected")
+            return
+        fname = os.path.basename(raw_target)
         candidate_paths = [
             AUDIO_CACHE_DIR / fname,
             Path(tempfile.gettempdir()) / "hermes_voice" / fname,
