@@ -591,7 +591,8 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             self._send_json({"error": str(e)}, status=500)
 
     def _handle_voice_process(self, payload: Dict[str, Any]):
-        """Processes recorded audio from browser: STT Transcription -> LLM Brain -> TTS Speech."""
+        """Processes recorded audio or transcript: STT Transcription -> LLM Brain -> TTS Speech."""
+        user_transcript = payload.get("transcript") or payload.get("text") or ""
         audio_b64 = payload.get("audio_base64") or payload.get("audio") or ""
         mode = payload.get("mode", "casual")
         voice = payload.get("voice") or RUNTIME_CONFIG.get("voice", "th-TH-PremwadeeNeural")
@@ -599,25 +600,33 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         pitch = payload.get("pitch") or RUNTIME_CONFIG.get("pitch", "+0Hz")
         auto_speak = payload.get("auto_speak", RUNTIME_CONFIG.get("auto_speak", True))
 
-        if not audio_b64:
-            self._send_json({"error": "audio_base64 is required"}, status=400)
+        if not user_transcript and not audio_b64:
+            self._send_json({"error": "Either transcript or audio_base64 is required"}, status=400)
             return
 
-        if not engine:
+        if not engine and not user_transcript:
             self._send_json({"error": "VoiceEngine not initialized"}, status=500)
             return
 
         try:
-            # Strip data URL prefix if present (e.g. data:audio/webm;base64,...)
-            if "," in audio_b64:
-                audio_b64 = audio_b64.split(",", 1)[1]
-            audio_bytes = base64.b64decode(audio_b64)
+            transcript = ""
+            stt_duration = 0.0
 
-            # Step 1: Speech-to-Text via 9Router Multimodal Gemini 2.5 Flash
-            t_start = time.time()
-            transcript = engine.transcribe_audio(audio_bytes)
-            stt_duration = round(time.time() - t_start, 2)
-            logger.info("Transcribed audio (%d bytes) in %.2fs: '%s'", len(audio_bytes), stt_duration, transcript)
+            if user_transcript and user_transcript.strip():
+                transcript = user_transcript.strip()
+                stt_duration = 0.0
+                logger.info("Using direct client real-time transcript: '%s'", transcript)
+            elif audio_b64:
+                # Strip data URL prefix if present (e.g. data:audio/webm;base64,...)
+                if "," in audio_b64:
+                    audio_b64 = audio_b64.split(",", 1)[1]
+                audio_bytes = base64.b64decode(audio_b64)
+
+                # Step 1: Speech-to-Text via 9Router Multimodal Gemini 2.5 Flash
+                t_start = time.time()
+                transcript = engine.transcribe_audio(audio_bytes)
+                stt_duration = round(time.time() - t_start, 2)
+                logger.info("Transcribed audio (%d bytes) in %.2fs: '%s'", len(audio_bytes), stt_duration, transcript)
 
             if not transcript or not transcript.strip():
                 self._send_json({

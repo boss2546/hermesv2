@@ -419,6 +419,75 @@
       min-height: 1.4rem;
     }
 
+    /* Real-time Streaming STT Live Speech Box */
+    .live-speech-box {
+      width: 100%;
+      max-width: 680px;
+      background: rgba(26, 16, 42, 0.78);
+      border: 1px solid rgba(244, 114, 182, 0.45);
+      border-radius: 18px;
+      padding: 0.85rem 1.2rem;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 8px 25px rgba(236, 72, 153, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+      transition: all 0.25s ease;
+      animation: fadeInSlide 0.3s ease;
+    }
+
+    @keyframes fadeInSlide {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .live-speech-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.4rem;
+    }
+
+    .live-speech-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--pink-glow);
+      text-shadow: 0 0 10px rgba(244, 114, 182, 0.4);
+    }
+
+    .live-pulse-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #ef4444;
+      box-shadow: 0 0 10px #ef4444;
+      animation: livePulse 1.2s infinite;
+    }
+
+    @keyframes livePulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.5; }
+    }
+
+    .live-timer-badge {
+      font-size: 0.75rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 2px 8px;
+      border-radius: 12px;
+      color: var(--text-dim);
+    }
+
+    .live-speech-text {
+      font-size: 1.05rem;
+      line-height: 1.5;
+      color: #ffffff;
+      font-weight: 500;
+      min-height: 1.6rem;
+      word-break: break-word;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    }
+
     /* Waveform Capsule */
     .waveform-capsule {
       display: flex;
@@ -1199,6 +1268,16 @@
         </label>
       </label>
 
+      <!-- Continuous Hands-Free Conversation Toggle -->
+      <label class="toggle-wrapper" id="continuousToggleWrapper" title="โหมดคุยต่อเนื่องอัตโนมัติ (เมื่อมายมิ้นท์พูดจบจะเปิดไมค์รอฟังบอสคุยต่อทันทีแบบ Hands-Free)">
+        <span>🎧</span>
+        <span>คุยต่อเนื่อง</span>
+        <label class="switch">
+          <input type="checkbox" id="continuousModeToggle" checked>
+          <span class="slider"></span>
+        </label>
+      </label>
+
       <button class="glass-btn" id="sessionsOpenBtn" title="ดูประวัติเซสชั่นย้อนหลัง">📜 <span id="sessionBadge">0</span></button>
       <button class="glass-btn" id="logsOpenBtn" title="ดู System & Mic Logs แบบละเอียด">📋 Logs <span id="logsBadge" style="font-size:0.75rem; background:rgba(236,72,153,0.3); padding:2px 6px; border-radius:10px;">0</span></button>
       <button class="glass-btn" id="newSessionBtn" title="เริ่มบทสนทนาใหม่">➕ แชตใหม่</button>
@@ -1258,6 +1337,18 @@
         </button>
       </div>
       <p class="mic-caption" id="micHint">คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส (แตะตอนมายพูดเพื่อขัดจังหวะ)</p>
+
+      <!-- Real-time Streaming STT Live Speech Box -->
+      <div class="live-speech-box" id="liveSpeechBox" style="display: none;">
+        <div class="live-speech-header">
+          <div class="live-speech-title">
+            <span class="live-pulse-dot"></span>
+            <span>🎙️ ถอดความสดเรียลไทม์ (Streaming STT)</span>
+          </div>
+          <span class="live-timer-badge" id="silenceTimerBadge">รอเริ่มพูด...</span>
+        </div>
+        <div class="live-speech-text" id="liveSpeechText">...</div>
+      </div>
 
       <!-- Waveform Sticks -->
       <div class="waveform-capsule" id="visualizer"></div>
@@ -1486,6 +1577,10 @@
     const chatTextInput = document.getElementById('chatTextInput');
     const sendTextBtn = document.getElementById('sendTextBtn');
     const autoSpeakToggle = document.getElementById('autoSpeakToggle');
+    const continuousModeToggle = document.getElementById('continuousModeToggle');
+    const liveSpeechBox = document.getElementById('liveSpeechBox');
+    const liveSpeechText = document.getElementById('liveSpeechText');
+    const silenceTimerBadge = document.getElementById('silenceTimerBadge');
     const currentStatusText = document.getElementById('currentStatusText');
     const pinModal = document.getElementById('pinModal');
     const pinDots = document.getElementById('pinDots').children;
@@ -1493,6 +1588,17 @@
     const livekitAudioPlayer = document.getElementById('livekitAudioPlayer');
     const maymintAudioPlayer = document.getElementById('maymintAudioPlayer');
     const echoAudioPlayer = document.getElementById('echoAudioPlayer');
+
+    // Continuous Mode Preference & Toggle
+    if (continuousModeToggle) {
+      const savedContinuous = localStorage.getItem('maymint_continuous_mode');
+      continuousModeToggle.checked = (savedContinuous !== null ? savedContinuous === 'true' : true);
+      continuousModeToggle.addEventListener('change', () => {
+        localStorage.setItem('maymint_continuous_mode', continuousModeToggle.checked);
+        showToast(continuousModeToggle.checked ? 'เปิดโหมดคุยต่อเนื่องแล้วค่ะ 🎧' : 'ปิดโหมดคุยต่อเนื่องแล้วค่ะ ⏸️', '🎧');
+        addSystemLog('SYS', `เปลี่ยนโหมดคุยต่อเนื่องเป็น: ${continuousModeToggle.checked ? 'เปิด' : 'ปิด'}`);
+      });
+    }
 
     // Logs & Mic Diagnostics DOM Elements
     const logsModal = document.getElementById('logsModal');
@@ -1794,6 +1900,13 @@
     let animFrameId = null;
     let isMicChecking = false;
 
+    // Real-time STT, Auto-VAD & Continuous Conversation Loop State
+    let speechRecognitionInstance = null;
+    let lastRecognizedTranscript = '';
+    let speechSilenceTimer = null;
+    let continuousReopenTimer = null;
+    let isProcessingSpeech = false;
+
     // Web Audio Chime Speaker Test
     function playSpeakerTestChime() {
       try {
@@ -1816,7 +1929,85 @@
       }
     }
 
-    // Realtime Audio Level & Waveform visualizer
+    // Instant Barge-In / Interruption Handler
+    function interruptMaymint(source = 'barge-in') {
+      let interrupted = false;
+      if (isMaymintSpeaking || (maymintAudioPlayer && !maymintAudioPlayer.paused)) {
+        try {
+          maymintAudioPlayer.pause();
+          maymintAudioPlayer.currentTime = 0;
+        } catch (e) {}
+        isMaymintSpeaking = false;
+        interrupted = true;
+      }
+      stopWaveform();
+      if (interrupted) {
+        addSystemLog('TTS', `⚡ ขัดจังหวะเสียงพูดของมายมิ้นท์สำเร็จ (${source})`);
+        showToast('ขัดจังหวะคำพูดแล้วค่ะ รับฟังบอสอยู่ 💖', '✋');
+        micHint.innerText = '✋ ขัดจังหวะคำพูดแล้วค่ะ รับฟังบอสอยู่... 💖';
+        setStage(1, '🎙️ [ขัดจังหวะแล้ว] กำลังฟังเสียงบอส...');
+      }
+      return interrupted;
+    }
+
+    window.interruptMaymint = interruptMaymint;
+    window.setMaymintSpeaking = (val) => { isMaymintSpeaking = Boolean(val); };
+    window.getMaymintSpeaking = () => isMaymintSpeaking || (maymintAudioPlayer && !maymintAudioPlayer.paused);
+
+    // Play Maymint Response Audio with Event Sync & Continuous Hands-Free Loop
+    function playMaymintAudio(url) {
+      if (!url) {
+        resetStages();
+        triggerContinuousLoopIfEnabled();
+        return;
+      }
+      isMaymintSpeaking = true;
+      maymintAudioPlayer.src = url;
+      startWaveform();
+      setStage(5, '🔊 [สเต็ป 5/5] มายมิ้นท์กำลังพูดออกเสียง...');
+      addSystemLog('TTS', `กำลังเล่นเสียงตอบกลับ: ${url}`);
+
+      maymintAudioPlayer.play().catch(e => {
+        addSystemLog('TTS', 'Browser autoplay blocked audio: ' + e.message);
+        isMaymintSpeaking = false;
+        stopWaveform();
+        resetStages();
+        triggerContinuousLoopIfEnabled();
+      });
+    }
+
+    function triggerContinuousLoopIfEnabled() {
+      if (continuousModeToggle && continuousModeToggle.checked && !isRecordingAudio && !isProcessingSpeech) {
+        micHint.innerText = '🎧 [โหมดคุยต่อเนื่อง] กำลังเปิดไมค์รอฟังบอสคุยต่อค่ะ... 💖';
+        setStage(1, '🎙️ [คุยต่อเนื่อง] กำลังฟังเสียงบอส...');
+        if (continuousReopenTimer) clearTimeout(continuousReopenTimer);
+        // 600ms safety pause prevents mic from capturing speaker room reverberation
+        continuousReopenTimer = setTimeout(() => {
+          if (continuousModeToggle && continuousModeToggle.checked && !isRecordingAudio && !isProcessingSpeech) {
+            startVoiceRecording();
+          }
+        }, 600);
+      } else {
+        micHint.innerText = 'คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส';
+      }
+    }
+
+    maymintAudioPlayer.onended = () => {
+      isMaymintSpeaking = false;
+      stopWaveform();
+      resetStages();
+      addSystemLog('TTS', 'มายมิ้นท์พูดจบเรียบร้อยแล้วค่ะ');
+      triggerContinuousLoopIfEnabled();
+    };
+
+    maymintAudioPlayer.onpause = () => {
+      if (maymintAudioPlayer.currentTime < maymintAudioPlayer.duration) {
+        isMaymintSpeaking = false;
+        stopWaveform();
+      }
+    };
+
+    // Realtime Audio Level & Waveform visualizer with Energy VAD Barge-in
     function updateAudioLevel() {
       if (!isRecordingAudio && !isMicChecking) {
         if (diagBarFill) diagBarFill.style.width = '0%';
@@ -1845,6 +2036,11 @@
           stick.style.height = `${h}px`;
         });
 
+        // Instant Barge-In if audio peak rises while Maymint is playing
+        if ((isMaymintSpeaking || !maymintAudioPlayer.paused) && pct > 20) {
+          interruptMaymint('audio_energy_vad');
+        }
+
         if (diagMeterText) {
           if (pct > 6) {
             diagMeterText.innerText = `🎙️ ตรวจพบเสียงพูด: ${pct}% (ไมค์ทำงานปกติ)`;
@@ -1858,14 +2054,25 @@
       animFrameId = requestAnimationFrame(updateAudioLevel);
     }
 
-    // Start Voice Recording
+    // Start Voice Recording with Web Speech Real-Time STT & Auto-Send Silence Timer
     async function startVoiceRecording() {
       try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           throw new Error('เบราว์เซอร์ไม่รองรับ Web Audio/Microphone API');
         }
 
-        addSystemLog('MIC', 'กำลังขอสิทธิ์เข้าถึงไมโครโฟน...');
+        // 1. Cut off Maymint immediately if currently speaking
+        interruptMaymint('start_recording');
+
+        if (continuousReopenTimer) {
+          clearTimeout(continuousReopenTimer);
+          continuousReopenTimer = null;
+        }
+
+        lastRecognizedTranscript = '';
+        isProcessingSpeech = false;
+
+        addSystemLog('MIC', 'กำลังเปิดไมโครโฟนเพื่อรับเสียงบอส...');
         micMediaStream = await navigator.mediaDevices.getUserMedia({
           audio: {
             echoCancellation: true,
@@ -1875,7 +2082,7 @@
         });
 
         const track = micMediaStream.getAudioTracks()[0];
-        addSystemLog('MIC', `เชื่อมต่อไมโครโฟนสำเร็จ: ${track.label || 'Default Device'}`);
+        addSystemLog('MIC', `เชื่อมต่อไมโครโฟนสำเร็จ: ${track.label || 'Default Mic'}`);
         if (micStatusSummary) micStatusSummary.innerText = `ไมค์: ${track.label || 'พร้อมใช้งาน'}`;
 
         // Initialize AudioContext
@@ -1890,7 +2097,7 @@
         const source = audioCtx.createMediaStreamSource(micMediaStream);
         source.connect(audioAnalyser);
 
-        // Pick supported mimeType
+        // Pick supported mimeType for parallel MediaRecorder
         let mimeType = 'audio/webm;codecs=opus';
         if (!MediaRecorder.isTypeSupported(mimeType)) {
           if (MediaRecorder.isTypeSupported('audio/webm')) mimeType = 'audio/webm';
@@ -1911,11 +2118,92 @@
         isRecordingAudio = true;
         micButton.classList.add('recording');
         micRipple.style.opacity = '1';
-        micHint.innerText = '🎙️ กำลังฟังเสียงบอส... (แตะไมค์อีกครั้งเพื่อหยุดและส่ง)';
+        micHint.innerText = '🎙️ กำลังฟังเสียงบอส... (พูดได้เลย เมื่อหยุดพูดระบบจะส่งให้อัตโนมัติ)';
         setStage(1, '🎙️ [กำลังฟังเสียง] พูดคุยได้เลยค่ะบอส...');
-        addSystemLog('RECORDER', `เริ่มบันทึกเสียง (${mediaRecorder.mimeType || 'default'})`);
+
+        if (liveSpeechBox) liveSpeechBox.style.display = 'block';
+        if (liveSpeechText) liveSpeechText.innerHTML = '<span style="color:rgba(255,255,255,0.6); font-style:italic;">รอฟังเสียงพูดของบอส...</span>';
+        if (silenceTimerBadge) silenceTimerBadge.innerText = 'รอเริ่มพูด...';
 
         updateAudioLevel();
+
+        // 2. Start Web Speech Recognition for Real-time Streaming Words on Screen & 1.2s Silence Auto-Send
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRec) {
+          try {
+            if (speechRecognitionInstance) {
+              try { speechRecognitionInstance.abort(); } catch(e) {}
+            }
+            speechRecognitionInstance = new SpeechRec();
+            speechRecognitionInstance.lang = 'th-TH';
+            speechRecognitionInstance.continuous = true;
+            speechRecognitionInstance.interimResults = true;
+            speechRecognitionInstance.maxAlternatives = 1;
+
+            speechRecognitionInstance.onstart = () => {
+              addSystemLog('STT', 'Web Speech Recognition (th-TH) เริ่มทำงานแบบ Real-time ถอดความสดขณะพูด');
+            };
+
+            speechRecognitionInstance.onresult = (event) => {
+              // Instant Barge-In on any recognized syllable
+              if (isMaymintSpeaking || !maymintAudioPlayer.paused) {
+                interruptMaymint('speech_syllables_detected');
+              }
+
+              let fullText = '';
+              for (let i = 0; i < event.results.length; ++i) {
+                fullText += event.results[i][0].transcript;
+              }
+
+              const cleanSpoken = fullText.trim();
+              if (cleanSpoken) {
+                lastRecognizedTranscript = cleanSpoken;
+
+                // Live Streaming Preview on Screen
+                if (liveSpeechBox) liveSpeechBox.style.display = 'block';
+                if (liveSpeechText) {
+                  liveSpeechText.innerHTML = `&ldquo;${escapeHtml(lastRecognizedTranscript)}&rdquo;`;
+                }
+                micHint.innerText = `🎙️ ได้ยิน: "${lastRecognizedTranscript}"`;
+                setStage(2, `✍️ [ถอดความสด] "${lastRecognizedTranscript}"`);
+
+                // 🔥 AUTO-SEND: Reset 1.2s silence timer. When Boss pauses for 1.2s, auto-submit!
+                if (speechSilenceTimer) clearTimeout(speechSilenceTimer);
+                if (silenceTimerBadge) silenceTimerBadge.innerText = '⚡ ตรวจพบเสียง (หยุดพูด 1.2s ส่งทันที)';
+
+                speechSilenceTimer = setTimeout(() => {
+                  if (isRecordingAudio && !isProcessingSpeech && lastRecognizedTranscript.trim()) {
+                    addSystemLog('STT', `ตรวจจับความเงียบ 1.2 วินาที -> ส่งคำพูดอัตโนมัติ: "${lastRecognizedTranscript}"`);
+                    if (silenceTimerBadge) silenceTimerBadge.innerText = '🚀 ส่งอัตโนมัติ!';
+                    stopVoiceRecordingAndSend();
+                  }
+                }, 1200);
+              }
+            };
+
+            speechRecognitionInstance.onerror = (event) => {
+              if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                addSystemLog('WARN', `SpeechRecognition แจ้งเตือน: ${event.error}`);
+              }
+            };
+
+            speechRecognitionInstance.onend = () => {
+              // If recognition completed and we have text, auto submit!
+              if (isRecordingAudio && !isProcessingSpeech) {
+                if (lastRecognizedTranscript && lastRecognizedTranscript.trim()) {
+                  stopVoiceRecordingAndSend();
+                } else {
+                  // Browser closed quiet session, restart if still in recording state
+                  try { speechRecognitionInstance.start(); } catch(e) {}
+                }
+              }
+            };
+
+            speechRecognitionInstance.start();
+          } catch (recStartErr) {
+            addSystemLog('WARN', 'Web Speech API error: ' + recStartErr.message);
+          }
+        }
 
       } catch (err) {
         addSystemLog('ERROR', `ขอสิทธิ์ไมค์ล้มเหลว: ${err.message}`);
@@ -1925,9 +2213,19 @@
       }
     }
 
-    // Stop Voice Recording and Send to Server STT
+    // Stop Voice Recording and Send to Server (Either via Direct Realtime Text or Audio Blob Fallback)
     async function stopVoiceRecordingAndSend() {
-      if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+      if (isProcessingSpeech) return;
+      isProcessingSpeech = true;
+
+      if (speechSilenceTimer) {
+        clearTimeout(speechSilenceTimer);
+        speechSilenceTimer = null;
+      }
+
+      if (speechRecognitionInstance) {
+        try { speechRecognitionInstance.abort(); } catch(e) {}
+      }
 
       isRecordingAudio = false;
       micButton.classList.remove('recording');
@@ -1935,8 +2233,83 @@
       if (animFrameId) cancelAnimationFrame(animFrameId);
       stopWaveform();
 
-      micHint.innerText = 'ส่งเสียงแล้ว กำลังถอดความเสียงด้วย AI...';
-      setStage(2, '✍️ [สเต็ป 2/5] ถอดความเสียงของบอสด้วย AI Gemini...');
+      micHint.innerText = '🧠 ส่งคำพูดแล้ว กำลังคิดคำตอบให้บอส...';
+      setStage(3, '🧠 [สเต็ป 3/5] สมอง AI กำลังคิดคำตอบ...');
+
+      const directText = (lastRecognizedTranscript || '').trim();
+
+      // Case A: We have clean direct transcript from Web Speech API! Sub-second instant dispatch!
+      if (directText) {
+        // Stop all tracks
+        if (micMediaStream) {
+          micMediaStream.getTracks().forEach(t => t.stop());
+        }
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          try { mediaRecorder.stop(); } catch(e) {}
+        }
+
+        if (liveSpeechBox) liveSpeechBox.style.display = 'none';
+        appendChatMessage('user', `🎙️ ${directText}`);
+        addSystemLog('STT', `ส่งคำพูดจาก Realtime STT ไปยัง /api/voice/process: "${directText}"`);
+
+        try {
+          const res = await authFetch('/api/voice/process', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              transcript: directText,
+              mode: currentMode,
+              auto_speak: autoSpeakToggle ? autoSpeakToggle.checked : true
+            })
+          });
+          const data = await res.json();
+
+          if (!res.ok || !data.success) {
+            addSystemLog('ERROR', `ประมวลผลคำตอบล้มเหลว: ${data.message || data.error || 'Server error'}`);
+            showToast(data.message || 'เกิดข้อผิดพลาดในการประมวลผลคำตอบค่ะ 🥺', '❌');
+            resetStages();
+            micHint.innerText = 'คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส';
+            isProcessingSpeech = false;
+            return;
+          }
+
+          // Render tool events if any
+          if (data.tool_events && Array.isArray(data.tool_events)) {
+            data.tool_events.forEach(te => renderToolBadge(te.tool, te.result));
+          }
+
+          // Render Maymint's reply
+          addSystemLog('BRAIN', `มายมิ้นท์ตอบกลับ (${data.cognitive_tier || 'fast'}) โมเดล: ${data.model_used || 'Gemini'}`);
+          appendChatMessage('maymint', data.reply);
+
+          // Auto speak reply audio
+          if (autoSpeakToggle && autoSpeakToggle.checked && data.audio_url) {
+            playMaymintAudio(data.audio_url);
+          } else {
+            resetStages();
+            triggerContinuousLoopIfEnabled();
+          }
+
+          fetchSessionsList();
+
+        } catch (err) {
+          addSystemLog('ERROR', `เชื่อมต่อ API ล้มเหลว: ${err.message}`);
+          showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ค่ะ 🥺', '❌');
+          resetStages();
+          micHint.innerText = 'คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส';
+        } finally {
+          isProcessingSpeech = false;
+        }
+        return;
+      }
+
+      // Case B: Web Speech had no text (e.g., unsupported browser or quiet voice). Fallback to MediaRecorder Blob + Gemini STT!
+      if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+        isProcessingSpeech = false;
+        resetStages();
+        micHint.innerText = 'คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส';
+        return;
+      }
 
       mediaRecorder.onstop = async () => {
         const mime = mediaRecorder.mimeType || 'audio/webm';
@@ -1952,7 +2325,6 @@
         const sizeKb = (lastRecordedBlob.size / 1024).toFixed(1);
         addSystemLog('RECORDER', `บันทึกเสียงเสร็จสิ้น ขนาด: ${sizeKb} KB`);
 
-        // Enable echo test button
         if (echoPlayBtn) {
           echoPlayBtn.disabled = false;
           echoPlayBtn.innerHTML = `🔊 ฟังเสียงตัวเอง (${sizeKb}KB)`;
@@ -1963,12 +2335,15 @@
           showToast('ไม่พบข้อมูลเสียงพูดเลยค่ะบอส ลองพูดอีกครั้งนะคะ', '⚠️');
           resetStages();
           micHint.innerText = 'คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส';
+          isProcessingSpeech = false;
+          triggerContinuousLoopIfEnabled();
           return;
         }
 
-        // Send to backend STT -> LLM -> TTS pipeline
+        // Send to Gemini STT fallback
         try {
-          addSystemLog('STT', `ส่งไฟล์เสียง ${sizeKb} KB ไปยัง /api/voice/process...`);
+          addSystemLog('STT', `ส่งไฟล์เสียง ${sizeKb} KB ไปยัง Gemini 2.5 Flash STT...`);
+          setStage(2, '✍️ [สเต็ป 2/5] ถอดความเสียงด้วย AI Gemini...');
           const reader = new FileReader();
           reader.readAsDataURL(lastRecordedBlob);
           reader.onloadend = async () => {
@@ -1990,48 +2365,42 @@
                 showToast(data.message || 'เกิดข้อผิดพลาดในการประมวลผลเสียงค่ะ 🥺', '❌');
                 resetStages();
                 micHint.innerText = 'คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส';
+                isProcessingSpeech = false;
                 return;
               }
 
-              // Render user's spoken transcript
               const userTranscript = data.transcript || '';
               addSystemLog('STT', `ถอดความสำเร็จ (${data.stt_duration || 0}s): "${userTranscript}"`);
               appendChatMessage('user', `🎙️ ${userTranscript}`);
 
-              // Render tool events if any
               if (data.tool_events && Array.isArray(data.tool_events)) {
                 data.tool_events.forEach(te => renderToolBadge(te.tool, te.result));
               }
 
-              // Render Maymint's reply
-              setStage(3, '🧠 [สเต็ป 3/5] สมอง AI ตอบกลับเรียบร้อย...');
               addSystemLog('BRAIN', `มายมิ้นท์ตอบกลับ (${data.cognitive_tier || 'fast'}) โมเดล: ${data.model_used || 'Gemini'}`);
               appendChatMessage('maymint', data.reply);
 
-              // Auto speak reply audio
               if (autoSpeakToggle && autoSpeakToggle.checked && data.audio_url) {
-                setStage(5, '🔊 [สเต็ป 5/5] มายมิ้นท์กำลังพูดออกเสียง...');
-                addSystemLog('TTS', `กำลังเล่นเสียงตอบกลับ: ${data.audio_url}`);
-                maymintAudioPlayer.src = data.audio_url;
-                maymintAudioPlayer.play().catch(e => {
-                  addSystemLog('TTS', 'Browser autoplay blocked audio: ' + e.message);
-                });
+                playMaymintAudio(data.audio_url);
               } else {
                 resetStages();
+                triggerContinuousLoopIfEnabled();
               }
 
               fetchSessionsList();
-              micHint.innerText = 'คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส';
 
             } catch (postErr) {
               addSystemLog('ERROR', `เชื่อมต่อ API voice/process ล้มเหลว: ${postErr.message}`);
               showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เสียงได้ค่ะ 🥺', '❌');
               resetStages();
               micHint.innerText = 'คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส';
+            } finally {
+              isProcessingSpeech = false;
             }
           };
         } catch (readErr) {
           addSystemLog('ERROR', `อ่านไฟล์เสียงล้มเหลว: ${readErr.message}`);
+          isProcessingSpeech = false;
         }
       };
 
@@ -2138,23 +2507,20 @@
       }
     }
 
-    // Mic Button Interaction
+    // Mic Button Interaction (Barge-in / Start / Instant Submit)
     micButton.addEventListener('click', async () => {
-      // 1. Instant Interruption: If Maymint is speaking, tap mic to cut off immediately!
+      // 1. Instant Interruption: If Maymint is speaking, tapping mic cuts off immediately and starts listening to Boss!
       if (isMaymintSpeaking || !maymintAudioPlayer.paused) {
-        maymintAudioPlayer.pause();
-        isMaymintSpeaking = false;
-        stopWaveform();
-        micHint.innerText = '✋ ขัดจังหวะคำพูดแล้วค่ะ รับฟังบอสอยู่...';
-        setStage(1, '🎙️ [ขัดจังหวะแล้ว] กำลังฟังเสียงบอส...');
-        addSystemLog('TTS', 'ผู้ใช้แตะไมค์เพื่อขัดจังหวะเสียงพูดของมายมิ้นท์');
+        interruptMaymint('mic_click_tap');
+        await startVoiceRecording();
         return;
       }
 
-      // 2. Toggle Voice Recording via MediaRecorder
+      // 2. Toggle Voice Recording via MediaRecorder + Web Speech API
       if (!isRecordingAudio) {
         await startVoiceRecording();
       } else {
+        // Tapped while recording: Submit immediately without waiting for 1.2s silence!
         await stopVoiceRecordingAndSend();
       }
     });
@@ -2702,11 +3068,14 @@
     // =========================================================================
     async function submitTextMessage() {
       const text = chatTextInput.value.trim();
-      if (!text || isProcessing) return;
+      if (!text || isProcessingSpeech) return;
+
+      // Cut off Maymint immediately if talking
+      interruptMaymint('text_submit');
 
       chatTextInput.value = '';
       appendChatMessage('user', text);
-      isProcessing = true;
+      isProcessingSpeech = true;
 
       sendTextBtn.disabled = true;
       sendTextBtn.style.opacity = '0.6';
@@ -2729,17 +3098,18 @@
         if (data.reply) {
           appendChatMessage('maymint', data.reply);
           if (autoSpeakToggle.checked && data.audio_url) {
-            maymintAudioPlayer.src = data.audio_url;
-            maymintAudioPlayer.play().catch(() => {});
+            playMaymintAudio(data.audio_url);
+          } else {
+            resetStages();
+            triggerContinuousLoopIfEnabled();
           }
         }
         fetchSessionsList();
-        resetStages();
       } catch (err) {
         appendChatMessage('maymint', 'ขอโทษด้วยนะคะบอส มีข้อผิดพลาดในการเชื่อมต่อค่ะ');
         resetStages();
       } finally {
-        isProcessing = false;
+        isProcessingSpeech = false;
         sendTextBtn.disabled = false;
         sendTextBtn.style.opacity = '1';
       }
