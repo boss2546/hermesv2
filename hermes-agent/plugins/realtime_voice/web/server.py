@@ -28,6 +28,7 @@ import time
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import asdict
 from http.cookies import SimpleCookie
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -315,8 +316,16 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             return
 
         elif path == "/api/jobs":
-            jobs = maymint_brain.job_manager.get_all() if maymint_brain else []
-            self._send_json({"success": True, "jobs": jobs})
+            qs = urllib.parse.parse_qs(parsed.query)
+            lim = int(qs.get("limit", [200])[0])
+            jobs = maymint_brain.job_manager.get_all(limit=lim) if maymint_brain else []
+            metrics = maymint_brain.job_manager.get_metrics() if maymint_brain else {}
+            self._send_json({"success": True, "jobs": jobs, "metrics": metrics})
+            return
+
+        elif path == "/api/jobs/metrics":
+            metrics = maymint_brain.job_manager.get_metrics() if maymint_brain else {}
+            self._send_json({"success": True, "metrics": metrics})
             return
 
         elif path == "/api/jobs/stream":
@@ -381,6 +390,39 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
         # Authenticated endpoints
         if path == "/api/chat":
             self._handle_chat(payload)
+        elif path == "/api/jobs/submit":
+            if not maymint_brain:
+                self._send_json({"error": "Maymint Brain not loaded"}, status=500)
+                return
+            j_name = payload.get("name", "งานระบบเบื้องหลัง")
+            j_type = payload.get("job_type", "command")
+            desc = payload.get("description", "")
+            dev_lock = payload.get("device_lock_key")
+
+            if j_type == "command" or "command" in payload:
+                cmd = payload.get("command", "")
+                job = maymint_brain.job_manager.submit(
+                    name=j_name,
+                    func=maymint_brain.execute_tool,
+                    args=("run_terminal_command", {"command": cmd, "cwd": payload.get("cwd", ".")}),
+                    device_lock_key=dev_lock,
+                    description=desc or f"คำสั่ง: {cmd[:50]}",
+                    on_complete_summary=lambda r: f"งาน {j_name} เสร็จแล้วค่ะ"
+                )
+                self._send_json({"success": True, "job_id": job.id, "job": asdict(job)})
+            elif j_type == "python" or "code" in payload:
+                code = payload.get("code", "")
+                job = maymint_brain.job_manager.submit(
+                    name=j_name,
+                    func=maymint_brain.execute_tool,
+                    args=("execute_python_code", {"code": code}),
+                    device_lock_key=dev_lock,
+                    description=desc or "Python Script",
+                    on_complete_summary=lambda r: f"งาน {j_name} รันเสร็จแล้วค่ะ"
+                )
+                self._send_json({"success": True, "job_id": job.id, "job": asdict(job)})
+            else:
+                self._send_json({"error": "Either command or code required"}, status=400)
         elif path == "/api/jobs/cancel":
             job_id = payload.get("job_id", "")
             ok = maymint_brain.job_manager.cancel(job_id) if maymint_brain else False

@@ -1313,6 +1313,107 @@
       submitTextMessage();
     }
 
+    // =========================================================================
+    // BACKGROUND JOBS REALTIME SSE & CARDS
+    // =========================================================================
+    let jobsEventSource = null;
+    const activeJobsMap = new Map();
+
+    function initJobStream() {
+      if (jobsEventSource) {
+        jobsEventSource.close();
+      }
+      fetchInitialJobs();
+      try {
+        jobsEventSource = new EventSource('/api/jobs/stream');
+        jobsEventSource.onmessage = (event) => {
+          try {
+            const job = JSON.parse(event.data);
+            updateJobUI(job);
+          } catch (e) {}
+        };
+        jobsEventSource.onerror = () => {
+          setTimeout(initJobStream, 5000);
+        };
+      } catch (e) {}
+    }
+
+    async function fetchInitialJobs() {
+      try {
+        const res = await fetch('/api/jobs');
+        const data = await res.json();
+        if (data.jobs) {
+          data.jobs.forEach(j => activeJobsMap.set(j.id, j));
+          renderJobsList();
+        }
+      } catch (e) {}
+    }
+
+    function updateJobUI(job) {
+      activeJobsMap.set(job.id, job);
+      renderJobsList();
+    }
+
+    function renderJobsList() {
+      const container = document.getElementById('jobsContainer');
+      const countEl = document.getElementById('jobsCount');
+      const listEl = document.getElementById('jobsList');
+      if (!container || !listEl) return;
+
+      const jobs = Array.from(activeJobsMap.values());
+      const activeJobs = jobs.filter(j => j.status === 'running' || j.status === 'queued');
+
+      if (activeJobs.length === 0 && jobs.length === 0) {
+        container.style.display = 'none';
+        return;
+      }
+      container.style.display = 'block';
+      if (countEl) countEl.innerText = activeJobs.length;
+
+      // Render top 5 most recent jobs
+      const sorted = jobs.sort((a, b) => (b.created_at || 0) - (a.created_at || 0)).slice(0, 5);
+      listEl.innerHTML = sorted.map(j => {
+        let statusBadge = '';
+        if (j.status === 'queued') statusBadge = '<span style="color:#fde68a;">⏳ รอคิว</span>';
+        else if (j.status === 'running') statusBadge = '<span style="color:#60a5fa; animation: pulseDot 1s infinite;">⚡ กำลังทำ</span>';
+        else if (j.status === 'completed') statusBadge = '<span style="color:#34d399;">✅ สำเร็จ</span>';
+        else if (j.status === 'cancelled') statusBadge = '<span style="color:#9ca3af;">⛔ ยกเลิกแล้ว</span>';
+        else if (j.status === 'failed') statusBadge = '<span style="color:#f87171;">❌ ผิดพลาด</span>';
+
+        const canCancel = (j.status === 'queued' || j.status === 'running');
+        const cancelBtn = canCancel ? `<button class="job-cancel-btn" onclick="cancelJob('${j.id}')">✖ ยกเลิก</button>` : '';
+
+        return `
+          <div class="job-item">
+            <div>
+              <strong style="color:#fff;">${escapeHtml(j.name)}</strong>
+              <div style="font-size:0.75rem; color:#cbd5e1;">${escapeHtml(j.description || '')}</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+              ${statusBadge}
+              ${cancelBtn}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function cancelJob(jobId) {
+      try {
+        const res = await fetch('/api/jobs/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ job_id: jobId })
+        });
+        const data = await res.json();
+        if (data.success && activeJobsMap.has(jobId)) {
+          const j = activeJobsMap.get(jobId);
+          j.status = 'cancelled';
+          renderJobsList();
+        }
+      } catch (e) {}
+    }
+
     // Submit Text Message
     async function submitTextMessage() {
       const text = chatTextInput.value.trim();

@@ -189,16 +189,25 @@ class BackgroundJob:
     error: Optional[str] = None
     spoken_summary: Optional[str] = None
     cancel_requested: bool = False
+    process_pid: Optional[int] = None
 
 class BackgroundJobManager:
-    """Manages concurrent host background jobs with cancellation and SSE broadcast."""
+    """Manages concurrent host background jobs with cancellation, metrics, and SSE broadcast."""
 
-    def __init__(self, max_workers: int = 4):
+    def __init__(self, max_workers: int = 16):
         self.jobs: Dict[str, BackgroundJob] = {}
         self.lock = threading.RLock()
+        self.max_workers = max_workers
         self.executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="maymint-job")
         self.listeners: List[asyncio.Queue] = []
         self._sync_listeners: List[Callable[[Dict[str, Any]], None]] = []
+        # Concurrency & Performance Metrics
+        self.active_count: int = 0
+        self.peak_concurrent: int = 0
+        self.total_submitted: int = 0
+        self.total_completed: int = 0
+        self.total_failed: int = 0
+        self.total_cancelled: int = 0
 
     def submit(
         self,
@@ -222,17 +231,26 @@ class BackgroundJobManager:
         )
         with self.lock:
             self.jobs[job_id] = job
+            self.total_submitted += 1
             self._notify_change(job)
 
         def _worker():
-            job.status = "running"
-            job.started_at = time.time()
-            self._notify_change(job)
+            with self.lock:
+                self.active_count += 1
+                if self.active_count > self.peak_concurrent:
+                    self.peak_concurrent = self.active_count
+                if not job.cancel_requested:
+                    job.status = "running"
+                    job.started_at = time.time()
+                    self._notify_change(job)
 
             if job.cancel_requested:
-                job.status = "cancelled"
-                job.finished_at = time.time()
-                self._notify_change(job)
+                with self.lock:
+                    self.active_count = max(0, self.active_count - 1)
+                    job.status = "cancelled"
+                    if not job.finished_at:
+                        job.finished_at = time.time()
+                    self._notify_change(job)
                 return
 
             dev_lock = DEVICE_LOCKS.get(device_lock_key) if device_lock_key else None
@@ -240,18 +258,23 @@ class BackgroundJobManager:
                 if dev_lock:
                     with dev_lock:
                         if job.cancel_requested:
-                            job.status = "cancelled"
-                            job.finished_at = time.time()
-                            self._notify_change(job)
+                            with self.lock:
+                                job.status = "cancelled"
+                                if not job.finished_at:
+                                    job.finished_at = time.time()
+                                self._notify_change(job)
                             return
                         res = func(*args, **kwargs)
                 else:
                     res = func(*args, **kwargs)
 
                 if job.cancel_requested:
-                    job.status = "cancelled"
+                    with self.lock:
+                        job.status = "cancelled"
                 else:
-                    job.status = "completed"
+                    with self.lock:
+                        self.total_completed += 1
+                        job.status = "completed"
                     job.result = res
                     if on_complete_summary:
                         try:
@@ -262,12 +285,18 @@ class BackgroundJobManager:
                         job.spoken_summary = f"งาน {name} เสร็จแล้วค่ะ"
             except Exception as e:
                 logger.error("Job %s failed: %s", job_id, e)
-                job.status = "failed"
+                with self.lock:
+                    if not job.cancel_requested:
+                        self.total_failed += 1
+                        job.status = "failed"
                 job.error = str(e)
                 job.spoken_summary = f"งาน {name} พบปัญหา: {str(e)[:80]}"
             finally:
-                job.finished_at = time.time()
-                self._notify_change(job)
+                with self.lock:
+                    self.active_count = max(0, self.active_count - 1)
+                    if not job.finished_at:
+                        job.finished_at = time.time()
+                    self._notify_change(job)
 
         self.executor.submit(_worker)
         return job
@@ -280,9 +309,14 @@ class BackgroundJobManager:
             if job.status in ["completed", "failed", "cancelled"]:
                 return False
             job.cancel_requested = True
-            if job.status == "queued":
-                job.status = "cancelled"
-                job.finished_at = time.time()
+            job.status = "cancelled"
+            job.finished_at = time.time()
+            self.total_cancelled += 1
+            if job.process_pid:
+                try:
+                    subprocess.run(["taskkill", "/F", "/T", "/PID", str(job.process_pid)], capture_output=True)
+                except Exception:
+                    pass
             self._notify_change(job)
             return True
 
@@ -290,10 +324,26 @@ class BackgroundJobManager:
         with self.lock:
             return self.jobs.get(job_id)
 
-    def get_all(self, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_all(self, limit: int = 200) -> List[Dict[str, Any]]:
         with self.lock:
             items = sorted(self.jobs.values(), key=lambda j: j.created_at, reverse=True)
             return [asdict(j) for j in items[:limit]]
+
+    def get_metrics(self) -> Dict[str, Any]:
+        with self.lock:
+            queued = sum(1 for j in self.jobs.values() if j.status == "queued")
+            running = sum(1 for j in self.jobs.values() if j.status == "running")
+            return {
+                "max_workers": self.max_workers,
+                "active_workers": self.active_count,
+                "running_jobs": running,
+                "queued_jobs": queued,
+                "peak_concurrent": self.peak_concurrent,
+                "total_submitted": self.total_submitted,
+                "total_completed": self.total_completed,
+                "total_failed": self.total_failed,
+                "total_cancelled": self.total_cancelled
+            }
 
     def add_sync_listener(self, cb: Callable[[Dict[str, Any]], None]):
         with self.lock:
@@ -307,7 +357,7 @@ class BackgroundJobManager:
             except Exception:
                 pass
 
-job_manager = BackgroundJobManager()
+job_manager = BackgroundJobManager(max_workers=16)
 
 # =============================================================================
 # 3. SHARED MEMORY & SESSION PERSISTENCE
@@ -586,6 +636,53 @@ AVAILABLE_TOOLS: List[Dict[str, Any]] = [
                 "required": ["action"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "submit_background_job",
+            "description": "ส่งงานไปทำงานหลังบ้านแบบ Asynchronous โดยไม่ขัดจังหวะการพูดคุย ปากยังคุยกับบอสได้ปกติในขณะที่ร่างกายประมวลผลงานหลังบ้าน",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "ชื่อเรียกงานภาษาไทยสั้นๆ เช่น ตรวจสอบระบบ, สแกนไฟล์, คำนวณ"},
+                    "job_type": {"type": "string", "enum": ["command", "python", "smart_home"], "description": "ประเภทของงาน"},
+                    "command": {"type": "string", "description": "คำสั่ง PowerShell/CMD ที่จะรัน (กรณี job_type='command')"},
+                    "code": {"type": "string", "description": "โค้ด Python ที่จะรัน (กรณี job_type='python')"},
+                    "tool_name": {"type": "string", "description": "ชื่อ tool สำหรับ smart home"},
+                    "tool_args": {"type": "object", "description": "พารามิเตอร์ของ smart home tool"},
+                    "description": {"type": "string", "description": "คำอธิบายงานเพื่อแสดงบนการ์ด"}
+                },
+                "required": ["name", "job_type"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "check_background_jobs",
+            "description": "ตรวจสอบสถานะงานหลังบ้านที่กำลังทำงานอยู่และงานล่าสุด พร้อมสถิติความจุ Concurrency",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {"type": "integer", "description": "จำนวนงานที่ต้องการดู (ค่าเริ่มต้น 10)"}
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "cancel_background_job",
+            "description": "ยกเลิกงานที่กำลังทำงานหรือรอคิวอยู่หลังบ้าน",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "job_id": {"type": "string", "description": "รหัสงาน job_id"}
+                },
+                "required": ["job_id"]
+            }
+        }
     }
 ]
 
@@ -744,6 +841,56 @@ def execute_tool(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
             return {"status": "success", "results": res}
         elif act == "list":
             return {"status": "success", "stats": lexicon_mgr.get_summary_stats()}
+
+    elif name == "submit_background_job":
+        j_name = arguments.get("name", "งานระบบเบื้องหลัง")
+        j_type = arguments.get("job_type", "command")
+        desc = arguments.get("description", "")
+        if j_type == "command":
+            cmd = arguments.get("command", "")
+            job = job_manager.submit(
+                name=j_name,
+                func=execute_tool,
+                args=("run_terminal_command", {"command": cmd}),
+                description=desc or f"คำสั่ง: {cmd[:60]}",
+                on_complete_summary=lambda r: f"งาน {j_name} เสร็จแล้วค่ะ ได้ผลลัพธ์ว่า: {str(r.get('stdout', ''))[:100]}"
+            )
+            return {"status": "submitted", "job_id": job.id, "name": job.name, "message": f"ส่งงาน {j_name} ไปทำงานหลังบ้านเรียบร้อยแล้วค่ะบอส"}
+        elif j_type == "python":
+            code = arguments.get("code", "")
+            job = job_manager.submit(
+                name=j_name,
+                func=execute_tool,
+                args=("execute_python_code", {"code": code}),
+                description=desc or "Python Script",
+                on_complete_summary=lambda r: f"งาน {j_name} รันเสร็จแล้วค่ะ"
+            )
+            return {"status": "submitted", "job_id": job.id, "name": job.name, "message": f"ส่งโค้ด {j_name} ไปประมวลผลหลังบ้านเรียบร้อยค่ะ"}
+        elif j_type == "smart_home":
+            sh_tool = arguments.get("tool_name", "")
+            sh_args = arguments.get("tool_args", {})
+            job = job_manager.submit(
+                name=j_name,
+                func=execute_tool,
+                args=(sh_tool, sh_args),
+                device_lock_key="ac",
+                description=desc or f"Smart Home: {sh_tool}",
+                on_complete_summary=lambda r: f"สั่งการอุปกรณ์ {j_name} สำเร็จแล้วค่ะ"
+            )
+            return {"status": "submitted", "job_id": job.id, "name": job.name, "message": f"เริ่มสั่งการอุปกรณ์ {j_name} ในพื้นหลังแล้วค่ะ"}
+        return {"error": f"Unsupported job_type: {j_type}"}
+
+    elif name == "check_background_jobs":
+        lim = int(arguments.get("limit", 10))
+        return {
+            "metrics": job_manager.get_metrics(),
+            "jobs": job_manager.get_all(limit=lim)
+        }
+
+    elif name == "cancel_background_job":
+        jid = arguments.get("job_id", "")
+        ok = job_manager.cancel(jid)
+        return {"success": ok, "job_id": jid, "message": f"ยกเลิกงาน {jid} สำเร็จค่ะ" if ok else "ไม่พบงานหรือเสร็จสิ้นไปแล้วค่ะ"}
 
     return {"error": f"Unknown tool: {name}"}
 
