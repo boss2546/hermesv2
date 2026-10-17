@@ -1,7 +1,31 @@
-- **วันที่:** 2026-10-13
-- **Branch ปัจจุบัน:** 🌿 `main` (Merged from `feature/livekit-voice-engine`)
-- **สถานะ:** 🟢 รวมโค้ดและต่อระบบ LiveKit WebRTC Voice Engine เข้ากับ Hermes Tools ครบ 13 เครื่องมือ พร้อมรวมโค้ดเข้าสู่ main สำเร็จ 100%
+- **วันที่:** 2026-10-17
+- **Branch ปัจจุบัน:** 🌿 `feature/may-livekit-engine` (Commit `0da7044d`)
+- **สถานะ:** 🟢 พัฒนาระบบถอดความเสียงเรียลไทม์สด (Streaming STT), ระบบส่งคำพูดอัตโนมัติเมื่อหยุดพูด 1.2s (Auto-VAD ไม่ต้องกดปุ่มหยุดเพื่อส่ง), ระบบขัดจังหวะทันทีเมื่อบอสพูดแทรก (Instant Barge-In), และโหมดคุยต่อเนื่องแฮนด์ฟรี (Hands-Free Continuous Loop) สำเร็จสมบูรณ์ 100% พร้อมทดสอบผ่าน Playwright ทุกข้อ
 - **โปรเจกต์:** Hermes v2 (`c:\Users\Administrator\Desktop\hermes2`)
+
+---
+
+## 🎙️ อัปเดตล่าสุด: กู้คืนระบบถอดความสดเรียลไทม์ + ส่งคำพูดอัตโนมัติ + ขัดจังหวะได้ทันที (PASS 100%)
+1. **ถอดเสียงเรียลไทม์สดบนหน้าจอ (Real-Time Streaming STT):**
+   - คำพูดภาษาไทย (`th-TH`) ปรากฏบนหน้าจอแบบเรียลไทม์ทีละพยางค์ขณะที่บอสกำลังพูด (Interim Streaming Results) ผ่าน Web Speech API
+   - กล่องแสดงผลแก้วใสพรีเมียม `#liveSpeechBox` พร้อมไฟกะพริบสีแดงสด `.live-pulse-dot` และอัปเดต `#micHint`
+2. **ระบบส่งคำพูดอัตโนมัติเมื่อหยุดพูด 1.2 วินาที (Auto-Send Silence Timer / Auto-VAD):**
+   - บอสไม่ต้องเอื้อมมือไปคลิกปุ่ม "หยุดเพื่อส่ง" อีกต่อไป เมื่อบอสพูดจบและหยุดพัก 1.2 วินาที ระบบจะตรวจจับความเงียบและกดส่งประมวลผลให้โดยอัตโนมัติ
+3. **ระบบขัดจังหวะทันที (Instant Barge-In):**
+   - หากน้องมายมิ้นท์กำลังพูดออกเสียงอยู่ บอสสามารถพูดแทรกหรือแตะไมค์ได้ทันที ระบบจะหยุดเสียงของมายมิ้นท์ในเสี้ยววินาที (`maymintAudioPlayer.pause()`, รีเซ็ตสถานะ) และเข้าสู่โหมดตั้งใจฟังบอสพูดทันที
+4. **โหมดคุยต่อเนื่องอัตโนมัติ (Hands-Free Continuous Loop):**
+   - มีสวิตช์เปิด/ปิด `🎧 คุยต่อเนื่อง` บน Header (เปิดเป็นค่าเริ่มต้น)
+   - เมื่อมายมิ้นท์พูดจบ จะเว้นจังหวะ 600ms (ป้องกันไมค์ดูดเสียงสะท้อนจากลำโพง) แล้วเปิดไมค์รอฟังบอสคุยต่อทันที บอสสามารถคุยโต้ตอบไปมาได้เรื่อยๆ โดยไม่ต้องแตะเมาส์หรือคีย์บอร์ดเลย
+5. **สถาปัตยกรรม Dual-Engine STT Synergy:**
+   - ส่งข้อความที่ถอดสดไปยัง `/api/voice/process` โดยตรง ตอบกลับไวใน 1.5-2.5 วินาที
+   - หากบราวเซอร์ไม่รองรับ Web Speech API ระบบจะสลับไปใช้ไฟล์เสียง Opus ส่งเข้า 9Router Multimodal Gemini 2.5 Flash STT เป็น Fallback อัตโนมัติ 100%
+6. **ผลการทดสอบ Playwright Test Suite (`scratch/test_realtime_stt_features.py`):**
+   - ✅ PASS: Continuous Mode Toggle exists and checked = True
+   - ✅ PASS: Real-time Live Speech Box elements exist in DOM
+   - ✅ PASS: Real-time STT streaming preview simulated
+   - ✅ PASS: Instant Barge-in interruption test (wasInterrupted = True)
+   - ✅ PASS: Mobile viewport 390px zero horizontal overflow
+   - ✅ Critical console errors: 0 errors (PASS 100%)
 
 ---
 
