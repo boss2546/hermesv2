@@ -20,6 +20,14 @@
    - **Custom Tools Ecosystem:** `google_workspace_gmail`, `google_workspace_drive`, `google_workspace_calendar`, `google_workspace_sheets_docs`, และ `google_workspace_tasks` (List, Create, Complete, Delete)
    - **Automated Deep Test:** 17/17 (100% PASS) ทดสอบการอ่าน-เขียนทุกบริการแบบสด พร้อมจัดการ Range ภาษาไทยอัตโนมัติ
 
+9. **LiveKit WebRTC Liquid Glass Voice Engine & Always-On Ecosystem (2026-10-17):**
+   - **Engine Upgrade:** ยกเครื่องระบบเสียงจาก WAV Upload สู่ LiveKit WebRTC เต็มรูปแบบบนโดเมน `lk.meuu.live` (พอร์ต 7880, 7881, 50000-50100) รองรับการแตะไมค์พูดคุยและตัดเสียงทันที (Speech Interruption)
+   - **Liquid Glass UI Preservation:** รักษาธีมกระจกแก้วพรีเมียมบน `may.meuu.live` (พอร์ต 9229) 100% พร้อม Waveform และสถานะการทำงาน
+   - **Security:** รหัส PIN 4 หลัก (`2546`), จำเครื่อง 30 วัน, ล็อก 15 นาทีเมื่อใส่ผิด 5 ครั้ง
+   - **Dual-Mode System:** ปุ่มสลับโหมด 💬 คุยเล่น (Gemini 2.5 Flash) และ 🧠 ทำงาน (Gemini 3.8 Flash High) ใช้ความจำและเครื่องมือชุดเดียวกัน
+   - **Background Jobs:** ระบบงานเบื้องหลัง ไม่บล็อกการคุย พร้อมการ์ดแสดงสถานะบน UI และเสียงพูดสรุป
+   - **24/7 Always-On:** สคริปต์ Watchdog ตรวจสอบและฟื้นฟูอัตโนมัติ รันผ่าน Windows Task Scheduler
+
 ---
 
 ## 🚀 สถาปัตยกรรมโปรเจกต์ Hermes v2

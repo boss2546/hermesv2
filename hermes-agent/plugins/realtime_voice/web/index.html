@@ -12,9 +12,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
   <style>
     :root {
-      --glass-blur: 14px;
+      --glass-blur: 16px;
       --glass-opacity: 0.68;
       --glass-bg: rgba(22, 14, 34, var(--glass-opacity));
       --glass-card: rgba(18, 12, 28, var(--glass-opacity));
@@ -29,6 +30,8 @@
       --rose-accent: #fb7185;
       --purple-accent: #a855f7;
       --amber-lantern: #fbbf24;
+      --cyan-core: #06b6d4;
+      --cyan-glow: #22d3ee;
       --text-pure: #ffffff;
       --text-soft: #fdf2f8;
       --text-muted: #e2e8f0;
@@ -53,7 +56,7 @@
       overflow-x: hidden;
     }
 
-    /* Custom Dreamscape Wallpaper Background (Optimized Static for Zero-Lag) */
+    /* Dreamscape Wallpaper Background */
     .wallpaper-bg {
       position: fixed;
       top: 0;
@@ -69,7 +72,7 @@
       will-change: transform;
     }
 
-    /* Liquid Prismatic Ambient Overlay (Clean Optimized Gradient) */
+    /* Prismatic Ambient Overlay */
     .wallpaper-overlay {
       position: fixed;
       top: 0;
@@ -85,11 +88,14 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 1.2rem 2.8rem;
-      background: rgba(25, 15, 40, 0.55);
+      padding: 1.1rem 2.4rem;
+      background: rgba(25, 15, 40, 0.62);
       border-bottom: 1px solid var(--glass-border);
-      backdrop-filter: blur(16px);
+      backdrop-filter: blur(18px);
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      position: sticky;
+      top: 0;
+      z-index: 50;
     }
 
     .brand {
@@ -109,14 +115,11 @@
       justify-content: center;
       font-size: 1.5rem;
       box-shadow: 0 0 20px rgba(236, 72, 153, 0.5), inset 0 2px 2px rgba(255, 255, 255, 0.8);
-      position: relative;
     }
-
 
     .brand-text h1 {
       font-size: 1.25rem;
       font-weight: 600;
-      letter-spacing: -0.01em;
       text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
       display: flex;
       align-items: center;
@@ -132,247 +135,229 @@
     .header-controls {
       display: flex;
       align-items: center;
-      gap: 1.2rem;
+      gap: 0.9rem;
     }
 
-    /* Auto Speak Glass Toggle */
-    .toggle-wrapper {
+    /* Mode Switcher Toggle */
+    .mode-switcher {
+      display: flex;
+      background: rgba(18, 12, 28, 0.75);
+      border: 1px solid var(--glass-border);
+      border-radius: 25px;
+      padding: 3px;
+      gap: 3px;
+      backdrop-filter: blur(14px);
+      box-shadow: var(--glass-specular-sm);
+    }
+
+    .mode-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      padding: 0.4rem 0.9rem;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      font-weight: 500;
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      font-size: 0.88rem;
-      color: var(--text-soft);
-      cursor: pointer;
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid var(--glass-border);
-      padding: 0.4rem 0.9rem;
-      border-radius: 30px;
-      backdrop-filter: blur(20px);
-      box-shadow: var(--glass-specular-sm);
-      transition: all 0.25s ease;
+      gap: 0.35rem;
     }
 
-    .toggle-wrapper:hover {
-      background: rgba(255, 255, 255, 0.2);
-      border-color: var(--pink-glow);
+    .mode-btn:hover {
+      color: #ffffff;
     }
 
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 42px;
-      height: 22px;
+    .mode-btn.active.casual {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.85), rgba(59, 130, 246, 0.85));
+      color: #ffffff;
+      box-shadow: 0 0 16px rgba(6, 182, 212, 0.5);
     }
 
-    .switch input { opacity: 0; width: 0; height: 0; }
-
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background-color: rgba(255, 255, 255, 0.25);
-      transition: .3s;
-      border-radius: 22px;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-    }
-
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 16px;
-      width: 16px;
-      left: 2px;
-      bottom: 2px;
-      background-color: white;
-      transition: .3s;
-      border-radius: 50%;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-    }
-
-    input:checked + .slider {
-      background: linear-gradient(135deg, var(--pink-core), var(--purple-accent));
-    }
-
-    input:checked + .slider:before {
-      transform: translateX(20px);
+    .mode-btn.active.work {
+      background: linear-gradient(135deg, rgba(236, 72, 153, 0.85), rgba(168, 85, 247, 0.85));
+      color: #ffffff;
+      box-shadow: 0 0 16px rgba(236, 72, 153, 0.5);
     }
 
     .glass-btn {
-      background: rgba(255, 255, 255, 0.12);
+      padding: 0.45rem 0.9rem;
+      font-size: 0.82rem;
+      border-radius: 20px;
       border: 1px solid var(--glass-border);
-      color: var(--text-pure);
-      padding: 0.5rem 1.1rem;
-      border-radius: 24px;
-      font-size: 0.85rem;
-      font-weight: 500;
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-soft);
       cursor: pointer;
-      backdrop-filter: blur(20px);
-      box-shadow: var(--glass-specular-sm);
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      backdrop-filter: blur(16px);
+      transition: all 0.25s ease;
       display: flex;
       align-items: center;
       gap: 0.4rem;
     }
 
     .glass-btn:hover {
-      background: rgba(255, 255, 255, 0.25);
-      border-color: rgba(255, 255, 255, 0.5);
-      transform: translateY(-2px);
-      box-shadow: 0 10px 25px -5px rgba(236, 72, 153, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+      background: rgba(255, 255, 255, 0.2);
+      border-color: var(--pink-glow);
+      transform: translateY(-1px);
     }
 
     .glass-btn.icon-only {
-      padding: 0.5rem 0.8rem;
-      font-size: 1.1rem;
+      padding: 0.45rem 0.65rem;
+      font-size: 1rem;
+    }
+
+    /* Auto Speak Glass Toggle */
+    .toggle-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.82rem;
+      color: var(--text-soft);
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--glass-border);
+      padding: 0.35rem 0.8rem;
+      border-radius: 30px;
+      backdrop-filter: blur(16px);
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 20px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255, 255, 255, 0.2);
+      transition: .3s;
+      border-radius: 20px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: var(--pink-core);
+    }
+    input:checked + .slider:before {
+      transform: translateX(18px);
     }
 
     /* Main Container */
     main {
       flex: 1;
-      max-width: 1100px;
+      max-width: 1040px;
       width: 100%;
       margin: 0 auto;
-      padding: 2.2rem 1.5rem;
+      padding: 1.5rem 1.2rem;
       display: flex;
       flex-direction: column;
-      gap: 1.8rem;
+      gap: 1.4rem;
     }
 
-    /* 5-Stage Live Status Badges Bar (Liquid Glass Style) */
+    /* 5-Stage Status Capsules */
     .stages-glass-container {
       background: var(--glass-card);
       border: 1px solid var(--glass-border);
-      border-radius: 24px;
-      padding: 1.3rem 1.8rem;
-      backdrop-filter: blur(var(--glass-blur)) saturate(210%);
+      border-radius: 20px;
+      padding: 1rem 1.4rem;
+      backdrop-filter: blur(var(--glass-blur));
       box-shadow: var(--glass-specular);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .stages-glass-container::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
     }
 
     .stages-title {
-      font-size: 0.85rem;
-      color: var(--text-dim);
-      margin-bottom: 0.9rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-bottom: 0.8rem;
+      font-size: 0.85rem;
+      color: var(--text-dim);
     }
 
     .status-highlight {
-      color: #f472b6;
-      font-weight: 600;
-      text-shadow: 0 0 12px rgba(244, 114, 182, 0.6);
       display: flex;
       align-items: center;
-      gap: 0.4rem;
+      gap: 0.5rem;
+      color: var(--text-pure);
+      font-weight: 500;
     }
 
     .status-dot {
-      width: 8px;
-      height: 8px;
+      width: 9px;
+      height: 9px;
       border-radius: 50%;
-      background: #f472b6;
-      box-shadow: 0 0 8px #f472b6;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+      animation: pulseDot 2s infinite;
     }
 
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.15); }
+    }
 
     .stages-grid {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
-      gap: 0.85rem;
+      gap: 0.6rem;
     }
 
     .stage-capsule {
       background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      padding: 0.85rem 0.6rem;
-      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0.55rem 0.4rem;
+      border-radius: 12px;
       text-align: center;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      transition: all 0.3s ease;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0.35rem;
-      position: relative;
-      opacity: 0.6;
-      backdrop-filter: blur(16px);
-    }
-
-    .stage-capsule .icon {
-      font-size: 1.35rem;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-    }
-
-    .stage-capsule .label {
-      font-size: 0.82rem;
-      font-weight: 500;
-      color: var(--text-dim);
+      gap: 0.25rem;
     }
 
     .stage-capsule.active {
-      opacity: 1;
-      background: rgba(236, 72, 153, 0.28);
-      border-color: rgba(255, 255, 255, 0.6);
-      box-shadow: 0 0 25px rgba(236, 72, 153, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.7);
-      transform: translateY(-3px) scale(1.03);
-    }
-
-    .stage-capsule.active .label {
+      background: rgba(236, 72, 153, 0.35);
+      border-color: var(--pink-glow);
       color: #ffffff;
-      font-weight: 600;
-      text-shadow: 0 0 10px rgba(236, 72, 153, 0.8);
+      box-shadow: 0 0 16px rgba(236, 72, 153, 0.4);
+      transform: translateY(-2px);
     }
 
     .stage-capsule.done {
-      opacity: 0.9;
-      background: rgba(16, 185, 129, 0.18);
-      border-color: rgba(52, 211, 153, 0.5);
-      box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4);
+      background: rgba(16, 185, 129, 0.2);
+      border-color: rgba(52, 211, 153, 0.4);
+      color: #a7f3d0;
     }
 
-    .stage-capsule.done .label {
-      color: #6ee7b7;
-      font-weight: 500;
-    }
-
-    /* Central Liquid Glass Interaction Card */
+    /* Main Interaction Glass Card */
     .liquid-main-card {
       background: var(--glass-card);
       border: 1px solid var(--glass-border);
-      border-radius: 32px;
-      padding: 2.8rem 2.2rem;
-      backdrop-filter: blur(var(--glass-blur)) saturate(210%);
+      border-radius: 26px;
+      padding: 1.8rem 1.6rem;
+      backdrop-filter: blur(var(--glass-blur));
       box-shadow: var(--glass-specular);
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 1.8rem;
-      text-align: center;
-      position: relative;
+      gap: 1.4rem;
     }
 
-    .liquid-main-card::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 10%;
-      right: 10%;
-      height: 1.5px;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
-    }
-
-    /* Liquid Glowing Center Microphone Orb */
+    /* Mic Stage */
     .mic-stage {
       position: relative;
       display: flex;
@@ -382,305 +367,181 @@
     }
 
     .mic-water-ring {
-      display: none;
+      position: absolute;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      border: 2px solid var(--pink-glow);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s;
     }
 
     .liquid-mic-btn {
       width: 104px;
       height: 104px;
       border-radius: 50%;
-      border: 2px solid rgba(255, 255, 255, 0.65);
-      background: radial-gradient(circle at 35% 25%, #f472b6 0%, #ec4899 40%, #8b5cf6 85%, #6d28d9 100%);
-      color: white;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      background: radial-gradient(circle at 35% 35%, rgba(244, 114, 182, 0.95), rgba(219, 39, 119, 0.95) 60%, rgba(157, 23, 77, 0.95));
+      color: #ffffff;
       font-size: 2.6rem;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      box-shadow: 0 10px 30px rgba(236, 72, 153, 0.5), inset 0 3px 6px rgba(255, 255, 255, 0.8), inset 0 -3px 6px rgba(0, 0, 0, 0.3);
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 10px 30px rgba(236, 72, 153, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.7);
+      transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
       position: relative;
-      z-index: 3;
+      z-index: 2;
     }
 
     .liquid-mic-btn:hover {
-      transform: scale(1.05);
-      box-shadow: 0 14px 40px rgba(236, 72, 153, 0.7);
-    }
-
-    .liquid-mic-btn:active {
-      transform: scale(0.96);
+      transform: scale(1.06);
+      box-shadow: 0 15px 40px rgba(236, 72, 153, 0.7), inset 0 2px 5px rgba(255, 255, 255, 0.9);
     }
 
     .liquid-mic-btn.recording {
-      background: radial-gradient(circle at 35% 25%, #f87171 0%, #ef4444 45%, #dc2626 100%);
-      border-color: rgba(255, 255, 255, 0.95);
-      box-shadow: 0 0 35px rgba(239, 68, 68, 0.85), inset 0 3px 6px rgba(255, 255, 255, 0.8);
-      transform: scale(1.05);
+      background: radial-gradient(circle at 35% 35%, rgba(239, 68, 68, 0.95), rgba(185, 28, 28, 0.95) 60%, rgba(127, 29, 29, 0.95));
+      border-color: #fca5a5;
+      animation: recordGlow 1.4s infinite alternate;
     }
 
+    @keyframes recordGlow {
+      0% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.6); }
+      100% { box-shadow: 0 0 50px rgba(239, 68, 68, 0.9), 0 0 80px rgba(239, 68, 68, 0.4); }
+    }
 
     .mic-caption {
-      font-size: 1rem;
-      color: var(--text-pure);
-      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-      margin-top: 0.2rem;
+      font-size: 0.92rem;
+      color: var(--text-soft);
+      text-align: center;
+      min-height: 1.4rem;
     }
 
-    /* Prismatic Waveform Visualizer */
+    /* Waveform Capsule */
     .waveform-capsule {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid var(--glass-border);
-      border-radius: 30px;
-      padding: 0.5rem 1.5rem;
-      backdrop-filter: blur(20px);
-      box-shadow: var(--glass-specular-sm);
       display: flex;
       align-items: center;
-      gap: 5px;
-      height: 44px;
+      justify-content: center;
+      gap: 4px;
+      height: 42px;
+      padding: 0.5rem 1.2rem;
+      background: rgba(10, 6, 20, 0.55);
+      border: 1px solid var(--glass-border);
+      border-radius: 30px;
     }
 
     .wave-stick {
       width: 4px;
       height: 8px;
-      background: linear-gradient(to top, var(--pink-core), #fbbf24);
+      background: linear-gradient(180deg, var(--pink-glow), var(--purple-accent));
       border-radius: 4px;
-      box-shadow: 0 0 6px rgba(236, 72, 153, 0.5);
       transition: height 0.12s ease;
     }
 
-    /* Quick Action Liquid Chips */
+    /* Quick Chips */
     .quick-chips-row {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 0.75rem;
-      max-width: 800px;
+      gap: 0.6rem;
+      width: 100%;
     }
 
     .liquid-chip {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.08);
       border: 1px solid var(--glass-border);
-      color: var(--text-pure);
-      padding: 0.55rem 1.2rem;
-      border-radius: 25px;
-      font-size: 0.88rem;
+      color: var(--text-soft);
+      padding: 0.45rem 0.95rem;
+      border-radius: 20px;
+      font-size: 0.82rem;
       cursor: pointer;
-      backdrop-filter: blur(20px);
-      box-shadow: var(--glass-specular-sm);
-      transition: all 0.25s ease;
-      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(12px);
+      transition: all 0.2s ease;
     }
 
     .liquid-chip:hover {
-      background: rgba(255, 255, 255, 0.25);
-      border-color: rgba(255, 255, 255, 0.6);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px -3px rgba(236, 72, 153, 0.45);
+      background: rgba(255, 255, 255, 0.18);
+      border-color: var(--pink-glow);
+      transform: translateY(-1px);
     }
 
-    /* Chat Transcript Stream in Liquid Glass */
+    /* Chat Transcript */
     .chat-transcript-glass {
       width: 100%;
-      background: rgba(15, 10, 25, 0.5);
-      border: 1px solid var(--glass-border);
-      border-radius: 22px;
-      padding: 1.4rem;
-      max-height: 520px;
-      min-height: 240px;
+      min-height: 220px;
+      max-height: 440px;
       overflow-y: auto;
+      background: rgba(10, 6, 20, 0.5);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 1.2rem;
       display: flex;
       flex-direction: column;
-      gap: 1.2rem;
-      text-align: left;
-      backdrop-filter: blur(26px);
-      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35);
-    }
-
-    .chat-transcript-glass::-webkit-scrollbar {
-      width: 7px;
-    }
-
-    .chat-transcript-glass::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.25);
-      border-radius: 6px;
+      gap: 1rem;
     }
 
     .msg-row {
       display: flex;
-      gap: 0.8rem;
-      align-items: flex-start;
+      flex-direction: column;
+      width: 100%;
     }
 
-
     .msg-bubble {
-      padding: 1rem 1.4rem;
+      padding: 0.9rem 1.25rem;
       border-radius: 18px;
-      font-size: 0.95rem;
-      line-height: 1.65;
-      max-width: 90%;
+      font-size: 0.92rem;
+      line-height: 1.6;
+      max-width: 88%;
       box-shadow: var(--glass-specular-sm);
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
       word-break: break-word;
     }
 
     .msg-bubble.user {
+      align-self: flex-end;
       background: rgba(168, 85, 247, 0.35);
       border: 1px solid rgba(216, 180, 254, 0.45);
-      color: #ffffff;
-      margin-left: auto;
       border-bottom-right-radius: 4px;
     }
 
     .msg-bubble.maymint {
+      align-self: flex-start;
       background: rgba(236, 72, 153, 0.28);
       border: 1px solid rgba(244, 114, 182, 0.45);
-      color: #ffffff;
       border-bottom-left-radius: 4px;
     }
 
-    .msg-bubble .markdown-body {
-      margin-top: 0.35rem;
+    /* Terminal Events Badge */
+    .terminal-event-box {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      padding: 0.6rem 0.8rem;
+      margin: 0.4rem 0;
+      font-family: monospace;
+      font-size: 0.82rem;
     }
 
-    .msg-bubble p {
-      margin: 0.5rem 0;
-    }
-
-    .msg-bubble p:first-child {
-      margin-top: 0;
-    }
-
-    .msg-bubble p:last-child {
-      margin-bottom: 0;
-    }
-
-    .msg-bubble ul, .msg-bubble ol {
-      margin: 0.5rem 0 0.5rem 1.5rem;
-      padding: 0;
-    }
-
-    .msg-bubble li {
-      margin-bottom: 0.3rem;
-    }
-
-    .msg-bubble pre {
-      background: rgba(10, 6, 20, 0.75);
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      border-radius: 12px;
-      padding: 0.85rem 1.1rem;
-      overflow-x: auto;
-      font-family: 'Consolas', 'Fira Code', 'Courier New', monospace;
-      font-size: 0.88rem;
-      margin: 0.8rem 0;
-      color: #f1f5f9;
-      position: relative;
-    }
-
-    .msg-bubble code {
-      font-family: 'Consolas', 'Fira Code', 'Courier New', monospace;
-      background: rgba(0, 0, 0, 0.4);
+    .terminal-badge {
+      display: inline-block;
       padding: 0.15rem 0.45rem;
       border-radius: 6px;
-      font-size: 0.88rem;
-      color: #fbcfe8;
-    }
-
-    .msg-bubble pre code {
-      background: transparent;
-      padding: 0;
-      color: inherit;
-    }
-
-    /* Terminal Execution Box inside Message Bubble */
-    .terminal-events-list {
-      margin: 0.6rem 0 0.8rem 0;
-      display: flex;
-      flex-direction: column;
-      gap: 0.6rem;
-    }
-
-    .terminal-event-box {
-      background: rgba(10, 15, 28, 0.85);
-      border: 1px solid rgba(56, 189, 248, 0.35);
-      border-radius: 12px;
-      overflow: hidden;
-      font-family: 'Consolas', 'Fira Code', 'Courier New', monospace;
-      font-size: 0.84rem;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    }
-
-    .terminal-event-header {
-      background: rgba(56, 189, 248, 0.15);
-      border-bottom: 1px solid rgba(56, 189, 248, 0.25);
-      padding: 0.45rem 0.8rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      color: #38bdf8;
+      font-size: 0.72rem;
       font-weight: 600;
     }
+    .terminal-badge.success { background: rgba(16, 185, 129, 0.25); color: #6ee7b7; border: 1px solid #10b981; }
+    .terminal-badge.error { background: rgba(239, 68, 68, 0.25); color: #fca5a5; border: 1px solid #ef4444; }
 
-    .terminal-event-badge {
-      font-size: 0.75rem;
-      padding: 0.15rem 0.45rem;
-      border-radius: 6px;
-      font-weight: bold;
-    }
-
-    .terminal-event-badge.success {
-      background: rgba(34, 197, 94, 0.25);
-      color: #4ade80;
-      border: 1px solid rgba(74, 222, 128, 0.4);
-    }
-
-    .terminal-event-badge.error {
-      background: rgba(239, 68, 68, 0.25);
-      color: #f87171;
-      border: 1px solid rgba(248, 113, 113, 0.4);
-    }
-
-    .terminal-event-body {
-      padding: 0.6rem 0.8rem;
-      margin: 0;
-      background: transparent;
-      border: none;
-      color: #e2e8f0;
-      max-height: 220px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-
-    .msg-bubble blockquote {
-      border-left: 3px solid var(--pink-glow);
-      padding-left: 0.9rem;
-      margin: 0.6rem 0;
-      color: var(--text-soft);
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 0 8px 8px 0;
-    }
-
-    /* Text Input Bar (Liquid Glass) */
+    /* Chat Input Bar */
     .chat-input-container {
       width: 100%;
       display: flex;
-      gap: 0.8rem;
       align-items: center;
-      background: rgba(15, 10, 25, 0.65);
+      gap: 0.7rem;
+      background: rgba(12, 7, 22, 0.75);
       border: 1px solid var(--glass-border);
       border-radius: 20px;
-      padding: 0.6rem 0.8rem 0.6rem 1.2rem;
-      backdrop-filter: blur(24px);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.15);
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .chat-input-container:focus-within {
-      border-color: rgba(244, 114, 182, 0.75);
-      box-shadow: 0 6px 25px rgba(236, 72, 153, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.25);
-      background: rgba(20, 12, 35, 0.85);
+      padding: 0.5rem 0.7rem 0.5rem 1.1rem;
     }
 
     .chat-text-input {
@@ -689,954 +550,224 @@
       border: none;
       outline: none;
       color: #ffffff;
-      font-family: inherit;
-      font-size: 0.96rem;
-      line-height: 1.5;
+      font-size: 0.92rem;
       resize: none;
       max-height: 120px;
-      padding: 0.2rem 0;
-    }
-
-    .chat-text-input::placeholder {
-      color: rgba(255, 255, 255, 0.45);
     }
 
     .send-text-btn {
       background: linear-gradient(135deg, var(--pink-core), var(--purple-accent));
-      border: 1px solid rgba(255, 255, 255, 0.35);
+      border: none;
       color: #ffffff;
-      padding: 0.6rem 1.3rem;
+      padding: 0.6rem 1.2rem;
       border-radius: 14px;
-      font-weight: 600;
-      font-size: 0.92rem;
+      font-size: 0.88rem;
       cursor: pointer;
-      box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      white-space: nowrap;
+      font-weight: 500;
+      transition: all 0.2s;
     }
 
     .send-text-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(236, 72, 153, 0.65);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(236, 72, 153, 0.5);
     }
 
-    .send-text-btn:active {
-      transform: translateY(0);
+    /* Background Jobs Floating Card */
+    .jobs-glass-container {
+      width: 100%;
+      background: rgba(18, 12, 32, 0.85);
+      border: 1px solid rgba(251, 191, 36, 0.4);
+      border-radius: 16px;
+      padding: 0.8rem 1.2rem;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
     }
 
-    /* Audio Playback Liquid Footer Bar */
-    .audio-liquid-bar {
+    .jobs-header {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #fde68a;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+
+    .job-item {
       display: flex;
       align-items: center;
-      gap: 1.2rem;
-      width: 100%;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid var(--glass-border);
-      padding: 0.8rem 1.5rem;
-      border-radius: 20px;
-      font-size: 0.88rem;
-      backdrop-filter: blur(20px);
-      box-shadow: var(--glass-specular-sm);
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 0.4rem 0.7rem;
+      margin-top: 0.4rem;
+      font-size: 0.8rem;
     }
 
-    .timing-tag {
-      font-size: 0.78rem;
-      color: var(--text-dim);
-      margin-left: auto;
-      background: rgba(255, 255, 255, 0.1);
-      padding: 0.25rem 0.6rem;
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.15);
+    .job-cancel-btn {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+      border-radius: 8px;
+      padding: 0.2rem 0.5rem;
+      cursor: pointer;
     }
 
-    /* =========================================================================
-       LIQUID GLASS CONFIG MODAL (หน้าต่างตั้งค่าระบบ)
-       ========================================================================= */
-    .modal-overlay {
+    /* PIN Lockscreen Overlay */
+    .pin-overlay {
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: rgba(10, 5, 20, 0.65);
-      backdrop-filter: blur(18px);
-      z-index: 999;
+      background: rgba(10, 6, 18, 0.88);
+      backdrop-filter: blur(24px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pin-card {
+      background: rgba(26, 16, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 28px;
+      padding: 2.2rem 2rem;
+      width: 340px;
+      max-width: 90vw;
+      box-shadow: var(--glass-specular);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.2rem;
+    }
+
+    .pin-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--pink-core), var(--purple-accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      box-shadow: 0 0 25px rgba(236, 72, 153, 0.6);
+    }
+
+    .pin-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .pin-subtitle {
+      font-size: 0.82rem;
+      color: var(--text-dim);
+    }
+
+    .pin-dots {
+      display: flex;
+      gap: 1rem;
+      margin: 0.6rem 0;
+    }
+
+    .pin-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      background: transparent;
+      transition: all 0.2s ease;
+    }
+
+    .pin-dot.filled {
+      background: var(--pink-core);
+      border-color: var(--pink-glow);
+      box-shadow: 0 0 12px var(--pink-glow);
+      transform: scale(1.15);
+    }
+
+    .pin-error {
+      color: #fca5a5;
+      font-size: 0.8rem;
+      min-height: 1.2rem;
+    }
+
+    .pin-numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.8rem;
+      width: 100%;
+    }
+
+    .pin-num-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--glass-border);
+      color: #ffffff;
+      font-size: 1.3rem;
+      font-weight: 600;
+      border-radius: 18px;
+      padding: 0.85rem 0;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .pin-num-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: var(--pink-glow);
+      transform: translateY(-1px);
+    }
+
+    .pin-num-btn:active {
+      transform: scale(0.96);
+    }
+
+    .pin-num-btn.pin-ctrl {
+      font-size: 1rem;
+      color: var(--text-dim);
+    }
+
+    /* Modal Windows */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(12px);
+      z-index: 80;
       display: none;
       align-items: center;
       justify-content: center;
-      padding: 1.5rem;
-      opacity: 0;
-      transition: opacity 0.3s ease;
     }
-
-    .modal-overlay.open {
-      display: flex;
-      opacity: 1;
-    }
-
     .modal-window {
-      background: rgba(26, 16, 42, 0.82);
-      border: 1.5px solid rgba(255, 255, 255, 0.3);
-      border-radius: 28px;
-      max-width: 650px;
-      width: 100%;
-      max-height: 90vh;
+      background: rgba(24, 14, 38, 0.95);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      padding: 1.8rem;
+      width: 540px;
+      max-width: 92vw;
+      max-height: 85vh;
       overflow-y: auto;
-      padding: 2.2rem;
-      backdrop-filter: blur(40px) saturate(220%);
-      box-shadow: var(--glass-specular), 0 30px 80px rgba(0, 0, 0, 0.7);
-      display: flex;
-      flex-direction: column;
-      gap: 1.8rem;
-      position: relative;
-      animation: modalSlide 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: var(--glass-specular);
     }
-
-    @keyframes modalSlide {
-      from { opacity: 0; transform: translateY(20px) scale(0.95); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-
     .modal-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-      padding-bottom: 1rem;
+      margin-bottom: 1.4rem;
     }
-
-    .modal-header h2 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      color: #ffffff;
-    }
-
     .modal-close-btn {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #ffffff;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      font-size: 1.1rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s;
-    }
-
-    .modal-close-btn:hover {
-      background: rgba(236, 72, 153, 0.4);
-      transform: rotate(90deg);
-    }
-
-    .config-section {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .section-title {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--pink-glow);
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-    }
-
-    .config-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1.2rem;
-    }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-    }
-
-    .form-group.full-width {
-      grid-column: span 2;
-    }
-
-    .form-group label {
-      font-size: 0.85rem;
-      color: var(--text-dim);
-      display: flex;
-      justify-content: space-between;
-    }
-
-    .form-group select, .form-group input[type="text"] {
-      background: rgba(15, 10, 25, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: white;
-      padding: 0.65rem 0.9rem;
-      border-radius: 14px;
-      font-size: 0.9rem;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .form-group select:focus, .form-group input[type="text"]:focus {
-      border-color: var(--pink-glow);
-      box-shadow: 0 0 10px rgba(236, 72, 153, 0.4);
-    }
-
-    .range-wrapper {
-      display: flex;
-      align-items: center;
-      gap: 0.8rem;
-    }
-
-    .range-wrapper input[type="range"] {
-      flex: 1;
-      accent-color: var(--pink-core);
-      cursor: pointer;
-    }
-
-    .range-val {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--pink-glow);
-      min-width: 50px;
-      text-align: right;
-    }
-
-    .modal-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 1rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.15);
-      padding-top: 1.2rem;
-    }
-
-    .save-btn {
-      background: linear-gradient(135deg, var(--pink-core), var(--purple-accent));
-      border: 1px solid rgba(255, 255, 255, 0.4);
-      color: white;
-      padding: 0.65rem 1.6rem;
-      border-radius: 20px;
-      font-weight: 600;
-      font-size: 0.9rem;
-      cursor: pointer;
-      box-shadow: 0 5px 20px rgba(236, 72, 153, 0.5);
-      transition: all 0.2s;
-    }
-
-    .save-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(236, 72, 153, 0.8);
-    }
-
-    .reset-btn {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: var(--text-dim);
-      padding: 0.65rem 1.2rem;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .reset-btn:hover {
-      background: rgba(255, 255, 255, 0.2);
-      color: white;
-    }
-
-    /* Toast Notification */
-    .toast-pill {
-      position: fixed;
-      bottom: 2rem;
-      left: 50%;
-      transform: translateX(-50%) translateY(100px);
-      background: rgba(20, 10, 30, 0.9);
-      border: 1px solid var(--pink-glow);
-      color: white;
-      padding: 0.75rem 1.8rem;
-      border-radius: 30px;
-      font-size: 0.92rem;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(236, 72, 153, 0.6);
-      backdrop-filter: blur(20px);
-      z-index: 1000;
-      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-      pointer-events: none;
-    }
-
-    .toast-pill.show {
-      transform: translateX(-50%) translateY(0);
-    }
-
-    footer {
-      text-align: center;
-      padding: 1.2rem;
-      font-size: 0.8rem;
-      color: var(--text-dim);
-      text-shadow: 0 1px 4px rgba(0,0,0,0.6);
-    }
-
-    /* Floating Mobile Audio Unblock Prompt Banner */
-    .mobile-audio-prompt {
-      position: fixed;
-      top: 1.2rem;
-      left: 50%;
-      transform: translateX(-50%);
-      background: linear-gradient(135deg, rgba(236, 72, 153, 0.95), rgba(168, 85, 247, 0.95));
-      border: 1.5px solid rgba(255, 255, 255, 0.8);
-      color: #ffffff;
-      padding: 0.75rem 1.4rem;
-      border-radius: 30px;
-      font-size: 0.92rem;
-      font-weight: 600;
-      box-shadow: 0 10px 30px rgba(236, 72, 153, 0.6), 0 0 20px rgba(255, 255, 255, 0.5);
-      backdrop-filter: blur(16px);
-      z-index: 10000;
-      cursor: pointer;
-      display: none;
-      align-items: center;
-      gap: 0.5rem;
-      text-align: center;
-      max-width: 90vw;
-    }
-
-
-    .play-bubble-audio-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      background: rgba(255, 255, 255, 0.18);
-      border: 1px solid rgba(255, 255, 255, 0.35);
-      color: #ffffff;
-      padding: 0.3rem 0.75rem;
-      border-radius: 14px;
-      font-size: 0.78rem;
-      font-weight: 500;
-      margin-top: 0.6rem;
-      cursor: pointer;
-      backdrop-filter: blur(12px);
-      transition: all 0.2s ease;
-    }
-
-    /* =========================================================================
-       LIQUID GLASS SESSIONS MODAL (ระบบจัดการเซสชั่นประวัติย้อนหลัง)
-       ========================================================================= */
-    .session-badge {
-      background: var(--pink-core);
-      color: #ffffff;
-      font-size: 0.72rem;
-      padding: 0.1rem 0.45rem;
-      border-radius: 10px;
-      font-weight: 700;
-      margin-left: 0.2rem;
-    }
-
-    .sessions-modal-window {
-      max-width: 680px;
-      width: 95%;
-      max-height: 85vh;
-      display: flex;
-      flex-direction: column;
-      gap: 1.4rem;
-    }
-
-    .sessions-modal-body {
-      display: flex;
-      flex-direction: column;
-      gap: 1.2rem;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-
-    .sessions-top-actions {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 1rem;
-      padding-bottom: 0.8rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-    }
-
-    .primary-glow-btn {
-      background: linear-gradient(135deg, var(--pink-core), var(--purple-accent));
-      border: 1px solid rgba(255, 255, 255, 0.4);
-      color: #ffffff;
-      font-weight: 600;
-      padding: 0.55rem 1.2rem;
-      border-radius: 14px;
-      cursor: pointer;
-      box-shadow: 0 4px 15px rgba(236, 72, 153, 0.35);
-      transition: all 0.2s ease;
-    }
-
-    .primary-glow-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(236, 72, 153, 0.5);
-    }
-
-    .sessions-total-count {
-      font-size: 0.84rem;
-      color: var(--text-dim);
-    }
-
-    .sessions-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.85rem;
-      max-height: 52vh;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-
-    .session-card {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.95rem 1.2rem;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      border-radius: 18px;
-      backdrop-filter: blur(16px);
-      transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-      cursor: pointer;
-    }
-
-    .session-card:hover {
-      background: rgba(236, 72, 153, 0.14);
-      border-color: rgba(244, 114, 182, 0.55);
-      transform: translateX(4px);
-    }
-
-    .session-card.active {
-      background: rgba(236, 72, 153, 0.22);
-      border: 1.5px solid var(--pink-glow);
-      box-shadow: 0 4px 20px rgba(236, 72, 153, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.4);
-    }
-
-    .session-info {
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-      flex: 1;
-      min-width: 0;
-    }
-
-    .session-card-title {
-      font-weight: 600;
-      font-size: 0.96rem;
-      color: var(--text-pure);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .session-card-meta {
-      display: flex;
-      align-items: center;
-      gap: 0.8rem;
-      font-size: 0.78rem;
-      color: var(--text-dim);
-    }
-
-    .session-card-badge {
-      background: rgba(255, 255, 255, 0.12);
-      padding: 0.15rem 0.5rem;
-      border-radius: 8px;
-      color: var(--text-soft);
-    }
-
-    .session-card.active .session-card-badge {
-      background: var(--pink-core);
-      color: #ffffff;
-      font-weight: 600;
-    }
-
-    .session-actions {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      margin-left: 0.8rem;
-    }
-
-    .session-switch-btn {
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #ffffff;
-      padding: 0.4rem 0.85rem;
-      border-radius: 12px;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .session-card:hover .session-switch-btn {
-      background: var(--pink-core);
-    }
-
-    .session-del-btn {
       background: transparent;
       border: none;
-      color: rgba(255, 255, 255, 0.4);
-      cursor: pointer;
-      padding: 0.35rem 0.5rem;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      transition: all 0.15s ease;
-    }
-
-    .session-del-btn:hover {
-      color: #f87171;
-      background: rgba(239, 68, 68, 0.2);
-    }
-
-    /* =========================================================================
-       LIQUID GLASS KNOWLEDGE LEXICON MODAL (คลังคำสั่งและคำศัพท์ ป้องกันคำเพี้ยน)
-       ========================================================================= */
-    .lexicon-modal-window {
-      max-width: 860px;
-      width: 95%;
-      max-height: 88vh;
-      display: flex;
-      flex-direction: column;
-      gap: 1.2rem;
-    }
-
-    .lexicon-tabs {
-      display: flex;
-      gap: 0.5rem;
-      overflow-x: auto;
-      padding-bottom: 0.4rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-      scrollbar-width: thin;
-    }
-
-    .lexicon-tab-btn {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
       color: var(--text-dim);
-      padding: 0.45rem 0.9rem;
-      border-radius: 20px;
-      font-size: 0.82rem;
-      font-weight: 500;
+      font-size: 1.4rem;
       cursor: pointer;
-      white-space: nowrap;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      transition: all 0.2s ease;
-    }
-
-    .lexicon-tab-btn:hover {
-      background: rgba(255, 255, 255, 0.15);
-      color: #ffffff;
-    }
-
-    .lexicon-tab-btn.active {
-      background: linear-gradient(135deg, var(--pink-core), var(--purple-accent));
-      border-color: rgba(255, 255, 255, 0.4);
-      color: #ffffff;
-      font-weight: 600;
-      box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
-    }
-
-    .lexicon-tab-badge {
-      background: rgba(0, 0, 0, 0.25);
-      padding: 0.1rem 0.4rem;
-      border-radius: 10px;
-      font-size: 0.7rem;
-    }
-
-    .lexicon-toolbar {
-      display: flex;
-      gap: 0.8rem;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .lexicon-search-input {
-      flex: 1;
-      min-width: 200px;
-      background: rgba(15, 10, 25, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: white;
-      padding: 0.6rem 1rem;
-      border-radius: 14px;
-      font-size: 0.88rem;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .lexicon-search-input:focus {
-      border-color: var(--pink-glow);
-      box-shadow: 0 0 10px rgba(236, 72, 153, 0.4);
-    }
-
-    .lexicon-cards-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-      gap: 0.9rem;
-      max-height: 44vh;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-
-    .lexicon-card {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      border-radius: 16px;
-      padding: 0.9rem 1rem;
-      backdrop-filter: blur(12px);
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      transition: all 0.2s ease;
-      position: relative;
-    }
-
-    .lexicon-card:hover {
-      background: rgba(236, 72, 153, 0.1);
-      border-color: rgba(244, 114, 182, 0.4);
-      transform: translateY(-2px);
-    }
-
-    .lexicon-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 0.4rem;
-    }
-
-    .lexicon-term {
-      font-weight: 700;
-      font-size: 0.98rem;
-      color: #ffffff;
-      display: flex;
-      align-items: center;
-      gap: 0.35rem;
-    }
-
-    .lexicon-cat-tag {
-      font-size: 0.68rem;
-      padding: 0.15rem 0.45rem;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.1);
-      color: var(--pink-glow);
-      font-weight: 600;
-    }
-
-    .lexicon-aliases-wrap {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.3rem;
-    }
-
-    .lexicon-alias-pill {
-      font-size: 0.72rem;
-      background: rgba(168, 85, 247, 0.25);
-      border: 1px solid rgba(168, 85, 247, 0.4);
-      color: #f3e8ff;
-      padding: 0.1rem 0.45rem;
-      border-radius: 10px;
-    }
-
-    .lexicon-desc {
-      font-size: 0.8rem;
-      color: var(--text-dim);
-      line-height: 1.35;
-    }
-
-    .lexicon-card-del-btn {
-      background: transparent;
-      border: none;
-      color: rgba(255, 255, 255, 0.35);
-      cursor: pointer;
-      font-size: 0.85rem;
-      padding: 0.2rem;
-      transition: color 0.15s;
-    }
-
-    .lexicon-card-del-btn:hover {
-      color: #f87171;
-    }
-
-    .lexicon-tester-box {
-      background: rgba(15, 10, 25, 0.7);
-      border: 1px solid rgba(236, 72, 153, 0.3);
-      border-radius: 14px;
-      padding: 0.85rem 1rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      margin-top: 0.3rem;
-    }
-
-    .lexicon-test-result {
-      font-size: 0.84rem;
-      padding: 0.45rem 0.75rem;
-      border-radius: 10px;
-      background: rgba(34, 197, 94, 0.15);
-      border: 1px solid rgba(34, 197, 94, 0.35);
-      color: #86efac;
-      display: none;
-    }
-
-    .correction-badge-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.25rem;
-      background: rgba(34, 197, 94, 0.2);
-      border: 1px solid rgba(34, 197, 94, 0.4);
-      color: #86efac;
-      font-size: 0.72rem;
-      padding: 0.15rem 0.5rem;
-      border-radius: 10px;
-      margin-top: 0.35rem;
-    }
-
-    /* =========================================================================
-       RESPONSIVE DESIGN FOR SMARTPHONES & TABLETS (100% Mobile Ready)
-       ========================================================================= */
-    @media (max-width: 860px) {
-      header {
-        padding: 0.8rem 1.2rem;
-        flex-wrap: wrap;
-        gap: 0.8rem;
-      }
-
-      .brand {
-        gap: 0.7rem;
-      }
-
-      .avatar-orb {
-        width: 40px;
-        height: 40px;
-        font-size: 1.25rem;
-      }
-
-      .brand-text h1 {
-        font-size: 1.1rem;
-      }
-
-      .brand-text p {
-        font-size: 0.75rem;
-      }
-
-      .header-controls {
-        gap: 0.6rem;
-        flex-wrap: wrap;
-      }
-
-      .glass-btn {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.8rem;
-      }
-
-      .stages-grid {
-        display: flex;
-        overflow-x: auto;
-        gap: 0.6rem;
-        padding-bottom: 6px;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-      }
-      .stages-grid::-webkit-scrollbar {
-        display: none;
-      }
-
-      .stage-capsule {
-        flex: 0 0 110px;
-        padding: 0.7rem 0.5rem;
-      }
-
-      .stage-capsule .icon {
-        font-size: 1.2rem;
-      }
-
-      .stage-capsule .label {
-        font-size: 0.75rem;
-        white-space: nowrap;
-      }
-    }
-
-    @media (max-width: 600px) {
-      header {
-        padding: 0.6rem 0.8rem;
-        justify-content: space-between;
-      }
-
-      .brand-text p {
-        display: none;
-      }
-
-      .brand-text h1 {
-        font-size: 0.98rem;
-      }
-
-      .toggle-wrapper {
-        padding: 0.3rem 0.6rem;
-        font-size: 0.78rem;
-        gap: 0.4rem;
-      }
-
-      .toggle-wrapper span.toggle-text {
-        display: none;
-      }
-
-      .switch {
-        width: 36px;
-        height: 18px;
-      }
-
-      .slider:before {
-        height: 12px;
-        width: 12px;
-        bottom: 2px;
-        left: 2px;
-      }
-
-      input:checked + .slider:before {
-        transform: translateX(18px);
-      }
-
-      .glass-btn {
-        padding: 0.35rem 0.65rem;
-        font-size: 0.75rem;
-        border-radius: 16px;
-      }
-
-      .glass-btn.btn-text-hide span.btn-label {
-        display: none;
-      }
-
-      main {
-        padding: 0.8rem 0.6rem;
-        gap: 1rem;
-      }
-
-      .stages-glass-container {
-        padding: 0.9rem 0.9rem;
-        border-radius: 18px;
-      }
-
-      .stages-title {
-        font-size: 0.78rem;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.3rem;
-      }
-
-      .liquid-main-card {
-        padding: 1.4rem 0.8rem;
-        border-radius: 20px;
-        gap: 1.2rem;
-      }
-
-      .liquid-mic-btn {
-        width: 90px;
-        height: 90px;
-        font-size: 2.2rem;
-      }
-
-      .mic-water-ring {
-        width: 120px;
-        height: 120px;
-      }
-
-      .mic-caption {
-        font-size: 0.88rem;
-      }
-
-      .waveform-capsule {
-        padding: 0.4rem 0.9rem;
-        height: 36px;
-      }
-
-      .quick-chips-row {
-        gap: 0.45rem;
-        max-width: 100%;
-      }
-
-      .liquid-chip {
-        font-size: 0.78rem;
-        padding: 0.45rem 0.8rem;
-        border-radius: 20px;
-      }
-
-      .chat-transcript-glass {
-        padding: 0.85rem;
-        max-height: 380px;
-        min-height: 180px;
-        border-radius: 18px;
-        gap: 0.9rem;
-      }
-
-      .msg-bubble {
-        padding: 0.75rem 0.95rem;
-        font-size: 0.88rem;
-        max-width: 96%;
-        border-radius: 16px;
-      }
-
-      .chat-input-container {
-        padding: 0.4rem 0.5rem 0.4rem 0.85rem;
-        border-radius: 16px;
-        gap: 0.5rem;
-      }
-
-      /* 16px font-size prevents iOS Safari from automatically zooming into the textarea */
-      .chat-text-input {
-        font-size: 16px;
-        max-height: 100px;
-      }
-
-      .send-text-btn {
-        padding: 0.5rem 0.9rem;
-        font-size: 0.82rem;
-        border-radius: 12px;
-      }
-
-      .audio-liquid-bar {
-        padding: 0.7rem 0.9rem;
-        border-radius: 16px;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-      }
-
-      .timing-tag {
-        margin-left: 0;
-        font-size: 0.7rem;
-      }
-
-      .modal-window {
-        padding: 1.3rem 0.95rem;
-        border-radius: 20px;
-        max-height: 88vh;
-        gap: 1.2rem;
-      }
-
-      .config-grid {
-        grid-template-columns: 1fr;
-        gap: 0.9rem;
-      }
-
-      .form-group.full-width {
-        grid-column: span 1;
-      }
     }
   </style>
 </head>
 <body>
 
-  <!-- Custom Fairy-tale Mountain Meadow Background -->
+  <!-- Background Layer -->
   <div class="wallpaper-bg" id="wallpaperBg"></div>
   <div class="wallpaper-overlay"></div>
 
@@ -1646,426 +777,180 @@
       <div class="avatar-orb">🌸</div>
       <div class="brand-text">
         <h1>Maymint Liquid Voice 💖</h1>
-        <p>Microsoft Edge-TTS Studio (24kHz) &middot; 9Router AI Gateway</p>
+        <p>Official LiveKit WebRTC Voice Engine &middot; 9Router Central Gateway</p>
       </div>
     </div>
+
     <div class="header-controls">
-      <label class="toggle-wrapper" id="continuousToggleWrapper" title="โหมดคุยต่อเนื่องอัตโนมัติ (Hands-Free เมื่อมายมิ้นท์พูดจบจะเปิดไมค์รอฟังบอสคุยต่อทันที)">
-        <span class="toggle-icon">🔄</span>
-        <span class="toggle-text">คุยต่อเนื่อง</span>
-        <label class="switch">
-          <input type="checkbox" id="continuousModeToggle">
-          <span class="slider"></span>
-        </label>
-      </label>
+      <!-- Mode Switcher -->
+      <div class="mode-switcher" id="modeSwitcher">
+        <button class="mode-btn active casual" id="modeCasualBtn" onclick="setMode('casual')" title="โหมดคุยเล่น: ตอบไวทันใจ ลื่นไหล สดใส">💬 คุยเล่น</button>
+        <button class="mode-btn" id="modeWorkBtn" onclick="setMode('work')" title="โหมดทำงาน: คิดลึกซึ้ง วิเคราะห์ วางแผน สั่งงานระบบ">🧠 ทำงาน</button>
+      </div>
+
+      <!-- Auto Speak Toggle -->
       <label class="toggle-wrapper" title="เปิด/ปิดการพูดตอบกลับอัตโนมัติ">
-        <span class="toggle-icon">🔊</span>
-        <span class="toggle-text">Auto-Speak</span>
+        <span>🔊</span>
+        <span>เสียงพูด</span>
         <label class="switch">
           <input type="checkbox" id="autoSpeakToggle" checked>
           <span class="slider"></span>
         </label>
       </label>
-      <button class="glass-btn" id="lexiconOpenBtn" title="คลังคำสั่งและคำศัพท์ (STT Precision Knowledge Bank)">📚 <span class="btn-label">คลังคำสั่ง</span> <span class="session-badge" id="lexiconCountBadge">0</span></button>
-      <button class="glass-btn" id="sessionsOpenBtn" title="ดูประวัติเซสชั่นย้อนหลังทั้งหมด">📜 <span class="btn-label">ประวัติ</span> <span class="session-badge" id="sessionCountBadge">0</span></button>
-      <button class="glass-btn" id="newSessionBtn" title="เริ่มบทสนทนาใหม่ (เซสชั่นเดิมถูกเก็บไว้เสมอ)">➕ <span class="btn-label">แชตใหม่</span></button>
-      <button class="glass-btn btn-text-hide" id="testVoiceBtn" title="ทดสอบเสียง">🔊 <span class="btn-label">ทดสอบเสียง</span></button>
-      <button class="glass-btn icon-only" id="configOpenBtn" title="ตั้งค่าระบบ (Voice & AI Config)">⚙️</button>
+
+      <button class="glass-btn" id="sessionsOpenBtn" title="ดูประวัติเซสชั่นย้อนหลัง">📜 <span id="sessionBadge">0</span></button>
+      <button class="glass-btn" id="newSessionBtn" title="เริ่มบทสนทนาใหม่">➕ แชตใหม่</button>
+      <button class="glass-btn icon-only" id="configOpenBtn" title="ตั้งค่าระบบ">⚙️</button>
     </div>
   </header>
 
-  <!-- Main Content -->
+  <!-- Main Interface -->
   <main>
-    <!-- 5-Stage Live Status Badges Bar -->
+    <!-- 5-Stage Live Status -->
     <div class="stages-glass-container">
       <div class="stages-title">
-        <span>⚡ ลำดับการประมวลผลเสียงสด (5-Stage Realtime Status):</span>
+        <span>⚡ ลำดับการประมวลผลเสียงสด (LiveKit WebRTC Full-Duplex):</span>
         <div class="status-highlight">
           <div class="status-dot"></div>
-          <span id="currentStatusText">พร้อมรับฟังคำสั่งเสียงบอส</span>
+          <span id="currentStatusText">เชื่อมต่อระบบเสียงสด LiveKit สำเร็จ</span>
         </div>
       </div>
       <div class="stages-grid">
         <div class="stage-capsule" id="stage-1">
-          <span class="icon">🎙️</span>
-          <span class="label">1. ฟังเสียงบอส</span>
+          <span>🎙️</span>
+          <span>1. ฟังเสียงบอส</span>
         </div>
         <div class="stage-capsule" id="stage-2">
-          <span class="icon">✍️</span>
-          <span class="label">2. ถอดความเสียง</span>
+          <span>✍️</span>
+          <span>2. ถอดความเสียง</span>
         </div>
         <div class="stage-capsule" id="stage-3">
-          <span class="icon">🧠</span>
-          <span class="label">3. คิดคำตอบ AI</span>
+          <span>🧠</span>
+          <span>3. คิดคำตอบ AI</span>
         </div>
         <div class="stage-capsule" id="stage-4">
-          <span class="icon">🎙️</span>
-          <span class="label">4. สร้างเสียงพูด</span>
+          <span>🎙️</span>
+          <span>4. สตรีมมิ่งเสียง</span>
         </div>
         <div class="stage-capsule" id="stage-5">
-          <span class="icon">🔊</span>
-          <span class="label">5. มายมิ้นท์กำลังพูด</span>
+          <span>🔊</span>
+          <span>5. มายมิ้นท์กำลังพูด</span>
         </div>
       </div>
     </div>
 
-    <!-- Center Liquid Glass Interaction Card -->
+    <!-- Background Jobs Floating Banner -->
+    <div class="jobs-glass-container" id="jobsContainer" style="display: none;">
+      <div class="jobs-header">
+        <span>⚡ งานระบบเบื้องหลังที่กำลังทำงาน (<span id="jobsCount">0</span>)</span>
+      </div>
+      <div class="jobs-list" id="jobsList"></div>
+    </div>
+
+    <!-- Center Interaction Card -->
     <div class="liquid-main-card">
       <div class="mic-stage">
         <div class="mic-water-ring" id="micRipple"></div>
-        <button class="liquid-mic-btn" id="micButton" title="กดเพื่อเริ่มพูด / หยุดพูด">
+        <button class="liquid-mic-btn" id="micButton" title="แตะไมค์เพื่อพูดคุย / แตะตอนมายพูดเพื่อขัดจังหวะทันที">
           🎙️
         </button>
       </div>
-      <p class="mic-caption" id="micHint">คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส</p>
+      <p class="mic-caption" id="micHint">คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส (แตะตอนมายพูดเพื่อขัดจังหวะ)</p>
 
-      <!-- Prismatic Waveform Visualizer -->
-      <div class="waveform-capsule" id="visualizer">
-        <!-- 24 Wave Sticks -->
-      </div>
+      <!-- Waveform Sticks -->
+      <div class="waveform-capsule" id="visualizer"></div>
 
-      <!-- Quick Action Liquid Chips -->
+      <!-- Quick Action Chips -->
       <div class="quick-chips-row">
         <button class="liquid-chip" onclick="sendQuickPrompt('สวัสดีจ้ามายมิ้นท์ วันนี้เป็นยังไงบ้าง')">👋 สวัสดีจ้ามายมิ้นท์ 💖</button>
-        <button class="liquid-chip" onclick="sendQuickPrompt('วันนี้บอสเหนื่อยจังเลย ขอกำลังใจหน่อยนะ')">🥺 บอสเหนื่อยจัง ขอกำลังใจหน่อย</button>
-        <button class="liquid-chip" onclick="sendQuickPrompt('ช่วยวางแผนงานวันนี้ให้หน่อยนะบอสต้องทำอะไรบ้าง')">📋 ช่วยวางแผนงานวันนี้หน่อย</button>
-        <button class="liquid-chip" onclick="sendQuickPrompt('เล่าเรื่องตลกหรือเรื่องน่ารักๆ ให้บอสฟังหน่อยสิ')">😄 เล่าเรื่องน่ารักๆ ให้ฟังหน่อย</button>
+        <button class="liquid-chip" onclick="sendQuickPrompt('ช่วยเช็คอินเทอร์เน็ตของเครื่องให้หน่อยค่ะ')">🌐 เช็คอินเทอร์เน็ตเครื่อง</button>
+        <button class="liquid-chip" onclick="sendQuickPrompt('เปิดแอร์ 24 องศาให้หน่อยนะ')">❄️ เปิดแอร์ 24 องศา</button>
+        <button class="liquid-chip" onclick="sendQuickPrompt('เล่าเรื่องน่ารักๆ ให้บอสฟังหน่อยสิ')">😄 เล่าเรื่องน่ารักๆ</button>
       </div>
 
-      <!-- Chat Transcript Stream in Liquid Glass -->
+      <!-- Chat Transcript Box -->
       <div class="chat-transcript-glass" id="chatBox">
         <div class="msg-row">
           <div class="msg-bubble maymint">
-            🌸 <strong>มายมิ้นท์:</strong> สวัสดีค่ะบอส! มายมิ้นท์พร้อมดูแลบอสแล้วนะคะ จะพิมพ์คุยหรือกดปุ่มไมค์พูดคุยกับมายได้ทันทีเลยค่ะบอส 💖✨
+            🌸 <strong>มายมิ้นท์:</strong> สวัสดีค่ะบอส! น้องมายมิ้นท์พร้อมดูแลบอสแล้วนะคะ พูดคุยด้วยเสียงผ่าน LiveKit หรือพิมพ์คุยกับมายได้ตลอดเวลาเลยค่ะ 💖✨
           </div>
         </div>
       </div>
 
-      <!-- Liquid Glass Interactive Text Input Bar (Keyboard & Direct Commands) -->
+      <!-- Text Input Bar -->
       <div class="chat-input-container">
-        <textarea id="chatTextInput" class="chat-text-input" placeholder="พิมพ์ข้อความหรือคำสั่งคุยกับมายมิ้นท์ได้เลยค่ะบอส (กด Enter เพื่อส่ง, Shift+Enter ขึ้นบรรทัดใหม่)..." rows="1"></textarea>
+        <textarea id="chatTextInput" class="chat-text-input" placeholder="พิมพ์ข้อความคุยกับมายมิ้นท์ได้เลยค่ะบอส (Enter ส่ง, Shift+Enter ขึ้นบรรทัดใหม่)..." rows="1"></textarea>
         <button id="sendTextBtn" class="send-text-btn" title="ส่งข้อความ (Enter)">
           <span>ส่ง 🚀</span>
         </button>
       </div>
-
-      <!-- Audio Status Bar -->
-      <div class="audio-liquid-bar" id="audioBar">
-        <span id="audioPlayingStatus">🔇 ยังไม่มีเสียงกำลังเล่น</span>
-        <button class="glass-btn" id="stopAudioBtn" style="display: none; padding: 0.35rem 0.8rem;">⏹️ หยุดเสียง</button>
-        <span class="timing-tag" id="timingsBadge">Edge-TTS Studio: 24kHz &middot; Gemini 3.8 Flash High</span>
-      </div>
     </div>
   </main>
 
-  <!-- Hidden Persistent Audio Player for Mobile & iOS Autoplay Unlocking -->
-  <audio id="maymintAudioPlayer" playsinline webkit-playsinline preload="auto" style="display:none;"></audio>
-
-  <!-- Floating Mobile Audio Prompt Banner (Appears if mobile browser blocks background autoplay) -->
-  <div id="mobileAudioPrompt" class="mobile-audio-prompt">
-    <span>🔊 มายมิ้นท์ตอบแล้ว (แตะตรงนี้เพื่อเปิดเสียง) 💖</span>
-  </div>
-
-  <!-- =========================================================================
-       CONFIG MODAL WINDOW (หน้าต่างปรับแต่งการตั้งค่า)
-       ========================================================================= -->
-  <div class="modal-overlay" id="configModal">
-    <div class="modal-window">
-      <div class="modal-header">
-        <h2>⚙️ ตั้งค่าระบบเสียง & สมอง AI</h2>
-        <button class="modal-close-btn" id="configCloseBtn" title="ปิดหน้าต่าง">✕</button>
+  <!-- PIN Lockscreen Modal -->
+  <div class="pin-overlay" id="pinModal" style="display: none;">
+    <div class="pin-card">
+      <div class="pin-avatar">🌸</div>
+      <h2 class="pin-title">ยินดีต้อนรับกลับบ้านค่ะบอส 💖</h2>
+      <p class="pin-subtitle">กรุณาระบุรหัส PIN 4 หลักเพื่อเข้าใช้งานระบบ</p>
+      
+      <div class="pin-dots" id="pinDots">
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
       </div>
 
-      <!-- 1. Voice & TTS Settings -->
-      <div class="config-section">
-        <div class="section-title">🎙️ 1. ปรับแต่งเสียงพูด (Edge-TTS)</div>
-        <div class="config-grid">
-          <div class="form-group full-width">
-            <label>โมเดลเสียงหลัก (Voice Model):</label>
-            <select id="cfgVoiceSelect">
-              <option value="th-TH-PremwadeeNeural">👩 th-TH-PremwadeeNeural (มายมิ้นท์ - หวาน นุ่มนวล แนะนำ 💖)</option>
-              <option value="th-TH-NiwatNeural">👨 th-TH-NiwatNeural (นิวัฒน์ - สุขุม หนักแน่น)</option>
-              <option value="en-US-JennyNeural">🇺🇸 en-US-JennyNeural (Jenny - หญิงภาษาอังกฤษ)</option>
-              <option value="en-US-GuyNeural">🇺🇸 en-US-GuyNeural (Guy - ชายภาษาอังกฤษ)</option>
-            </select>
-          </div>
+      <div class="pin-error" id="pinError"></div>
 
-          <div class="form-group full-width">
-            <label>เครื่องยนต์ถอดความเสียง (Speech-to-Text STT):</label>
-            <select id="cfgSttEngine">
-              <option value="gemini" selected>⭐ AI Gemini 2.5 Flash (Studio Lossless WAV 44.1k/48k - แนะนำ แม่นยำสูงสุด 100% พร้อมคลังคำศัพท์ 💖)</option>
-              <option value="webspeech">⚡ Web Speech API (ถอดความด่วนผ่านเบราว์เซอร์ Chrome)</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>ความเร็วเสียง (Speed): <span id="cfgSpeedDisplay" class="range-val">+0%</span></label>
-            <div class="range-wrapper">
-              <input type="range" id="cfgSpeedSlider" min="-30" max="40" step="5" value="0">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>ระดับเสียงทุ้ม-แหลม (Pitch): <span id="cfgPitchDisplay" class="range-val">+0Hz</span></label>
-            <div class="range-wrapper">
-              <input type="range" id="cfgPitchSlider" min="-15" max="15" step="1" value="0">
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 2. AI Brain & Thinking Settings -->
-      <div class="config-section">
-        <div class="section-title">🧠 2. สมองและความคิด AI (9Router Gateway)</div>
-        <div class="config-grid">
-          <div class="form-group full-width">
-            <label>โมเดลภาษา AI (AI Brain Model):</label>
-            <select id="cfgModelSelect">
-              <option value="auto" selected>✨ auto (โหมดสลับสมองอัตโนมัติ: คำสั่งทั่วไปตอบไว 1.1s / งานยากคิดลึก 🧠 แนะนำ 💖)</option>
-              <option value="ag/gemini-2.5-flash">🚀 ag/gemini-2.5-flash (ความเร็วสูงพิเศษ 1.1s ตอบไวฉับไวตลอดเวลา)</option>
-              <option value="ag/gemini-3.8-flash-high">🌟 ag/gemini-3.8-flash-high (สมองหลัก คิดรอบคอบ เร็วสูงตลอดเวลา)</option>
-              <option value="ag/claude-sonnet-4-6">🧠 ag/claude-sonnet-4-6 (คิดเหตุผลซับซ้อน โค้ดดิ้งลึกซึ้ง)</option>
-              <option value="ag/gemini-3.8-flash-low">⚡ ag/gemini-3.8-flash-low (สมดุลความเร็ว)</option>
-            </select>
-          </div>
-
-          <div class="form-group full-width">
-            <label>ระดับความคิดสร้างสรรค์ (Temperature): <span id="cfgTempDisplay" class="range-val">0.7</span></label>
-            <div class="range-wrapper">
-              <input type="range" id="cfgTempSlider" min="0" max="1" step="0.05" value="0.7">
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 3. Liquid Glass Theme Settings -->
-      <div class="config-section">
-        <div class="section-title">🎨 3. ปรับแต่งหน้าจอ Liquid Glass</div>
-        <div class="config-grid">
-          <div class="form-group full-width">
-            <label>ภาพพื้นหลัง (Wallpaper Mode):</label>
-            <select id="cfgWallpaperSelect">
-              <option value="custom">🌸 ภาพทุ่งดอกไม้อัลไพน์ยามเย็น (รูปของบอส)</option>
-              <option value="bing">🏞️ ภาพธรรมชาติ Bing 4K ประจำวัน (Daily Wallpaper)</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>ความเบลอกระจก (Blur): <span id="cfgBlurDisplay" class="range-val">32px</span></label>
-            <div class="range-wrapper">
-              <input type="range" id="cfgBlurSlider" min="10" max="50" step="2" value="32">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>ความโปร่งแสง (Glass Opacity): <span id="cfgOpacityDisplay" class="range-val">42%</span></label>
-            <div class="range-wrapper">
-              <input type="range" id="cfgOpacitySlider" min="20" max="75" step="5" value="42">
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="modal-actions">
-        <button class="reset-btn" id="cfgResetBtn">🔄 คืนค่าเริ่มต้น</button>
-        <button class="save-btn" id="cfgSaveBtn">💾 บันทึกการตั้งค่า</button>
+      <div class="pin-numpad">
+        <button class="pin-num-btn" onclick="enterPinDigit('1')">1</button>
+        <button class="pin-num-btn" onclick="enterPinDigit('2')">2</button>
+        <button class="pin-num-btn" onclick="enterPinDigit('3')">3</button>
+        <button class="pin-num-btn" onclick="enterPinDigit('4')">4</button>
+        <button class="pin-num-btn" onclick="enterPinDigit('5')">5</button>
+        <button class="pin-num-btn" onclick="enterPinDigit('6')">6</button>
+        <button class="pin-num-btn" onclick="enterPinDigit('7')">7</button>
+        <button class="pin-num-btn" onclick="enterPinDigit('8')">8</button>
+        <button class="pin-num-btn" onclick="enterPinDigit('9')">9</button>
+        <button class="pin-num-btn pin-ctrl" onclick="clearPin()">C</button>
+        <button class="pin-num-btn" onclick="enterPinDigit('0')">0</button>
+        <button class="pin-num-btn pin-ctrl" onclick="backspacePin()">⌫</button>
       </div>
     </div>
   </div>
 
-  <!-- =========================================================================
-       SESSIONS MODAL WINDOW (หน้าต่างประวัติเซสชั่นย้อนหลัง)
-       ========================================================================= -->
-  <div class="modal-overlay" id="sessionsModal">
-    <div class="modal-window sessions-modal-window">
-      <div class="modal-header">
-        <h2>📜 ประวัติเซสชั่นการสนทนาย้อนหลัง</h2>
-        <button class="modal-close-btn" id="sessionsCloseBtn" title="ปิดหน้าต่าง">✕</button>
-      </div>
-      <div class="sessions-modal-body">
-        <div class="sessions-top-actions">
-          <button class="glass-btn primary-glow-btn" id="drawerNewChatBtn">➕ เริ่มเซสชั่นใหม่ (New Chat)</button>
-          <span class="sessions-total-count" id="sessionsTotalCount">มีทั้งหมด 0 เซสชั่น</span>
-        </div>
-        <div class="sessions-list" id="sessionsList">
-          <!-- Dynamic Session Items -->
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- Audio Player Element for LiveKit and Fallback -->
+  <audio id="livekitAudioPlayer" autoplay playsinline></audio>
+  <audio id="maymintAudioPlayer" playsinline style="display:none;"></audio>
 
-  <!-- =========================================================================
-       KNOWLEDGE LEXICON MODAL WINDOW (คลังคำสั่ง & ข้อมูลบริบท ป้องกันคำเพี้ยน)
-       ========================================================================= -->
-  <div class="modal-overlay" id="lexiconModal">
-    <div class="modal-window lexicon-modal-window">
-      <div class="modal-header">
-        <h2>📚 คลังคำสั่งและคำศัพท์ (STT Precision Knowledge Bank)</h2>
-        <button class="modal-close-btn" id="lexiconCloseBtn" title="ปิดหน้าต่าง">✕</button>
-      </div>
-
-      <div class="sessions-modal-body">
-        <!-- Category Tabs -->
-        <div class="lexicon-tabs" id="lexiconTabs">
-          <button class="lexicon-tab-btn active" data-cat="all">⚡ ทั้งหมด <span class="lexicon-tab-badge" id="badgeAll">0</span></button>
-          <button class="lexicon-tab-btn" data-cat="commands">🎯 คำสั่ง <span class="lexicon-tab-badge" id="badgeCmd">0</span></button>
-          <button class="lexicon-tab-btn" data-cat="devices">🏠 Smart Home <span class="lexicon-tab-badge" id="badgeDev">0</span></button>
-          <button class="lexicon-tab-btn" data-cat="workspace">💼 Workspace <span class="lexicon-tab-badge" id="badgeWs">0</span></button>
-          <button class="lexicon-tab-btn" data-cat="technical">💻 ศัพท์ Dev <span class="lexicon-tab-badge" id="badgeTech">0</span></button>
-          <button class="lexicon-tab-btn" data-cat="identity">💖 อัตลักษณ์ <span class="lexicon-tab-badge" id="badgeId">0</span></button>
-          <button class="lexicon-tab-btn" data-cat="corrections">🛠️ ตารางแก้คำเพี้ยน <span class="lexicon-tab-badge" id="badgeCor">0</span></button>
-          <button class="lexicon-tab-btn" data-cat="auto_learned">🤖 เรียนรู้อัตโนมัติ <span class="lexicon-tab-badge" id="badgeAuto">0</span></button>
-          <button class="lexicon-tab-btn" data-cat="add_form">➕ เพิ่มคำใหม่</button>
-        </div>
-
-        <!-- Toolbar: Search & Action Buttons -->
-        <div class="lexicon-toolbar" id="lexiconToolbar">
-          <input type="text" class="lexicon-search-input" id="lexiconSearchInput" placeholder="🔍 ค้นหาคำสั่ง, อุปกรณ์, หรือคำศัพท์ในคลัง...">
-          <button class="glass-btn primary-glow-btn" id="lexiconAddNewBtn">➕ เพิ่มข้อมูลใหม่</button>
-          <button class="glass-btn" id="lexiconResetDefaultBtn" title="รีเซ็ตเป็นค่าเริ่มต้น">🔄 รีเซ็ตคลังศัพท์</button>
-        </div>
-
-        <!-- Cards View -->
-        <div class="lexicon-cards-grid" id="lexiconCardsGrid">
-          <!-- Dynamic cards injected via JS -->
-        </div>
-
-        <!-- Add / Edit Form (Hidden by default or shown in tab) -->
-        <div class="config-section" id="lexiconAddFormContainer" style="display: none; background: rgba(15, 10, 25, 0.5); padding: 1.2rem; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.15);">
-          <div class="section-title">✨ เพิ่ม / แก้ไขคำศัพท์หรือคำสั่งลงในคลัง</div>
-          <div class="config-grid">
-            <div class="form-group">
-              <label>หมวดหมู่ (Category)</label>
-              <select id="lexFormCategory">
-                <option value="commands">🎯 คลังคำสั่ง (commands)</option>
-                <option value="devices">🏠 Smart Home & แอร์ (devices)</option>
-                <option value="workspace">💼 Google Workspace (workspace)</option>
-                <option value="technical">💻 ศัพท์เทคนิค & Dev (technical)</option>
-                <option value="identity">💖 บุคคล & อัตลักษณ์ (identity)</option>
-                <option value="corrections">🛠️ กฎแก้คำเพี้ยน Regex (corrections)</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>คำที่ถูกต้อง (Canonical Term / Target)</label>
-              <input type="text" id="lexFormTerm" placeholder="เช่น เปิดแอร์, Gmail, 24 องศา">
-            </div>
-            <div class="form-group full-width">
-              <label>คำที่มักได้ยินเพี้ยน / คำพ้องเสียง (คั่นด้วยเครื่องหมายจุลภาค ,)</label>
-              <input type="text" id="lexFormAliases" placeholder="เช่น เปิดแอ, เปิดแอร์หน่อย, ช่วยเปิดแอร์">
-            </div>
-            <div class="form-group full-width">
-              <label>คำอธิบายความหมาย / หน้าที่</label>
-              <input type="text" id="lexFormDesc" placeholder="เช่น สั่งเปิดเครื่องปรับอากาศห้องนอน">
-            </div>
-          </div>
-          <div style="display: flex; gap: 0.8rem; margin-top: 1rem;">
-            <button class="save-btn" id="lexFormSaveBtn">💾 บันทึกลงคลังความรู้</button>
-            <button class="glass-btn" id="lexFormCancelBtn">ยกเลิก</button>
-          </div>
-        </div>
-
-        <!-- Live STT Normalization Tester -->
-        <div class="lexicon-tester-box">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 0.84rem; font-weight: 600; color: var(--pink-glow);">🧪 กล่องทดสอบตรวจจับและแก้คำเพี้ยน (Live Normalization Tester)</span>
-            <button class="glass-btn" id="lexiconRunTestBtn" style="padding: 0.3rem 0.8rem; font-size: 0.78rem;">⚡ ตรวจสอบ</button>
-          </div>
-          <input type="text" class="lexicon-search-input" id="lexiconTestInput" placeholder="พิมพ์หรือลองวางประโยค เช่น 'เปิดแอ 24 องศา มายมิน ช่วยดูเจเมล หน่อย ด็อกเกอร์ รันอยู่ไหม'" value="เปิดแอ 24 องศา มายมิน ช่วยดูเจเมล หน่อย ด็อกเกอร์ รันอยู่ไหม">
-          <div class="lexicon-test-result" id="lexiconTestResult"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Toast Notification -->
-  <div class="toast-pill" id="toastPill">✅ บันทึกการตั้งค่าเรียบร้อยแล้วค่ะบอส 💖</div>
-
-  <footer>
-    <p>Hermes Agent Realtime Voice &middot; Microsoft Edge-TTS (Studio 24kHz) &middot; 9Router AI Gateway</p>
-  </footer>
-
+  <!-- Scripts -->
   <script>
-    let isRecording = false;
-    let recognition = null;
-    let waveInterval = null;
-    let audioUnlocked = false;
-    let pendingAudioUrl = null;
+    // State variables
+    let currentMode = localStorage.getItem('maymint_mode') || 'casual';
+    let pinInput = '';
+    let livekitRoom = null;
+    let isMicLive = false;
+    let isMaymintSpeaking = false;
+    let isProcessing = false;
 
-    // Elements
-    const maymintAudioPlayer = document.getElementById('maymintAudioPlayer');
-    const mobileAudioPrompt = document.getElementById('mobileAudioPrompt');
+    // DOM Elements
     const micButton = document.getElementById('micButton');
-    const micHint = document.getElementById('micHint');
     const micRipple = document.getElementById('micRipple');
+    const micHint = document.getElementById('micHint');
+    const visualizer = document.getElementById('visualizer');
     const chatBox = document.getElementById('chatBox');
     const chatTextInput = document.getElementById('chatTextInput');
     const sendTextBtn = document.getElementById('sendTextBtn');
     const autoSpeakToggle = document.getElementById('autoSpeakToggle');
-    const continuousModeToggle = document.getElementById('continuousModeToggle');
-    if (continuousModeToggle) {
-      continuousModeToggle.checked = localStorage.getItem('maymint_continuous_mode') === 'true';
-      continuousModeToggle.addEventListener('change', () => {
-        localStorage.setItem('maymint_continuous_mode', continuousModeToggle.checked);
-        if (continuousModeToggle.checked) {
-          micHint.innerText = '🔄 เปิดโหมดคุยต่อเนื่องแล้วค่ะ (แตะไมค์เพื่อเริ่มบทสนทนาแรกได้เลยนะคะบอส)';
-        } else {
-          micHint.innerText = 'ปิดโหมดคุยต่อเนื่องแล้วค่ะ (คลิกปุ่มไมค์เพื่อพูดคุยทีละข้อความ)';
-        }
-      });
-    }
     const currentStatusText = document.getElementById('currentStatusText');
-    const audioPlayingStatus = document.getElementById('audioPlayingStatus');
-    const stopAudioBtn = document.getElementById('stopAudioBtn');
-    const timingsBadge = document.getElementById('timingsBadge');
-    const wallpaperBg = document.getElementById('wallpaperBg');
+    const pinModal = document.getElementById('pinModal');
+    const pinDots = document.getElementById('pinDots').children;
+    const pinError = document.getElementById('pinError');
+    const livekitAudioPlayer = document.getElementById('livekitAudioPlayer');
+    const maymintAudioPlayer = document.getElementById('maymintAudioPlayer');
 
-    // Mobile Audio Unlocker: primes audio on user touch or click
-    function unlockMobileAudio() {
-      if (audioUnlocked) return;
-      try {
-        if (!maymintAudioPlayer.src) {
-          maymintAudioPlayer.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-        }
-        const p = maymintAudioPlayer.play();
-        if (p !== undefined) {
-          p.then(() => {
-            maymintAudioPlayer.pause();
-            audioUnlocked = true;
-            console.log('Mobile audio primed and unlocked!');
-          }).catch(() => {});
-        }
-      } catch (err) {}
-    }
-
-    ['touchstart', 'touchend', 'pointerdown', 'click'].forEach(evt => {
-      document.addEventListener(evt, unlockMobileAudio, { passive: true, once: true });
-    });
-
-    // Modal Elements
-    const configModal = document.getElementById('configModal');
-    const configOpenBtn = document.getElementById('configOpenBtn');
-    const configCloseBtn = document.getElementById('configCloseBtn');
-    const cfgVoiceSelect = document.getElementById('cfgVoiceSelect');
-    const cfgSttEngine = document.getElementById('cfgSttEngine');
-    const cfgSpeedSlider = document.getElementById('cfgSpeedSlider');
-    const cfgSpeedDisplay = document.getElementById('cfgSpeedDisplay');
-    const cfgPitchSlider = document.getElementById('cfgPitchSlider');
-    const cfgPitchDisplay = document.getElementById('cfgPitchDisplay');
-    const cfgModelSelect = document.getElementById('cfgModelSelect');
-    const cfgTempSlider = document.getElementById('cfgTempSlider');
-    const cfgTempDisplay = document.getElementById('cfgTempDisplay');
-    const cfgWallpaperSelect = document.getElementById('cfgWallpaperSelect');
-    const cfgBlurSlider = document.getElementById('cfgBlurSlider');
-    const cfgBlurDisplay = document.getElementById('cfgBlurDisplay');
-    const cfgOpacitySlider = document.getElementById('cfgOpacitySlider');
-    const cfgOpacityDisplay = document.getElementById('cfgOpacityDisplay');
-    const cfgSaveBtn = document.getElementById('cfgSaveBtn');
-    const cfgResetBtn = document.getElementById('cfgResetBtn');
-    const toastPill = document.getElementById('toastPill');
-
-    // Create 24 wave sticks
-    const visualizer = document.getElementById('visualizer');
+    // Create 24 Wave Sticks
     for (let i = 0; i < 24; i++) {
       const stick = document.createElement('div');
       stick.className = 'wave-stick';
@@ -2073,418 +958,21 @@
     }
     const waveSticks = document.querySelectorAll('.wave-stick');
 
-    // Toast Notification Helper
-    function showToast(msg) {
-      toastPill.innerText = msg;
-      toastPill.classList.add('show');
-      setTimeout(() => toastPill.classList.remove('show'), 3000);
-    }
-
-    // 1. Load Configuration from Server
-    async function loadConfig() {
-      try {
-        const res = await fetch('/api/config');
-        const cfg = await res.json();
-        
-        cfgVoiceSelect.value = cfg.voice || 'th-TH-PremwadeeNeural';
-        if (cfgSttEngine) {
-          cfgSttEngine.value = localStorage.getItem('maymint_stt_engine') || 'gemini';
-        }
-        
-        const speedNum = parseInt(cfg.speed) || 0;
-        cfgSpeedSlider.value = speedNum;
-        cfgSpeedDisplay.innerText = (speedNum >= 0 ? '+' : '') + speedNum + '%';
-
-        const pitchNum = parseInt(cfg.pitch) || 0;
-        cfgPitchSlider.value = pitchNum;
-        cfgPitchDisplay.innerText = (pitchNum >= 0 ? '+' : '') + pitchNum + 'Hz';
-
-        cfgModelSelect.value = cfg.model || 'auto';
-        cfgTempSlider.value = cfg.temperature !== undefined ? cfg.temperature : 0.7;
-        cfgTempDisplay.innerText = cfgTempSlider.value;
-
-        cfgWallpaperSelect.value = cfg.wallpaper_mode || 'custom';
-        applyWallpaper(cfg.wallpaper_mode || 'custom');
-
-        cfgBlurSlider.value = cfg.glass_blur || 32;
-        cfgBlurDisplay.innerText = cfgBlurSlider.value + 'px';
-        applyGlassBlur(cfgBlurSlider.value);
-
-        const opPercent = Math.round((cfg.glass_opacity || 0.42) * 100);
-        cfgOpacitySlider.value = opPercent;
-        cfgOpacityDisplay.innerText = opPercent + '%';
-        applyGlassOpacity(opPercent / 100);
-
-        if (cfg.auto_speak !== undefined) {
-          autoSpeakToggle.checked = Boolean(cfg.auto_speak);
-        }
-      } catch (e) {
-        console.warn('Failed to load /api/config:', e);
-      }
-    }
-    loadConfig();
-
-    // -------------------------------------------------------------------------
-    // 💬 Multi-Session & Persistent Chat History Engine
-    // -------------------------------------------------------------------------
-    let currentChatHistory = [];
-    let currentActiveSessionId = '';
-    let allSessionsList = [];
-
-    const sessionsModal = document.getElementById('sessionsModal');
-    const sessionsOpenBtn = document.getElementById('sessionsOpenBtn');
-    const sessionsCloseBtn = document.getElementById('sessionsCloseBtn');
-    const newSessionBtn = document.getElementById('newSessionBtn');
-    const drawerNewChatBtn = document.getElementById('drawerNewChatBtn');
-    const sessionsList = document.getElementById('sessionsList');
-    const sessionCountBadge = document.getElementById('sessionCountBadge');
-    const sessionsTotalCount = document.getElementById('sessionsTotalCount');
-
-    function renderHistoryMessages(messages) {
-      if (!messages || messages.length === 0) {
-        chatBox.innerHTML = `
-          <div class="msg-row">
-            <div class="msg-bubble maymint">
-              🌸 <strong>มายมิ้นท์:</strong> สวัสดีค่ะบอส! มายมิ้นท์พร้อมดูแลบอสแล้วนะคะ จะพิมพ์คุยหรือกดปุ่มไมค์พูดคุยกับมายได้ทันทีเลยค่ะบอส 💖✨
-            </div>
-          </div>`;
-        return;
-      }
-
-      chatBox.innerHTML = '';
-      for (const m of messages) {
-        appendChatMessage(m.sender, m.text, m.tool_events, m.audio_url, false);
-      }
-      setTimeout(() => {
-        chatBox.scrollTop = chatBox.scrollHeight;
-      }, 30);
-    }
-
-    async function loadSessions() {
-      try {
-        const res = await fetch('/api/sessions');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success) {
-            currentActiveSessionId = data.active_session_id;
-            allSessionsList = data.sessions || [];
-            if (sessionCountBadge) sessionCountBadge.innerText = allSessionsList.length;
-            if (sessionsTotalCount) sessionsTotalCount.innerText = `มีทั้งหมด ${allSessionsList.length} เซสชั่น`;
-          }
-        }
-      } catch (err) {
-        console.warn('Load sessions error:', err);
-      }
-    }
-
-    function renderSessionsList() {
-      if (!sessionsList) return;
-      if (allSessionsList.length === 0) {
-        sessionsList.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-dim);">ยังไม่มีประวัติเซสชั่นย้อนหลังค่ะ</div>`;
-        return;
-      }
-      sessionsList.innerHTML = '';
-      allSessionsList.forEach(s => {
-        const card = document.createElement('div');
-        const isActive = s.id === currentActiveSessionId;
-        card.className = `session-card ${isActive ? 'active' : ''}`;
-        
-        const dateStr = new Date(s.updated_at * 1000).toLocaleString('th-TH', {
-          dateStyle: 'medium',
-          timeStyle: 'short'
-        });
-
-        card.innerHTML = `
-          <div class="session-info">
-            <div class="session-card-title">${escapeHtml(s.title || 'บทสนทนา')}</div>
-            <div class="session-card-meta">
-              <span>🕒 ${dateStr}</span>
-              <span class="session-card-badge">💬 ${s.message_count || 0} ข้อความ</span>
-              ${isActive ? '<span style="color:#4ade80; font-weight:600;">🟢 กำลังเปิดอยู่</span>' : ''}
-            </div>
-          </div>
-          <div class="session-actions" onclick="event.stopPropagation();">
-            ${!isActive ? `<button class="session-switch-btn" onclick="switchToSession('${s.id}')">📂 เปิดดู</button>` : ''}
-            <button class="session-del-btn" title="ลบเซสชั่นนี้" onclick="deleteSession('${s.id}')">🗑️</button>
-          </div>
-        `;
-        card.onclick = () => {
-          if (!isActive) switchToSession(s.id);
-        };
-        sessionsList.appendChild(card);
+    function startWaveform() {
+      const heights = [14, 22, 28, 18, 30, 24, 16, 24, 28, 18, 14, 26, 30, 20, 24, 16, 26, 20, 14, 28, 22, 16, 14, 10];
+      waveSticks.forEach((stick, idx) => {
+        stick.style.height = `${heights[idx % heights.length]}px`;
       });
     }
 
-    async function openSessionsModal() {
-      await loadSessions();
-      renderSessionsList();
-      if (sessionsModal) sessionsModal.classList.add('open');
+    function stopWaveform() {
+      waveSticks.forEach(stick => { stick.style.height = '8px'; });
     }
 
-    function closeSessionsModal() {
-      if (sessionsModal) sessionsModal.classList.remove('open');
-    }
-
-    async function createNewSession() {
-      try {
-        const res = await fetch('/api/sessions/new', { method: 'POST' });
-        const data = await res.json();
-        if (data.success) {
-          currentActiveSessionId = data.active_session_id;
-          currentChatHistory = [];
-          try {
-            localStorage.removeItem('maymint_chat_history');
-          } catch(e) {}
-          renderHistoryMessages([]);
-          closeSessionsModal();
-          showToast('✨ เริ่มเซสชั่นใหม่เรียบร้อยแล้วค่ะบอส (เซสชั่นเดิมถูกเก็บไว้ในประวัติ) 💖');
-          loadSessions();
-        }
-      } catch (err) {
-        console.error('Create new session error:', err);
-      }
-    }
-
-    async function switchToSession(sid) {
-      try {
-        const res = await fetch('/api/sessions/switch', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: sid })
-        });
-        const data = await res.json();
-        if (data.success) {
-          currentActiveSessionId = data.active_session_id;
-          currentChatHistory = data.history || [];
-          try {
-            localStorage.setItem('maymint_chat_history', JSON.stringify(currentChatHistory));
-          } catch(e) {}
-          renderHistoryMessages(currentChatHistory);
-          closeSessionsModal();
-          const title = data.session?.title || 'ที่เลือก';
-          showToast(`📂 เปิดเซสชั่น "${title}" เรียบร้อยแล้วค่ะบอส 💖`);
-          loadSessions();
-        }
-      } catch (err) {
-        console.error('Switch session error:', err);
-      }
-    }
-
-    async function deleteSession(sid) {
-      if (!confirm('ยืนยันการลบเซสชั่นนี้ใช่ไหมคะบอส?')) return;
-      try {
-        const res = await fetch('/api/sessions/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: sid })
-        });
-        const data = await res.json();
-        if (data.success) {
-          await loadSessions();
-          renderSessionsList();
-          showToast('🗑️ ลบเซสชั่นเรียบร้อยแล้วค่ะ');
-          if (sid === currentActiveSessionId) {
-            loadChatHistory();
-          }
-        }
-      } catch (err) {
-        console.error('Delete session error:', err);
-      }
-    }
-
-    async function loadChatHistory() {
-      // 1. Instant cache load from localStorage (0ms display on refresh)
-      try {
-        const cached = localStorage.getItem('maymint_chat_history');
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            currentChatHistory = parsed;
-            renderHistoryMessages(currentChatHistory);
-          }
-        }
-      } catch (err) {
-        console.warn('LocalStorage history load error:', err);
-      }
-
-      // 2. Fetch fresh history from server
-      try {
-        const res = await fetch('/api/history');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && Array.isArray(data.history)) {
-            currentChatHistory = data.history;
-            try {
-              localStorage.setItem('maymint_chat_history', JSON.stringify(currentChatHistory));
-            } catch(e) {}
-            renderHistoryMessages(currentChatHistory);
-          }
-        }
-      } catch (err) {
-        console.warn('Server history fetch error:', err);
-      }
-      loadSessions();
-    }
-
-    function recordHistoryMessage(sender, text, toolEvents = null, audioUrl = null) {
-      const item = {
-        id: `msg_${Date.now()}_${sender === 'user' ? 'u' : 'a'}`,
-        timestamp: Math.floor(Date.now() / 1000),
-        sender: sender,
-        text: text,
-        tool_events: toolEvents,
-        audio_url: audioUrl
-      };
-      currentChatHistory.push(item);
-      try {
-        localStorage.setItem('maymint_chat_history', JSON.stringify(currentChatHistory));
-      } catch(e) {}
-      loadSessions();
-    }
-
-    // Trigger initial history & sessions load
-    loadChatHistory();
-
-    // Sliders Live Feedback
-    cfgSpeedSlider.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value);
-      cfgSpeedDisplay.innerText = (val >= 0 ? '+' : '') + val + '%';
-    });
-
-    cfgPitchSlider.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value);
-      cfgPitchDisplay.innerText = (val >= 0 ? '+' : '') + val + 'Hz';
-    });
-
-    cfgTempSlider.addEventListener('input', (e) => {
-      cfgTempDisplay.innerText = e.target.value;
-    });
-
-    cfgBlurSlider.addEventListener('input', (e) => {
-      cfgBlurDisplay.innerText = e.target.value + 'px';
-      applyGlassBlur(e.target.value);
-    });
-
-    cfgOpacitySlider.addEventListener('input', (e) => {
-      cfgOpacityDisplay.innerText = e.target.value + '%';
-      applyGlassOpacity(parseInt(e.target.value) / 100);
-    });
-
-    function applyGlassBlur(val) {
-      document.documentElement.style.setProperty('--glass-blur', `${val}px`);
-    }
-
-    function applyGlassOpacity(val) {
-      document.documentElement.style.setProperty('--glass-opacity', val);
-    }
-
-    async function applyWallpaper(mode) {
-      if (mode === 'bing') {
-        try {
-          const res = await fetch('/api/bing-wallpaper');
-          const data = await res.json();
-          if (data.url) wallpaperBg.style.backgroundImage = `url('${data.url}')`;
-        } catch (e) {
-          wallpaperBg.style.backgroundImage = "url('/background.jpg')";
-        }
-      } else {
-        wallpaperBg.style.backgroundImage = "url('/background.jpg')";
-      }
-    }
-
-    // Modal Open & Close
-    configOpenBtn.addEventListener('click', () => {
-      configModal.classList.add('open');
-    });
-
-    configCloseBtn.addEventListener('click', () => {
-      configModal.classList.remove('open');
-    });
-
-    configModal.addEventListener('click', (e) => {
-      if (e.target === configModal) configModal.classList.remove('open');
-    });
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') configModal.classList.remove('open');
-    });
-
-    // Save Settings
-    cfgSaveBtn.addEventListener('click', async () => {
-      const speedVal = (parseInt(cfgSpeedSlider.value) >= 0 ? '+' : '') + parseInt(cfgSpeedSlider.value) + '%';
-      const pitchVal = (parseInt(cfgPitchSlider.value) >= 0 ? '+' : '') + parseInt(cfgPitchSlider.value) + 'Hz';
-      
-      const payload = {
-        voice: cfgVoiceSelect.value,
-        speed: speedVal,
-        pitch: pitchVal,
-        model: cfgModelSelect.value,
-        temperature: parseFloat(cfgTempSlider.value),
-        wallpaper_mode: cfgWallpaperSelect.value,
-        glass_blur: parseInt(cfgBlurSlider.value),
-        glass_opacity: parseInt(cfgOpacitySlider.value) / 100,
-        auto_speak: autoSpeakToggle.checked
-      };
-
-      try {
-        const res = await fetch('/api/config', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (data.success) {
-          if (cfgSttEngine) {
-            localStorage.setItem('maymint_stt_engine', cfgSttEngine.value);
-          }
-          applyWallpaper(payload.wallpaper_mode);
-          configModal.classList.remove('open');
-          showToast('✅ บันทึกการตั้งค่าระบบเรียบร้อยแล้วค่ะบอส 💖');
-        }
-      } catch (err) {
-        alert('เกิดข้อผิดพลาดในการบันทึก: ' + err);
-      }
-    });
-
-    // Reset Defaults
-    cfgResetBtn.addEventListener('click', () => {
-      cfgVoiceSelect.value = 'th-TH-PremwadeeNeural';
-      if (cfgSttEngine) {
-        cfgSttEngine.value = 'gemini';
-        localStorage.setItem('maymint_stt_engine', 'gemini');
-      }
-      cfgSpeedSlider.value = 0;
-      cfgSpeedDisplay.innerText = '+0%';
-      cfgPitchSlider.value = 0;
-      cfgPitchDisplay.innerText = '+0Hz';
-      cfgModelSelect.value = 'auto';
-      cfgTempSlider.value = 0.7;
-      cfgTempDisplay.innerText = '0.7';
-      cfgWallpaperSelect.value = 'custom';
-      cfgBlurSlider.value = 32;
-      cfgBlurDisplay.innerText = '32px';
-      cfgOpacitySlider.value = 42;
-      cfgOpacityDisplay.innerText = '42%';
-      applyGlassBlur(32);
-      applyGlassOpacity(0.42);
-      applyWallpaper('custom');
-    });
-
-    // Auto-Speak Toggle Sync
-    autoSpeakToggle.addEventListener('change', async () => {
-      try {
-        await fetch('/api/config', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ auto_speak: autoSpeakToggle.checked })
-        });
-      } catch (e) {}
-    });
-
-    // 2. Stage Management (1 to 5)
     function setStage(stageNum, textDesc) {
       for (let i = 1; i <= 5; i++) {
         const capsule = document.getElementById(`stage-${i}`);
+        if (!capsule) continue;
         capsule.classList.remove('active', 'done');
         if (i < stageNum) capsule.classList.add('done');
         else if (i === stageNum) capsule.classList.add('active');
@@ -2495,1009 +983,305 @@
     function resetStages() {
       for (let i = 1; i <= 5; i++) {
         const capsule = document.getElementById(`stage-${i}`);
-        capsule.classList.remove('active', 'done');
+        if (capsule) capsule.classList.remove('active', 'done');
       }
       currentStatusText.innerText = "พร้อมรับฟังคำสั่งเสียงบอส";
     }
 
-    // 3. Optimized Waveform (Static Active Indicator, Zero CPU Loop)
-    function startWaveform() {
-      const heights = [14, 20, 26, 18, 28, 22, 16, 22, 26, 18, 14, 24, 28, 18, 22, 16, 24, 18, 14, 26, 20, 16, 14, 10];
-      waveSticks.forEach((stick, idx) => {
-        stick.style.height = `${heights[idx % heights.length]}px`;
-      });
-    }
+    // Mode Switcher
+    function setMode(mode) {
+      currentMode = mode;
+      localStorage.setItem('maymint_mode', mode);
 
-    function stopWaveform() {
-      waveSticks.forEach(stick => { stick.style.height = '8px'; });
-    }
+      const casualBtn = document.getElementById('modeCasualBtn');
+      const workBtn = document.getElementById('modeWorkBtn');
 
-
-    // =========================================================================
-    // 4. HYBRID VOICE STT ENGINE (Web Speech API + 16kHz WAV Recorder Fallback)
-    // =========================================================================
-    let micAudioContext = null;
-    let micMediaStream = null;
-    let micSourceNode = null;
-    let micProcessorNode = null;
-    let pcmBuffers = [];
-    let pcmSampleLength = 0;
-    let lastRecognizedTranscript = '';
-    let speechRecognitionInstance = null;
-    let consecutiveSilenceCount = 0;
-
-    // Helper: Convert Raw PCM Float32 to High-Fidelity 16-bit Mono WAV Blob with Studio Peak Normalization
-    function encodePcmToWav(buffers, totalLength, inputSampleRate) {
-      const merged = new Float32Array(totalLength);
-      let offset = 0;
-      for (let i = 0; i < buffers.length; i++) {
-        merged.set(buffers[i], offset);
-        offset += buffers[i].length;
-      }
-
-      // Studio Peak Normalization / Safe Auto-Gain (Brings quiet voices up cleanly without clipping)
-      let maxPeak = 0;
-      for (let i = 0; i < merged.length; i++) {
-        const absVal = Math.abs(merged[i]);
-        if (absVal > maxPeak) maxPeak = absVal;
-      }
-      let gain = 1.0;
-      if (maxPeak > 0.01 && maxPeak < 0.75) {
-        gain = Math.min(3.2, 0.85 / maxPeak);
-      }
-
-      // Preserve native AudioContext sample rate (e.g. 44.1kHz or 48kHz) losslessly without aliasing distortion
-      const sampleRate = inputSampleRate || 44100;
-      const wavBuffer = new ArrayBuffer(44 + merged.length * 2);
-      const view = new DataView(wavBuffer);
-
-      function writeString(v, off, str) {
-        for (let i = 0; i < str.length; i++) {
-          v.setUint8(off + i, str.charCodeAt(i));
-        }
-      }
-
-      writeString(view, 0, 'RIFF');
-      view.setUint32(4, 36 + merged.length * 2, true);
-      writeString(view, 8, 'WAVE');
-      writeString(view, 12, 'fmt ');
-      view.setUint32(16, 16, true);                         // Subchunk1Size
-      view.setUint16(20, 1, true);                          // AudioFormat (PCM = 1)
-      view.setUint16(22, 1, true);                          // NumChannels (1 = Mono)
-      view.setUint32(24, sampleRate, true);                 // SampleRate (Native 44.1k/48k)
-      view.setUint32(28, sampleRate * 2, true);             // ByteRate (SampleRate * 1 * 16 / 8)
-      view.setUint16(32, 2, true);                          // BlockAlign (1 * 16 / 8)
-      view.setUint16(34, 16, true);                         // BitsPerSample
-      writeString(view, 36, 'data');
-      view.setUint32(40, merged.length * 2, true);
-
-      let pcmOffset = 44;
-      for (let i = 0; i < merged.length; i++) {
-        let s = Math.max(-1, Math.min(1, merged[i] * gain));
-        view.setInt16(pcmOffset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-        pcmOffset += 2;
-      }
-
-      return new Blob([view], { type: 'audio/wav' });
-    }
-
-    let speechSilenceTimer = null;
-    let maxRecordingSafetyTimer = null;
-    let vadSpeechDetected = false;
-    let vadLastSpeechTime = Date.now();
-
-    async function startListening() {
-      if (isRecording) return;
-      if (isProcessing) {
-        micHint.innerText = 'มายมิ้นท์กำลังประมวลผลคำตอบอยู่ค่ะ รอสักครู่น้าบอส ⏳';
-        return;
-      }
-
-      unlockMobileAudio();
-
-      // Ensure any playing audio is stopped cleanly
-      try {
-        maymintAudioPlayer.pause();
-        maymintAudioPlayer.currentTime = 0;
-      } catch (e) {}
-      stopWaveform();
-
-      if (speechSilenceTimer) { clearTimeout(speechSilenceTimer); speechSilenceTimer = null; }
-      if (maxRecordingSafetyTimer) { clearTimeout(maxRecordingSafetyTimer); maxRecordingSafetyTimer = null; }
-
-      isRecording = true;
-      vadSpeechDetected = false;
-      vadLastSpeechTime = Date.now();
-
-      micButton.classList.add('recording');
-      micRipple.style.opacity = '1';
-      lastRecognizedTranscript = '';
-      pcmBuffers = [];
-      pcmSampleLength = 0;
-
-      const isContinuous = continuousModeToggle && continuousModeToggle.checked;
-      micHint.innerText = isContinuous
-        ? '🎧 [โหมดคุยต่อเนื่อง] กำลังฟังเสียงบอส... (พูดคุยได้เลยค่ะ)'
-        : 'กำลังฟังเสียงบอส... (พูดจบแล้วระบบจะส่งให้อัตโนมัติทันทีค่ะ)';
-      setStage(1, isContinuous ? '🎙️ [คุยต่อเนื่อง] กำลังฟังเสียงบอส...' : '🎙️ [สเต็ป 1/5] กำลังฟังเสียงบอส...');
-      startWaveform();
-
-      // Safety timeout: If 10 seconds of absolute silence with no speech, auto-cancel
-      maxRecordingSafetyTimer = setTimeout(() => {
-        if (isRecording && !lastRecognizedTranscript && !vadSpeechDetected) {
-          micHint.innerText = 'ไม่พบเสียงพูด ปิดไมค์อัตโนมัติค่ะบอส';
-          stopListening();
-        }
-      }, 10000);
-
-      // 1. Start High-Fidelity AudioContext PCM Recorder (Zero Loopback & Universal VAD)
-      try {
-        if (!micMediaStream || !micMediaStream.active) {
-          micMediaStream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true
-            }
-          });
-        }
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (AudioContextClass) {
-          if (!micAudioContext || micAudioContext.state === 'closed') {
-            micAudioContext = new AudioContextClass();
-          }
-          if (micAudioContext.state === 'suspended') {
-            await micAudioContext.resume();
-          }
-          micSourceNode = micAudioContext.createMediaStreamSource(micMediaStream);
-          micProcessorNode = micAudioContext.createScriptProcessor(4096, 1, 1);
-          micProcessorNode.onaudioprocess = (e) => {
-            if (!isRecording) return;
-            const inputData = e.inputBuffer.getChannelData(0);
-            pcmBuffers.push(new Float32Array(inputData));
-            pcmSampleLength += inputData.length;
-
-            // Zero out output channel to eliminate microphone acoustic loopback/echo
-            const outputData = e.outputBuffer.getChannelData(0);
-            outputData.fill(0);
-
-            // Universal RMS Voice Activity Detector (VAD) for both modes
-            let sumSquares = 0;
-            for (let i = 0; i < inputData.length; i++) {
-              sumSquares += inputData[i] * inputData[i];
-            }
-            const rms = Math.sqrt(sumSquares / inputData.length);
-
-            if (rms > 0.015) {
-              vadSpeechDetected = true;
-              vadLastSpeechTime = Date.now();
-            } else if (vadSpeechDetected && (Date.now() - vadLastSpeechTime > 1400)) {
-              // 1.4s of silence after speaking audio -> auto submit!
-              vadSpeechDetected = false;
-              if (isRecording) {
-                console.log('Audio VAD silence detected, auto-submitting...');
-                stopListening();
-              }
-            }
-          };
-          micSourceNode.connect(micProcessorNode);
-          micProcessorNode.connect(micAudioContext.destination);
-        }
-      } catch (micErr) {
-        console.warn('Microphone AudioContext init error:', micErr);
-      }
-
-      // 2. Start Web Speech Recognition if available (For Instant Live Visual Preview & Auto-Send Silence Timer)
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        try {
-          if (speechRecognitionInstance) {
-            try { speechRecognitionInstance.abort(); } catch(e) {}
-          }
-          speechRecognitionInstance = new SpeechRecognition();
-          speechRecognitionInstance.lang = 'th-TH';
-          speechRecognitionInstance.continuous = true;
-          speechRecognitionInstance.interimResults = true;
-
-          speechRecognitionInstance.onresult = (event) => {
-            let fullText = '';
-            for (let i = 0; i < event.results.length; ++i) {
-              fullText += event.results[i][0].transcript;
-            }
-            if (fullText) {
-              lastRecognizedTranscript = fullText.trim();
-              micHint.innerText = `ได้ยิน: "${lastRecognizedTranscript}"`;
-              vadSpeechDetected = true;
-              vadLastSpeechTime = Date.now();
-
-              // 🔥 AUTO-SEND: Reset 1.2s silence timer. When user pauses for 1.2s, auto-submit!
-              if (speechSilenceTimer) clearTimeout(speechSilenceTimer);
-              speechSilenceTimer = setTimeout(() => {
-                if (isRecording) {
-                  console.log('Speech silence detected, auto-submitting:', lastRecognizedTranscript);
-                  stopListening();
-                }
-              }, 1200);
-            }
-          };
-
-          speechRecognitionInstance.onend = () => {
-            if (isRecording) {
-              // If speech was recognized, Chrome finished endpointing -> submit now!
-              if (lastRecognizedTranscript && lastRecognizedTranscript.length > 0) {
-                stopListening();
-              } else if (pcmSampleLength > 16000 && vadSpeechDetected) {
-                stopListening();
-              }
-            }
-          };
-
-          speechRecognitionInstance.onerror = (event) => {
-            console.warn('SpeechRecognition error:', event.error);
-            if (event.error !== 'no-speech' && event.error !== 'aborted') {
-              micHint.innerText = '🎙️ กำลังบันทึกเสียง Lossless ส่งเข้า AI Gemini...';
-            }
-          };
-
-          speechRecognitionInstance.start();
-        } catch (recStartErr) {
-          console.warn('SpeechRecognition start failed, relying on PCM recorder:', recStartErr);
-        }
-      }
-    }
-
-    async function stopListening() {
-      if (!isRecording) return;
-      isRecording = false;
-
-      if (speechSilenceTimer) {
-        clearTimeout(speechSilenceTimer);
-        speechSilenceTimer = null;
-      }
-      if (maxRecordingSafetyTimer) {
-        clearTimeout(maxRecordingSafetyTimer);
-        maxRecordingSafetyTimer = null;
-      }
-
-      micButton.classList.remove('recording');
-      micRipple.style.opacity = '0';
-      stopWaveform();
-
-      if (speechRecognitionInstance) {
-        try { speechRecognitionInstance.stop(); } catch(e) {}
-      }
-
-      if (micProcessorNode && micSourceNode) {
-        try {
-          micSourceNode.disconnect();
-          micProcessorNode.disconnect();
-        } catch(e) {}
-      }
-
-      const finalText = (lastRecognizedTranscript || '').trim();
-      const currentBuffers = pcmBuffers;
-      const currentLength = pcmSampleLength;
-      const sampleRate = micAudioContext ? micAudioContext.sampleRate : 44100;
-
-      pcmBuffers = [];
-      pcmSampleLength = 0;
-      lastRecognizedTranscript = '';
-
-      const preferredEngine = (cfgSttEngine ? cfgSttEngine.value : null) || localStorage.getItem('maymint_stt_engine') || 'gemini';
-
-      // Primary Route: High-Fidelity Server-Side Multimodal STT (Gemini 2.5 Flash with Studio Lossless Audio)
-      if (preferredEngine === 'gemini' && currentBuffers.length > 0 && currentLength > 3200) {
-        micHint.innerText = '🎙️ กำลังถอดความเสียงด้วย AI Gemini 2.5 Flash (Lossless Studio Audio)...';
-        setStage(2, '✍️ [สเต็ป 2/5] ถอดความเสียงด้วย AI Gemini 2.5 Flash...');
-        try {
-          const wavBlob = encodePcmToWav(currentBuffers, currentLength, sampleRate);
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64Data = reader.result ? reader.result.split(',')[1] : null;
-            if (base64Data) {
-              consecutiveSilenceCount = 0;
-              submitUserSpeech(null, base64Data);
-            } else if (finalText && finalText.length > 0) {
-              consecutiveSilenceCount = 0;
-              submitUserSpeech(finalText);
-            } else {
-              handleNoSpeechFallback();
-            }
-          };
-          reader.readAsDataURL(wavBlob);
-          return;
-        } catch (encErr) {
-          console.error('WAV encoding error, falling back to Web Speech text:', encErr);
-        }
-      }
-
-      // Secondary Route: Web Speech API (if explicitly preferred by user or if audio buffer is too short)
-      if (finalText && finalText.length > 0) {
-        consecutiveSilenceCount = 0;
-        submitUserSpeech(finalText);
-        return;
-      }
-
-      // Fallback if audio buffer exists (even if preferredEngine was webspeech but produced no text)
-      if (currentBuffers.length > 0 && currentLength > 3200) {
-        micHint.innerText = '🎙️ สำรองด้วย AI Gemini 2.5 Flash STT...';
-        setStage(2, '✍️ [สเต็ป 2/5] ถอดความเสียงด้วย AI Gemini 2.5 Flash...');
-        try {
-          const wavBlob = encodePcmToWav(currentBuffers, currentLength, sampleRate);
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64Data = reader.result ? reader.result.split(',')[1] : null;
-            if (base64Data) {
-              consecutiveSilenceCount = 0;
-              submitUserSpeech(null, base64Data);
-            } else {
-              handleNoSpeechFallback();
-            }
-          };
-          reader.readAsDataURL(wavBlob);
-          return;
-        } catch (encErr) {
-          console.error('WAV encoding error:', encErr);
-        }
-      }
-
-      // Silence or empty input
-      handleNoSpeechFallback();
-    }
-
-    function handleNoSpeechFallback() {
-      resetStages();
-      const isContinuous = continuousModeToggle && continuousModeToggle.checked;
-      if (isContinuous) {
-        consecutiveSilenceCount++;
-        if (consecutiveSilenceCount <= 2) {
-          micHint.innerText = '🎧 [โหมดคุยต่อเนื่อง] ยังรอฟังเสียงบอสอยู่นะคะ... 💖';
-          setTimeout(() => {
-            if (continuousModeToggle.checked && !isRecording && !isProcessing) {
-              startListening();
-            }
-          }, 800);
-          return;
-        } else {
-          consecutiveSilenceCount = 0;
-          micHint.innerText = 'พักการฟังชั่วคราวค่ะ คลิกปุ่มไมค์เพื่อคุยต่อได้เสมอเลยนะคะบอส 💖';
-          return;
-        }
-      }
-      micHint.innerText = 'คลิกปุ่มไมค์เพื่อเริ่มพูดคุยกับมายมิ้นท์ได้เลยค่ะบอส';
-    }
-
-    // Mic Button Click Handler
-    micButton.addEventListener('click', () => {
-      unlockMobileAudio();
-      if (isRecording) {
-        stopListening();
+      if (mode === 'casual') {
+        casualBtn.className = 'mode-btn active casual';
+        workBtn.className = 'mode-btn';
       } else {
-        startListening();
-      }
-    });
-
-    // 5. Submit Speech / Text
-    let isProcessing = false;
-
-    async function submitUserSpeech(text = null, audioB64 = null) {
-      if (isProcessing) return;
-      if (!text && !audioB64) return;
-      isProcessing = true;
-
-      if (sendTextBtn) {
-        sendTextBtn.disabled = true;
-        sendTextBtn.style.opacity = '0.6';
-        sendTextBtn.innerHTML = '<span>กำลังคิด... 🧠</span>';
+        casualBtn.className = 'mode-btn';
+        workBtn.className = 'mode-btn active work';
       }
 
-      const displayText = text || '🎙️ [คำสั่งเสียง กำลังถอดความ...]';
-      appendChatMessage('user', displayText);
-      recordHistoryMessage('user', displayText);
-      setStage(2, text ? '✍️ [สเต็ป 2/5] ถอดความเสียงสำเร็จ กำลังส่งวิเคราะห์...' : '✍️ [สเต็ป 2/5] กำลังถอดความเสียงด้วย AI 9Router...');
+      // Notify LiveKit Agent via DataChannel if connected
+      if (livekitRoom && livekitRoom.state === 'connected') {
+        try {
+          const payload = JSON.stringify({ type: 'mode_change', mode: currentMode });
+          livekitRoom.localParticipant.publishData(new TextEncoder().encode(payload));
+        } catch (e) {}
+      }
+    }
 
-      // Immediate visual thinking indicator
-      const thinkingRow = document.createElement('div');
-      thinkingRow.className = 'msg-row';
-      thinkingRow.id = 'thinkingBubbleRow';
-      thinkingRow.innerHTML = `
-        <div class="msg-bubble maymint" style="opacity: 0.85;">
-          🌸 <strong>มายมิ้นท์:</strong> กำลังคิดและประมวลผลคำตอบให้บอสอยู่นะคะ... ⏳
-        </div>
-      `;
-      chatBox.appendChild(thinkingRow);
-      chatBox.scrollTop = chatBox.scrollHeight;
-
-      try {
-        setStage(3, `🧠 [สเต็ป 3/5] สมอง ${cfgModelSelect.value} กำลังคิดคำตอบ...`);
-        const payload = {
-          voice: cfgVoiceSelect.value,
-          speed: (parseInt(cfgSpeedSlider.value) >= 0 ? '+' : '') + parseInt(cfgSpeedSlider.value) + '%',
-          pitch: (parseInt(cfgPitchSlider.value) >= 0 ? '+' : '') + parseInt(cfgPitchSlider.value) + 'Hz',
-          model: cfgModelSelect.value,
-          temperature: parseFloat(cfgTempSlider.value)
-        };
-        if (text) {
-          payload.text = text;
-        } else if (audioB64) {
-          payload.audio_b64 = audioB64;
+    // PIN Authentication Functions
+    function enterPinDigit(digit) {
+      if (pinInput.length < 4) {
+        pinInput += digit;
+        updatePinDots();
+        if (pinInput.length === 4) {
+          submitPin();
         }
+      }
+    }
 
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
+    function backspacePin() {
+      if (pinInput.length > 0) {
+        pinInput = pinInput.slice(0, -1);
+        updatePinDots();
+      }
+    }
 
-        const existingThinking = document.getElementById('thinkingBubbleRow');
-        if (existingThinking) existingThinking.remove();
+    function clearPin() {
+      pinInput = '';
+      updatePinDots();
+      pinError.innerText = '';
+    }
 
-        // If audio input was transcribed on the server, update the user bubble with the real text!
-        if (!text && data.user_text) {
-          const userBubbles = chatBox.querySelectorAll('.msg-bubble.user');
-          if (userBubbles.length > 0) {
-            userBubbles[userBubbles.length - 1].innerText = data.user_text;
-          }
-        }
-
-        if (data.reply_text) {
-          appendChatMessage('maymint', data.reply_text, data.tool_events, data.audio_url, true, data.cognitive_tier, data.model, data.cognitive_features, data.route_reason);
-          recordHistoryMessage('maymint', data.reply_text, data.tool_events, data.audio_url);
-
-          if (data.applied_corrections && data.applied_corrections.length > 0) {
-            const fixList = data.applied_corrections.map(c => `${c.matched || c.alias} ➜ ${c.replaced_with || c.canonical}`).join(', ');
-            if (toastPill) {
-              toastPill.innerText = `✨ ตรวจแก้คำเพี้ยนอัตโนมัติ: ${fixList}`;
-              toastPill.style.display = 'block';
-              setTimeout(() => { toastPill.style.display = 'none'; }, 4500);
-            }
-          }
-
-          if (data.timings) {
-            const tierBadge = data.cognitive_tier === 'deep' ? '🧠 คิดลึกซึ้ง' : (data.cognitive_tier === 'fast' ? '⚡ ตอบไว' : '');
-            const modelName = (data.model || '').replace('ag/', '');
-            const featBrief = (data.cognitive_features && data.cognitive_features.length > 0) ? ` [${data.cognitive_features[0].split('(')[0].replace('Deep Domain: ', '').trim()}]` : '';
-            const chunkInfo = (data.timings.tts_chunks && data.timings.tts_chunks > 1) ? ` (${data.timings.tts_chunks} ท่อนต่อเนื่อง)` : '';
-            const sttInfo = data.timings.stt_seconds ? ` | STT: ${data.timings.stt_seconds}s` : '';
-            timingsBadge.innerText = `${tierBadge ? tierBadge + featBrief + ' (' + modelName + ') | ' : ''}⏱️ LLM: ${data.timings.llm_seconds}s | TTS: ${data.timings.tts_seconds}s${chunkInfo}${sttInfo} | รวม: ${data.timings.total_seconds}s`;
-          }
-
-          if (autoSpeakToggle.checked && data.audio_url) {
-            const chunkDesc = (data.timings && data.timings.tts_chunks > 1) ? ` ${data.timings.tts_chunks} ท่อนต่อเนื่อง` : '';
-            setStage(4, `🎙️ [สเต็ป 4/5] สร้างเสียงพูดต่อเนื่อง${chunkDesc} เสร็จสิ้น...`);
-            playAudioResponse(data.audio_url);
-          } else {
-            setStage(5, '✅ ตอบคำถามเรียบร้อยแล้วค่ะ');
-            setTimeout(resetStages, 2500);
-
-            // If auto-speak is off but continuous mode is enabled:
-            if (continuousModeToggle && continuousModeToggle.checked && !isRecording) {
-              setTimeout(() => {
-                if (continuousModeToggle.checked && !isRecording && !isProcessing) {
-                  startListening();
-                }
-              }, 1000);
-            }
-          }
+    function updatePinDots() {
+      for (let i = 0; i < 4; i++) {
+        if (i < pinInput.length) {
+          pinDots[i].classList.add('filled');
         } else {
-          const errMsg = data.error || 'ขอโทษด้วยนะคะบอส มายไม่ได้รับข้อความตอบกลับจากระบบค่ะ 🥺';
-          appendChatMessage('maymint', errMsg);
-          resetStages();
-        }
-      } catch (err) {
-        console.error('Chat error:', err);
-        const existingThinking = document.getElementById('thinkingBubbleRow');
-        if (existingThinking) existingThinking.remove();
-        appendChatMessage('maymint', 'ขอโทษด้วยนะคะบอส มีข้อผิดพลาดในการเชื่อมต่อเครือข่ายค่ะ 🥺');
-        resetStages();
-      } finally {
-        const existingThinking = document.getElementById('thinkingBubbleRow');
-        if (existingThinking) existingThinking.remove();
-        isProcessing = false;
-
-        if (sendTextBtn) {
-          sendTextBtn.disabled = false;
-          sendTextBtn.style.opacity = '1';
-          sendTextBtn.innerHTML = '<span>ส่ง 🚀</span>';
+          pinDots[i].classList.remove('filled');
         }
       }
     }
 
-    // 6. Play Audio (Mobile & Desktop Safari/Chrome Friendly)
-    function playAudioResponse(url) {
-      if (!url) return;
-      pendingAudioUrl = url;
-
+    async function submitPin() {
       try {
-        maymintAudioPlayer.pause();
-        maymintAudioPlayer.currentTime = 0;
-      } catch (e) {}
-
-      maymintAudioPlayer.src = url;
-      maymintAudioPlayer.load();
-
-      setStage(5, '🔊 [สเต็ป 5/5] มายมิ้นท์กำลังพูดออกเสียง...');
-      audioPlayingStatus.innerText = `🔊 กำลังพูดเสียง: ${cfgVoiceSelect.value} (อ่านครบถ้วนต่อเนื่อง)`;
-
-      stopAudioBtn.style.display = 'inline-block';
-      startWaveform();
-
-      maymintAudioPlayer.onended = () => {
-        stopWaveform();
-        audioPlayingStatus.innerText = '✅ พูดเสร็จเรียบร้อยแล้วค่ะ';
-        stopAudioBtn.style.display = 'none';
-        hideMobileAudioPrompt();
-        resetStages();
-
-        // Seamless Continuous Hands-Free Conversation:
-        if (continuousModeToggle && continuousModeToggle.checked && !isProcessing && !isRecording) {
-          consecutiveSilenceCount = 0;
-          micHint.innerText = '🎧 [โหมดคุยต่อเนื่อง] กำลังเปิดไมค์รอฟังบอสคุยต่อค่ะ...';
-          setStage(1, '🎙️ [คุยต่อเนื่อง] กำลังฟังเสียงบอส...');
-          // 600ms safety pause so microphone doesn't capture speaker echo
-          setTimeout(() => {
-            if (continuousModeToggle.checked && !isRecording && !isProcessing) {
-              startListening();
-            }
-          }, 600);
-        }
-      };
-
-      maymintAudioPlayer.onerror = (err) => {
-        console.error('Audio play error:', err);
-        stopWaveform();
-        audioPlayingStatus.innerText = '⚠️ ไม่สามารถเล่นเสียงได้ (ไฟล์เสียงอาจหมดอายุแล้วค่ะ)';
-        stopAudioBtn.style.display = 'none';
-        hideMobileAudioPrompt();
-        resetStages();
-      };
-
-      const playPromise = maymintAudioPlayer.play();
-      if (playPromise !== undefined) {
-        playPromise.then(() => {
-          hideMobileAudioPrompt();
-        }).catch(e => {
-          console.warn('Mobile Autoplay prevented by browser:', e);
-          stopWaveform();
-          audioPlayingStatus.innerText = '⚠️ แตะที่แถบด้านบนเพื่อเปิดเสียงมายมิ้นท์ 🔊';
-          showMobileAudioPrompt(url);
-        });
-      }
-    }
-
-    function showMobileAudioPrompt(url) {
-      pendingAudioUrl = url;
-      if (mobileAudioPrompt) {
-        mobileAudioPrompt.style.display = 'flex';
-        mobileAudioPrompt.onclick = () => {
-          unlockMobileAudio();
-          maymintAudioPlayer.src = pendingAudioUrl;
-          maymintAudioPlayer.play().then(() => {
-            hideMobileAudioPrompt();
-            startWaveform();
-            setStage(5, '🔊 [สเต็ป 5/5] มายมิ้นท์กำลังพูดออกเสียง...');
-          }).catch(err => {
-            console.error('Prompt play failed:', err);
-          });
-        };
-      }
-    }
-
-    function hideMobileAudioPrompt() {
-      if (mobileAudioPrompt) {
-        mobileAudioPrompt.style.display = 'none';
-      }
-    }
-
-    stopAudioBtn.addEventListener('click', () => {
-      try {
-        maymintAudioPlayer.pause();
-        maymintAudioPlayer.currentTime = 0;
-      } catch(e) {}
-      stopWaveform();
-      audioPlayingStatus.innerText = '⏹️ หยุดเสียงแล้ว';
-      stopAudioBtn.style.display = 'none';
-      hideMobileAudioPrompt();
-      resetStages();
-    });
-
-    // 7. Quick Prompts
-    window.sendQuickPrompt = function(promptText) {
-      unlockMobileAudio();
-      micHint.innerText = `ส่งคำถาม: "${promptText}"`;
-      submitUserSpeech(promptText);
-    };
-
-    // 8. Text Input & Terminal Prompt Actions (Keyboard & Button)
-    function handleSendTextMessage() {
-      unlockMobileAudio();
-      const text = chatTextInput.value.trim();
-      if (!text) return;
-      chatTextInput.value = '';
-      chatTextInput.style.height = 'auto';
-      micHint.innerText = `ส่งข้อความ: "${text}"`;
-      submitUserSpeech(text);
-    }
-
-    if (sendTextBtn) {
-      sendTextBtn.addEventListener('click', handleSendTextMessage);
-    }
-
-    if (chatTextInput) {
-      chatTextInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          handleSendTextMessage();
-        }
-      });
-
-      // Dynamic Auto-Expand Textarea
-      chatTextInput.addEventListener('input', () => {
-        chatTextInput.style.height = 'auto';
-        chatTextInput.style.height = Math.min(chatTextInput.scrollHeight, 130) + 'px';
-      });
-    }
-
-    // 9. Test Voice Button (Uses active config)
-    document.getElementById('testVoiceBtn').addEventListener('click', async () => {
-      unlockMobileAudio();
-      const testText = 'สวัสดีค่ะบอส มายมิ้นท์เองนะคะ นี่คือการทดสอบเสียงตามที่คุณบอสตั้งค่าไว้ค่ะ';
-      setStage(4, '🎙️ กำลังสังเคราะห์เสียง Edge-TTS...');
-      try {
-        const speedVal = (parseInt(cfgSpeedSlider.value) >= 0 ? '+' : '') + parseInt(cfgSpeedSlider.value) + '%';
-        const pitchVal = (parseInt(cfgPitchSlider.value) >= 0 ? '+' : '') + parseInt(cfgPitchSlider.value) + 'Hz';
-
-        const res = await fetch('/api/tts', {
+        const res = await fetch('/api/auth/pin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            text: testText, 
-            voice: cfgVoiceSelect.value,
-            speed: speedVal,
-            pitch: pitchVal
-          })
-        });
-        const data = await res.json();
-        if (data.audio_url) {
-          playAudioResponse(data.audio_url);
-        }
-      } catch (err) {
-        alert('เกิดข้อผิดพลาดในการทดสอบเสียง: ' + err);
-        resetStages();
-      }
-    });
-
-    // Event Listeners for Sessions Management
-    if (sessionsOpenBtn) sessionsOpenBtn.addEventListener('click', openSessionsModal);
-    if (sessionsCloseBtn) sessionsCloseBtn.addEventListener('click', closeSessionsModal);
-    if (newSessionBtn) newSessionBtn.addEventListener('click', createNewSession);
-    if (drawerNewChatBtn) drawerNewChatBtn.addEventListener('click', createNewSession);
-    if (sessionsModal) {
-      sessionsModal.addEventListener('click', (e) => {
-        if (e.target === sessionsModal) closeSessionsModal();
-      });
-    }
-
-    // =========================================================================
-    // KNOWLEDGE LEXICON LOGIC (คลังคำสั่งและคำศัพท์ ป้องกันคำเพี้ยน)
-    // =========================================================================
-    const lexiconModal = document.getElementById('lexiconModal');
-    const lexiconOpenBtn = document.getElementById('lexiconOpenBtn');
-    const lexiconCloseBtn = document.getElementById('lexiconCloseBtn');
-    const lexiconCountBadge = document.getElementById('lexiconCountBadge');
-    const lexiconTabs = document.getElementById('lexiconTabs');
-    const lexiconSearchInput = document.getElementById('lexiconSearchInput');
-    const lexiconAddNewBtn = document.getElementById('lexiconAddNewBtn');
-    const lexiconResetDefaultBtn = document.getElementById('lexiconResetDefaultBtn');
-    const lexiconCardsGrid = document.getElementById('lexiconCardsGrid');
-    const lexiconAddFormContainer = document.getElementById('lexiconAddFormContainer');
-    const lexFormCategory = document.getElementById('lexFormCategory');
-    const lexFormTerm = document.getElementById('lexFormTerm');
-    const lexFormAliases = document.getElementById('lexFormAliases');
-    const lexFormDesc = document.getElementById('lexFormDesc');
-    const lexFormSaveBtn = document.getElementById('lexFormSaveBtn');
-    const lexFormCancelBtn = document.getElementById('lexFormCancelBtn');
-    const lexiconTestInput = document.getElementById('lexiconTestInput');
-    const lexiconRunTestBtn = document.getElementById('lexiconRunTestBtn');
-    const lexiconTestResult = document.getElementById('lexiconTestResult');
-
-    let currentLexiconData = null;
-    let currentLexiconCategory = 'all';
-
-    async function fetchLexicon() {
-      try {
-        const res = await fetch('/api/lexicon');
-        const data = await res.json();
-        if (data.success && data.lexicon) {
-          currentLexiconData = data.lexicon;
-          updateLexiconStats(data.stats);
-          renderLexiconCards();
-        }
-      } catch (err) {
-        console.error('Failed to load lexicon:', err);
-      }
-    }
-
-    function updateLexiconStats(stats) {
-      if (!stats) return;
-      if (lexiconCountBadge) lexiconCountBadge.innerText = stats.total_items || 0;
-      const bAll = document.getElementById('badgeAll');
-      const bCmd = document.getElementById('badgeCmd');
-      const bDev = document.getElementById('badgeDev');
-      const bWs = document.getElementById('badgeWs');
-      const bTech = document.getElementById('badgeTech');
-      const bId = document.getElementById('badgeId');
-      const bCor = document.getElementById('badgeCor');
-
-      if (bAll) bAll.innerText = stats.total_items || 0;
-      if (bCmd) bCmd.innerText = stats.category_counts?.commands || 0;
-      if (bDev) bDev.innerText = stats.category_counts?.devices || 0;
-      if (bWs) bWs.innerText = stats.category_counts?.workspace || 0;
-      if (bTech) bTech.innerText = stats.category_counts?.technical || 0;
-      if (bId) bId.innerText = stats.category_counts?.identity || 0;
-      if (bCor) bCor.innerText = stats.category_counts?.corrections || 0;
-
-      // Count auto-learned items
-      let autoTotal = 0;
-      if (currentLexiconData) {
-        Object.values(currentLexiconData.categories || {}).forEach(cat => {
-          (cat.items || []).forEach(it => { if (it.auto_learned) autoTotal++; });
-        });
-      }
-      const bAuto = document.getElementById('badgeAuto');
-      if (bAuto) bAuto.innerText = autoTotal;
-    }
-
-    function renderLexiconCards() {
-      if (!lexiconCardsGrid || !currentLexiconData) return;
-      const cats = currentLexiconData.categories || {};
-      const query = (lexiconSearchInput?.value || '').trim().toLowerCase();
-
-      let allItems = [];
-      Object.keys(cats).forEach(catKey => {
-        const catInfo = cats[catKey];
-        (catInfo.items || []).forEach(it => {
-          if (currentLexiconCategory === 'all' || currentLexiconCategory === catKey) {
-            allItems.push({ ...it, catLabel: catInfo.label, catIcon: catInfo.icon, catKey: catKey });
-          } else if (currentLexiconCategory === 'auto_learned' && it.auto_learned) {
-            allItems.push({ ...it, catLabel: catInfo.label, catIcon: catInfo.icon, catKey: catKey });
-          }
-        });
-      });
-
-      // Filter by search query
-      if (query) {
-        allItems = allItems.filter(it => {
-          const term = (it.term || '').toLowerCase();
-          const desc = (it.desc || '').toLowerCase();
-          const aliases = (it.aliases || []).join(' ').toLowerCase();
-          return term.includes(query) || desc.includes(query) || aliases.includes(query);
-        });
-      }
-
-      if (allItems.length === 0) {
-        lexiconCardsGrid.innerHTML = `
-          <div style="grid-column: 1/-1; text-align: center; padding: 2.5rem; color: var(--text-dim); font-size: 0.9rem;">
-            🔍 ไม่พบคำศัพท์หรือคำสั่งในหมวดนี้ค่ะบอส
-          </div>
-        `;
-        return;
-      }
-
-      lexiconCardsGrid.innerHTML = allItems.map(it => {
-        const aliasesHtml = (it.aliases && it.aliases.length > 0)
-          ? `<div class="lexicon-aliases-wrap">${it.aliases.map(a => `<span class="lexicon-alias-pill" title="คำพ้อง/เสียงที่มักได้ยิน">${escapeHtml(a)}</span>`).join('')}</div>`
-          : (it.pattern ? `<div class="lexicon-aliases-wrap"><span class="lexicon-alias-pill" style="background:rgba(236,72,153,0.25); border-color:rgba(236,72,153,0.4);" title="Regex Pattern">${escapeHtml(it.pattern)}</span></div>` : '');
-
-        const autoLearnedBadge = it.auto_learned 
-          ? `<span style="font-size:0.62rem; background:rgba(34,197,94,0.22); border:1px solid rgba(74,222,128,0.4); color:#86efac; padding:0.1rem 0.4rem; border-radius:8px; font-weight:normal;" title="ระบบเรียนรู้อัตโนมัติจากบทสนทนา">🤖 เรียนรู้อัตโนมัติ</span>`
-          : '';
-
-        return `
-          <div class="lexicon-card" data-id="${escapeHtml(it.id)}" data-cat="${escapeHtml(it.catKey)}">
-            <div class="lexicon-card-header">
-              <div class="lexicon-term">
-                <span>${it.catIcon || '📌'}</span>
-                <span>${escapeHtml(it.term)}</span>
-                ${autoLearnedBadge}
-              </div>
-              <div style="display:flex; align-items:center; gap:0.4rem;">
-                <span class="lexicon-cat-tag">${escapeHtml(it.catLabel || it.catKey)}</span>
-                <button class="lexicon-card-del-btn" onclick="deleteLexiconItem('${escapeHtml(it.catKey)}', '${escapeHtml(it.id)}')" title="ลบคำนี้">🗑️</button>
-              </div>
-            </div>
-            ${aliasesHtml}
-            <div class="lexicon-desc">${escapeHtml(it.desc || 'ไม่มีคำอธิบาย')}</div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function openLexiconModal() {
-      if (lexiconModal) lexiconModal.classList.add('open');
-      fetchLexicon();
-    }
-
-    function closeLexiconModal() {
-      if (lexiconModal) lexiconModal.classList.remove('open');
-    }
-
-    window.deleteLexiconItem = async function(catKey, itemId) {
-      if (!confirm(`ต้องการลบรายการนี้ออกจากคลังความรู้ใช่ไหมคะบอส?`)) return;
-      try {
-        const res = await fetch('/api/lexicon/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ category: catKey, id: itemId })
+          body: JSON.stringify({ pin: pinInput })
         });
         const data = await res.json();
         if (data.success) {
-          fetchLexicon();
+          pinModal.style.display = 'none';
+          initLiveKit();
+          initJobStream();
+        } else {
+          pinError.innerText = data.message || 'รหัส PIN ไม่ถูกต้องค่ะ';
+          clearPin();
         }
       } catch (err) {
-        alert('เกิดข้อผิดพลาดในการลบ: ' + err);
+        pinError.innerText = 'เชื่อมต่อเซิร์ฟเวอร์ขัดข้องค่ะ';
+        clearPin();
       }
-    };
-
-    // Category Tabs click handling
-    if (lexiconTabs) {
-      lexiconTabs.addEventListener('click', (e) => {
-        const btn = e.target.closest('.lexicon-tab-btn');
-        if (!btn) return;
-        const targetCat = btn.getAttribute('data-cat');
-        if (targetCat === 'add_form') {
-          // Show form
-          lexiconCardsGrid.style.display = 'none';
-          lexiconAddFormContainer.style.display = 'block';
-          lexiconTabs.querySelectorAll('.lexicon-tab-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          return;
-        }
-
-        lexiconCardsGrid.style.display = 'grid';
-        lexiconAddFormContainer.style.display = 'none';
-        lexiconTabs.querySelectorAll('.lexicon-tab-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentLexiconCategory = targetCat;
-        renderLexiconCards();
-      });
     }
 
-    if (lexiconAddNewBtn) {
-      lexiconAddNewBtn.addEventListener('click', () => {
-        lexiconCardsGrid.style.display = 'none';
-        lexiconAddFormContainer.style.display = 'block';
-        const addBtn = lexiconTabs.querySelector('[data-cat="add_form"]');
-        if (addBtn) {
-          lexiconTabs.querySelectorAll('.lexicon-tab-btn').forEach(b => b.classList.remove('active'));
-          addBtn.classList.add('active');
+    // Keyboard support for PIN entry
+    window.addEventListener('keydown', (e) => {
+      if (pinModal.style.display !== 'none') {
+        if (e.key >= '0' && e.key <= '9') {
+          enterPinDigit(e.key);
+        } else if (e.key === 'Backspace') {
+          backspacePin();
+        } else if (e.key === 'Escape') {
+          clearPin();
         }
-      });
+      }
+    });
+
+    // Check Auth on page load
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/check');
+        const data = await res.json();
+        if (!data.authenticated) {
+          pinModal.style.display = 'flex';
+        } else {
+          initLiveKit();
+          initJobStream();
+        }
+      } catch (e) {
+        pinModal.style.display = 'flex';
+      }
     }
 
-    if (lexFormCancelBtn) {
-      lexFormCancelBtn.addEventListener('click', () => {
-        lexiconCardsGrid.style.display = 'grid';
-        lexiconAddFormContainer.style.display = 'none';
-        const allBtn = lexiconTabs.querySelector('[data-cat="all"]');
-        if (allBtn) {
-          lexiconTabs.querySelectorAll('.lexicon-tab-btn').forEach(b => b.classList.remove('active'));
-          allBtn.classList.add('active');
-          currentLexiconCategory = 'all';
-          renderLexiconCards();
-        }
-      });
-    }
+    // =========================================================================
+    // LIVEKIT WEBRTC ENGINE (Full-Duplex Speech & Instant Barge-In)
+    // =========================================================================
+    async function initLiveKit() {
+      if (livekitRoom) return;
 
-    if (lexFormSaveBtn) {
-      lexFormSaveBtn.addEventListener('click', async () => {
-        const term = lexFormTerm.value.trim();
-        if (!term) {
-          alert('กรุณากรอกคำที่ถูกต้อง (Term) ด้วยค่ะบอส');
-          return;
-        }
-        const cat = lexFormCategory.value;
-        const aliasesStr = lexFormAliases.value.trim();
-        const desc = lexFormDesc.value.trim();
+      try {
+        currentStatusText.innerText = "กำลังเชื่อมต่อระบบเสียงสด LiveKit...";
+        const res = await fetch('/api/livekit-token?identity=Boss&room=maymint-room');
+        if (!res.ok) throw new Error('Token fetch failed');
+        const config = await res.json();
 
-        try {
-          const res = await fetch('/api/lexicon/item', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              category: cat,
-              term: term,
-              aliases: aliasesStr,
-              desc: desc
-            })
-          });
-          const data = await res.json();
-          if (data.success) {
-            lexFormTerm.value = '';
-            lexFormAliases.value = '';
-            lexFormDesc.value = '';
-            lexiconCardsGrid.style.display = 'grid';
-            lexiconAddFormContainer.style.display = 'none';
-            const catBtn = lexiconTabs.querySelector(`[data-cat="${cat}"]`) || lexiconTabs.querySelector('[data-cat="all"]');
-            if (catBtn) {
-              lexiconTabs.querySelectorAll('.lexicon-tab-btn').forEach(b => b.classList.remove('active'));
-              catBtn.classList.add('active');
-              currentLexiconCategory = cat;
+        livekitRoom = new LivekitClient.Room({
+          adaptiveStream: true,
+          dynacast: true,
+          audioCaptureDefaults: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+
+        // 1. Audio Track Subscribed from Maymint
+        livekitRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+          if (track.kind === LivekitClient.Track.Kind.Audio) {
+            track.attach(livekitAudioPlayer);
+            isMaymintSpeaking = true;
+            setStage(5, '🔊 [สเต็ป 5/5] มายมิ้นท์กำลังพูดออกเสียง...');
+            startWaveform();
+          }
+        });
+
+        livekitRoom.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track) => {
+          track.detach();
+          isMaymintSpeaking = false;
+          stopWaveform();
+          resetStages();
+        });
+
+        // 2. Active Speaker Detection
+        livekitRoom.on(LivekitClient.RoomEvent.ActiveSpeakersChanged, (speakers) => {
+          const maymintSpeaking = speakers.some(s => s.identity === 'maymint-agent');
+          if (maymintSpeaking) {
+            isMaymintSpeaking = true;
+            startWaveform();
+            setStage(5, '🔊 มายมิ้นท์กำลังพูดออกเสียง...');
+          } else if (!isMicLive) {
+            isMaymintSpeaking = false;
+            stopWaveform();
+          }
+        });
+
+        // 3. DataChannel Messages (Transcripts & Tool Badges)
+        livekitRoom.on(LivekitClient.RoomEvent.DataReceived, (payload, participant) => {
+          try {
+            const data = JSON.parse(new TextDecoder().decode(payload));
+            if (data.type === 'transcript') {
+              appendChatMessage(data.sender, data.text);
+            } else if (data.type === 'tool_event') {
+              // Display tool badge
+              renderToolBadge(data.tool, data.result);
             }
-            fetchLexicon();
-          } else {
-            alert('เกิดข้อผิดพลาด: ' + (data.error || 'บันทึกไม่สำเร็จ'));
-          }
-        } catch (err) {
-          alert('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err);
-        }
-      });
-    }
+          } catch (e) {}
+        });
 
-    if (lexiconResetDefaultBtn) {
-      lexiconResetDefaultBtn.addEventListener('click', async () => {
-        if (!confirm('ต้องการรีเซ็ตคลังคำสั่งและคำศัพท์กลับเป็นค่ามาตรฐานของระบบใช่ไหมคะบอส?')) return;
+        // Connect room
         try {
-          const res = await fetch('/api/lexicon/reset', { method: 'POST' });
-          const data = await res.json();
-          if (data.success) {
-            fetchLexicon();
+          await livekitRoom.connect(config.url, config.token);
+          currentStatusText.innerText = "เชื่อมต่อระบบเสียงสด LiveKit สำเร็จ 💖";
+        } catch (connErr) {
+          // Fallback to local url
+          if (config.fallback_url) {
+            await livekitRoom.connect(config.fallback_url, config.token);
+            currentStatusText.innerText = "เชื่อมต่อระบบเสียงสด LiveKit สำเร็จ (Local)";
           }
-        } catch (err) {
-          alert('เกิดข้อผิดพลาดในการรีเซ็ต: ' + err);
         }
-      });
+
+        // Send current mode to daemon
+        setMode(currentMode);
+
+      } catch (err) {
+        console.warn("LiveKit connection warning:", err);
+        currentStatusText.innerText = "ระบบเสียงพร้อมทำงานในโหมดมาตรฐานค่ะ";
+      }
     }
 
-    if (lexiconSearchInput) {
-      lexiconSearchInput.addEventListener('input', () => {
-        renderLexiconCards();
-      });
-    }
+    // Mic Button Interaction
+    micButton.addEventListener('click', async () => {
+      // 1. Instant Interruption: If Maymint is speaking, tap mic to cut off immediately!
+      if (isMaymintSpeaking) {
+        if (livekitRoom) {
+          try {
+            const interruptMsg = JSON.stringify({ type: 'interrupt' });
+            livekitRoom.localParticipant.publishData(new TextEncoder().encode(interruptMsg));
+          } catch (e) {}
+        }
+        livekitAudioPlayer.pause();
+        isMaymintSpeaking = false;
+        stopWaveform();
+        micHint.innerText = '✋ ขัดจังหวะคำพูดแล้วค่ะ รับฟังบอสอยู่...';
+        setStage(1, '🎙️ [ขัดจังหวะแล้ว] กำลังฟังเสียงบอส...');
+        return;
+      }
 
-    if (lexiconRunTestBtn && lexiconTestInput && lexiconTestResult) {
-      lexiconRunTestBtn.addEventListener('click', async () => {
-        const text = lexiconTestInput.value.trim();
-        if (!text) return;
+      // 2. Toggle User Microphone (LiveKit Audio Stream)
+      if (!isMicLive) {
         try {
-          const res = await fetch('/api/lexicon/normalize', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: text })
-          });
-          const data = await res.json();
-          if (data.success) {
-            const appliedCount = (data.applied || []).length;
-            const appliedDetails = appliedCount > 0 
-              ? data.applied.map(a => `${a.matched || a.alias} ➜ <strong>${a.replaced_with || a.canonical}</strong>`).join(', ')
-              : 'ตรงตามมาตรฐานแล้ว ไม่มีคำเพี้ยนค่ะ';
-
-            lexiconTestResult.style.display = 'block';
-            lexiconTestResult.innerHTML = `
-              <div>✨ <strong>ผลลัพธ์ที่แก้ไขแล้ว:</strong> "${escapeHtml(data.normalized)}"</div>
-              <div style="font-size:0.75rem; color:var(--text-dim); margin-top:0.3rem;">ตรวจพบและแก้ไข ${appliedCount} จุด (${appliedDetails})</div>
-            `;
+          if (!livekitRoom || livekitRoom.state !== 'connected') {
+            await initLiveKit();
           }
-        } catch (err) {
-          alert('เกิดข้อผิดพลาดในการทดสอบ: ' + err);
+          await livekitRoom.localParticipant.setMicrophoneEnabled(true);
+          isMicLive = true;
+          micButton.classList.add('recording');
+          micRipple.style.opacity = '1';
+          micHint.innerText = '🎙️ กำลังฟังเสียงบอส... (พูดคุยได้เลยค่ะ แตะไมค์อีกครั้งเมื่อพูดเสร็จ)';
+          setStage(1, '🎙️ [LiveKit] กำลังฟังเสียงบอส...');
+          startWaveform();
+        } catch (e) {
+          micHint.innerText = 'กรุณาอนุญาตให้เข้าถึงไมโครโฟนนะคะบอส';
         }
-      });
+      } else {
+        // Mute mic after speaking
+        if (livekitRoom) {
+          await livekitRoom.localParticipant.setMicrophoneEnabled(false);
+        }
+        isMicLive = false;
+        micButton.classList.remove('recording');
+        micRipple.style.opacity = '0';
+        stopWaveform();
+        micHint.innerText = 'ส่งเสียงแล้ว กำลังประมวลผล...';
+        setStage(2, '✍️ [สเต็ป 2/5] ถอดความเสียงด้วย AI Gemini...');
+      }
+    });
+
+    // =========================================================================
+    // BACKGROUND JOBS & SSE STREAM
+    // =========================================================================
+    function initJobStream() {
+      try {
+        const es = new EventSource('/api/jobs/stream');
+        es.onmessage = (event) => {
+          try {
+            const job = JSON.parse(event.data);
+            updateJobUI(job);
+          } catch (e) {}
+        };
+      } catch (e) {}
     }
 
-    if (lexiconOpenBtn) lexiconOpenBtn.addEventListener('click', openLexiconModal);
-    if (lexiconCloseBtn) lexiconCloseBtn.addEventListener('click', closeLexiconModal);
-    if (lexiconModal) {
-      lexiconModal.addEventListener('click', (e) => {
-        if (e.target === lexiconModal) closeLexiconModal();
-      });
+    function updateJobUI(job) {
+      const container = document.getElementById('jobsContainer');
+      const list = document.getElementById('jobsList');
+      const count = document.getElementById('jobsCount');
+
+      container.style.display = 'block';
+      let existing = document.getElementById(`job-${job.id}`);
+      if (!existing) {
+        existing = document.createElement('div');
+        existing.id = `job-${job.id}`;
+        existing.className = 'job-item';
+        list.appendChild(existing);
+      }
+
+      const statusIcon = job.status === 'completed' ? '✅' : (job.status === 'running' ? '⏳' : '❌');
+      existing.innerHTML = `
+        <span>${statusIcon} <strong>${escapeHtml(job.name)}:</strong> ${escapeHtml(job.status)}</span>
+        ${job.status === 'running' || job.status === 'queued' ? `<button class="job-cancel-btn" onclick="cancelJob('${job.id}')">✖ ยกเลิก</button>` : ''}
+      `;
     }
 
-    // Load initial lexicon count
-    fetchLexicon();
+    async function cancelJob(jobId) {
+      try {
+        await fetch('/api/jobs/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ job_id: jobId })
+        });
+      } catch (e) {}
+    }
 
-    // Helper: Append Message with Rich Markdown Rendering & Terminal Events
-    function appendChatMessage(sender, text, toolEvents = null, audioUrl = null, autoScroll = true, cognitiveTier = null, modelUsed = null, cognitiveFeatures = null, routeReason = null) {
+    // =========================================================================
+    // CHAT TRANSCRIPT & MESSAGE RENDERING
+    // =========================================================================
+    function appendChatMessage(sender, text, toolEvents = null) {
       const row = document.createElement('div');
       row.className = 'msg-row';
       const bubble = document.createElement('div');
@@ -3510,67 +1294,80 @@
         if (window.marked && typeof marked.parse === 'function') {
           contentHtml = marked.parse(text);
         } else {
-          contentHtml = escapeHtml(text)
-            .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-            .replace(/`([^`]+)`/g, '<code>$1</code>')
-            .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-            .replace(/\n/g, '<br>');
+          contentHtml = escapeHtml(text).replace(/\n/g, '<br>');
         }
-
-        let toolsHtml = '';
-        if (toolEvents && toolEvents.length > 0) {
-          toolsHtml += '<div class="terminal-events-list">';
-          for (const ev of toolEvents) {
-            const toolName = ev.tool || 'tool';
-            const cmd = ev.args?.command || ev.args?.file_path || ev.tool;
-            const res = ev.result || {};
-            const isSuccess = res.exit_code === 0 || res.status === 'success' || !res.error;
-            const badgeClass = isSuccess ? 'success' : 'error';
-            const badgeText = res.exit_code !== undefined ? `Exit: ${res.exit_code} (${res.duration_seconds || 0}s)` : (isSuccess ? 'Success' : 'Error');
-            const outContent = res.stdout || res.stderr || res.content || (res.error ? `Error: ${res.error}` : JSON.stringify(res, null, 2));
-
-            toolsHtml += `
-              <div class="terminal-event-box">
-                <div class="terminal-event-header">
-                  <span>⚡ <strong>${escapeHtml(toolName)}:</strong> <code>${escapeHtml(cmd)}</code></span>
-                  <span class="terminal-event-badge ${badgeClass}">${escapeHtml(badgeText)}</span>
-                </div>
-                <pre class="terminal-event-body"><code>${escapeHtml(outContent)}</code></pre>
-              </div>
-            `;
-          }
-          toolsHtml += '</div>';
-        }
-
-        const replayBtnHtml = (audioUrl && sender !== 'user') 
-          ? `<button class="play-bubble-audio-btn" data-audio-url="${escapeHtml(audioUrl)}" onclick="playAudioResponse(this.getAttribute('data-audio-url'))" title="กดฟังเสียงคำตอบนี้">🔊 ฟังเสียงคำตอบนี้</button>` 
-          : '';
-
-        let tierTagHtml = '';
-        if (cognitiveTier === 'deep') {
-          const featLabels = (cognitiveFeatures && cognitiveFeatures.length > 0)
-            ? ' · ' + cognitiveFeatures.slice(0, 2).map(f => f.split('(')[0].replace('Deep Domain: ', '')).join(', ')
-            : '';
-          tierTagHtml = `<span style="display:inline-block; margin-left:0.5rem; font-size:0.73rem; padding:0.12rem 0.5rem; border-radius:10px; background:rgba(168,85,247,0.25); border:1px solid rgba(192,132,252,0.45); color:#f3e8ff;" title="${escapeHtml(routeReason || 'โหมดคิดลึกซึ้ง')}">🧠 คิดลึกซึ้ง${escapeHtml(featLabels)}</span>`;
-        } else if (cognitiveTier === 'fast') {
-          tierTagHtml = `<span style="display:inline-block; margin-left:0.5rem; font-size:0.73rem; padding:0.12rem 0.5rem; border-radius:10px; background:rgba(34,197,94,0.2); border:1px solid rgba(74,222,128,0.4); color:#bbf7d0;" title="${escapeHtml(routeReason || 'โหมดตอบไว')}">⚡ ตอบไว 1.1s</span>`;
-        }
-
-        bubble.innerHTML = `🌸 <strong>มายมิ้นท์:</strong>${tierTagHtml} ${toolsHtml}<div class="markdown-body">${contentHtml}</div>${replayBtnHtml}`;
+        bubble.innerHTML = `🌸 <strong>มายมิ้นท์:</strong> <div class="markdown-body">${contentHtml}</div>`;
       }
 
       row.appendChild(bubble);
       chatBox.appendChild(row);
-      if (autoScroll) {
-        chatBox.scrollTop = chatBox.scrollHeight;
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s]);
+    }
+
+    function sendQuickPrompt(promptText) {
+      chatTextInput.value = promptText;
+      submitTextMessage();
+    }
+
+    // Submit Text Message
+    async function submitTextMessage() {
+      const text = chatTextInput.value.trim();
+      if (!text || isProcessing) return;
+
+      chatTextInput.value = '';
+      appendChatMessage('user', text);
+      isProcessing = true;
+
+      sendTextBtn.disabled = true;
+      sendTextBtn.style.opacity = '0.6';
+      setStage(3, '🧠 กำลังคิดคำตอบให้บอส...');
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: text,
+            mode: currentMode,
+            auto_speak: autoSpeakToggle.checked
+          })
+        });
+        const data = await res.json();
+        if (data.reply) {
+          appendChatMessage('maymint', data.reply);
+          if (autoSpeakToggle.checked && data.audio_url) {
+            maymintAudioPlayer.src = data.audio_url;
+            maymintAudioPlayer.play().catch(() => {});
+          }
+        }
+        resetStages();
+      } catch (err) {
+        appendChatMessage('maymint', 'ขอโทษด้วยนะคะบอส มีข้อผิดพลาดในการเชื่อมต่อค่ะ');
+        resetStages();
+      } finally {
+        isProcessing = false;
+        sendTextBtn.disabled = false;
+        sendTextBtn.style.opacity = '1';
       }
     }
 
-    function escapeHtml(string) {
-      return String(string).replace(/[&<>"']/g, function (s) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s];
-      });
-    }
+    sendTextBtn.addEventListener('click', submitTextMessage);
+    chatTextInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        submitTextMessage();
+      }
+    });
+
+    // Initialize application
+    window.addEventListener('DOMContentLoaded', () => {
+      setMode(currentMode);
+      checkAuth();
+    });
   </script>
 </body>
 </html>

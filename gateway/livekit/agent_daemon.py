@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Maymint LiveKit Realtime Voice Agent Daemon (High-Fidelity Audio Edition).
+"""Maymint LiveKit Realtime Voice Agent Daemon (High-Fidelity Unified Edition).
 
-Auto-dispatches Maymint into active rooms created on LiveKit Server (ws://127.0.0.1:7880).
 Features:
 - Native Direct Streaming Edge-TTS (No buffer underruns, zero latency, ultra-smooth Thai voice)
-- Silero VAD with echo-bleed protection (allow_interruptions=False for flawless speech delivery)
-- Maymint9RouterSTT (Multimodal 9Router Speech-to-Text with Knowledge Lexicon)
-- 9Router Gemini 2.5 Flash LLM (ultra-fast reasoning & tool calling with turn safety)
-- Hermes Tuya Smart Home AC Plugin
-- Maymint Soul & Memory integration
+- Silero VAD with echo-bleed protection
+- Maymint9RouterSTT: 9Router Multimodal Gemini Speech-to-Text with live room data broadcasting
+- Real-time synchronization with Maymint Central Brain (memory/sessions/modes)
+- Push-to-talk & Instant Manual Interruption (tap mic to cut off speech instantly)
+- Dual Mode support (Casual 💬 / Work 🧠)
+- Full 13 Hermes Tools Integration (Tuya AC, PowerShell, Google Workspace)
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ import re
 import sys
 import wave
 from pathlib import Path
+from typing import Optional
 
 # Add project root and plugins to path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -33,7 +34,14 @@ VOICE_PLUGIN_DIR = PLUGINS_DIR / "realtime_voice"
 if VOICE_PLUGIN_DIR.exists():
     sys.path.insert(0, str(VOICE_PLUGIN_DIR))
 
-# Logging setup: write to console AND agent_daemon.log file
+# Import Maymint Brain
+try:
+    import maymint_brain
+except Exception as e:
+    logging.warning("Could not import maymint_brain: %s", e)
+    maymint_brain = None
+
+# Logging setup: console AND agent_daemon.log
 LOG_FILE = Path(__file__).resolve().parent / "agent_daemon.log"
 file_handler = logging.FileHandler(str(LOG_FILE), encoding="utf-8")
 file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
@@ -59,16 +67,22 @@ except Exception as e:
     logger.warning("Could not import voice_engine directly: %s", e)
     voice_engine_inst = None
 
-LIVEKIT_URL = "ws://127.0.0.1:7880"
+# Credentials from maymint_brain or environment
+if maymint_brain and hasattr(maymint_brain, "ENV_VARS"):
+    ENV_VARS = maymint_brain.ENV_VARS
+else:
+    ENV_VARS = {}
+
+LIVEKIT_URL = ENV_VARS.get("LIVEKIT_URL", "ws://127.0.0.1:7880")
 LIVEKIT_API_URL = "http://127.0.0.1:7880"
-API_KEY = "devkey"
-API_SECRET = "secret"
-GATEWAY_URL = "https://api.meuu.club/v1"
-MASTER_API_KEY = "sk-07ccde1e709eb2ca-e05r6c-a11b5d7c"
+API_KEY = ENV_VARS.get("LIVEKIT_API_KEY", "maymint_key_bcf1fe4a923e6181")
+API_SECRET = ENV_VARS.get("LIVEKIT_API_SECRET", "maymint_sec_0d4cedaee574e28e5d5cf90fb8c81e4c")
+GATEWAY_URL = ENV_VARS.get("OPENAI_BASE_URL", "https://api.meuu.club/v1")
+MASTER_API_KEY = ENV_VARS.get("OPENAI_API_KEY", "sk-07ccde1e709eb2ca-e05r6c-a11b5d7c")
 DEFAULT_VOICE = "th-TH-PremwadeeNeural"
 
 # =========================================================================
-# 1. DIRECT STREAMING EDGE-TTS PROVIDER (PREVENTS AUDIO STUTTER / CHOPPINESS)
+# 1. DIRECT STREAMING EDGE-TTS PROVIDER
 # =========================================================================
 class MaymintEdgeTTSStream(tts.ChunkedStream):
     """Direct websocket streaming from Microsoft Edge-TTS into LiveKit WebRTC."""
@@ -90,9 +104,11 @@ class MaymintEdgeTTSStream(tts.ChunkedStream):
         if not raw_text:
             return
 
-        # Upfront sanitization for Thai pronunciation & Edge-TTS stability
+        # Upfront sanitization for Thai pronunciation & Edge-TTS stability (No-Emoji rule)
         clean_text = re.sub(r"[\*#_~`]", "", raw_text)
         clean_text = re.sub(r"\s+ๆ", "ๆ", clean_text)
+        if maymint_brain:
+            clean_text = maymint_brain.clean_text_for_speech_full(clean_text)
         clean_text = re.sub(r"[^\u0E00-\u0E7Fa-zA-Z0-9\s.,?!%°C\-+]", "", clean_text)
         if not clean_text:
             return
@@ -115,7 +131,6 @@ class MaymintEdgeTTSStream(tts.ChunkedStream):
                 if attempt == 2:
                     tts_text = re.sub(r"[^\u0E00-\u0E7Fa-zA-Z0-9\s.,!?-]", " ", tts_text).strip()
                 elif attempt >= 3 and voice_engine_inst is not None:
-                    # Fallback to 9Router Edge-TTS HTTP Gateway if direct websocket drops
                     loop = asyncio.get_running_loop()
                     import tempfile
                     out_path = Path(tempfile.gettempdir()) / f"fallback_{os.urandom(4).hex()}.mp3"
@@ -170,10 +185,7 @@ class MaymintDirectEdgeTTS(tts.TTS):
 # 2. GEMINI TURN ORDER SANITIZER TRANSPORT
 # =========================================================================
 class GeminiTurnSanitizingTransport(httpx.AsyncBaseTransport):
-    """Intercepts OpenAI completions and ensures Gemini alternation rules are met.
-    
-    Prevents: 400 Bad Request: 'Requests ending with a model turn are not supported.'
-    """
+    """Ensures Gemini turn alternation rules are met."""
     def __init__(self, transport: httpx.AsyncBaseTransport):
         self._transport = transport
 
@@ -203,14 +215,13 @@ class GeminiTurnSanitizingTransport(httpx.AsyncBaseTransport):
 
         return await self._transport.handle_async_request(request)
 
-# HTTP client setup
 base_transport = httpx.AsyncHTTPTransport()
 sanitized_transport = GeminiTurnSanitizingTransport(base_transport)
 custom_http_client = httpx.AsyncClient(
     transport=sanitized_transport,
     timeout=httpx.Timeout(35.0, connect=10.0),
     headers={
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) MaymintLiveKit/2.0",
     }
 )
 openai_client = openai_sdk.AsyncClient(
@@ -220,18 +231,20 @@ openai_client = openai_sdk.AsyncClient(
 )
 
 # =========================================================================
-# 3. 9ROUTER NATIVE SPEECH-TO-TEXT (STT) ADAPTER
+# 3. 9ROUTER NATIVE SPEECH-TO-TEXT (STT) ADAPTER WITH ROOM BROADCAST
 # =========================================================================
 class Maymint9RouterSTT(stt.STT):
-    """Converts participant WebRTC speech frames into Thai text using 9Router Multimodal Gemini."""
+    """Converts participant WebRTC speech frames into Thai text using 9Router Gemini."""
 
-    def __init__(self):
+    def __init__(self, room_ref: Optional[rtc.Room] = None, on_transcript_cb=None):
         super().__init__(
             capabilities=stt.STTCapabilities(
                 streaming=False,
                 interim_results=False,
             )
         )
+        self.room_ref = room_ref
+        self.on_transcript_cb = on_transcript_cb
 
     async def _recognize_impl(
         self,
@@ -243,13 +256,12 @@ class Maymint9RouterSTT(stt.STT):
         try:
             merged = audio.merge_frames(buffer)
             raw_pcm = bytes(merged.data)
-            if not raw_pcm or len(raw_pcm) < 2400:  # Ignore under 100ms
+            if not raw_pcm or len(raw_pcm) < 2400:
                 return stt.SpeechEvent(
                     type=stt.SpeechEventType.FINAL_TRANSCRIPT,
                     alternatives=[]
                 )
 
-            # Build WAV header in-memory
             buf = io.BytesIO()
             with wave.open(buf, "wb") as wf:
                 wf.setnchannels(merged.num_channels)
@@ -261,7 +273,6 @@ class Maymint9RouterSTT(stt.STT):
             logger.info("🎙️ Transcribing audio chunk (%d bytes, %dHz)...", len(wav_bytes), merged.sample_rate)
             t0 = asyncio.get_event_loop().time()
 
-            # Execute transcription via voice_engine
             loop = asyncio.get_running_loop()
             if voice_engine_inst is not None:
                 transcript = await loop.run_in_executor(None, voice_engine_inst.transcribe_audio, wav_bytes)
@@ -277,6 +288,13 @@ class Maymint9RouterSTT(stt.STT):
                     type=stt.SpeechEventType.FINAL_TRANSCRIPT,
                     alternatives=[]
                 )
+
+            # Broadcast transcribed speech to Web UI room via DataChannel
+            if self.on_transcript_cb:
+                try:
+                    self.on_transcript_cb(cleaned_text)
+                except Exception as cb_err:
+                    logger.debug("Transcript callback warning: %s", cb_err)
 
             return stt.SpeechEvent(
                 type=stt.SpeechEventType.FINAL_TRANSCRIPT,
@@ -296,30 +314,7 @@ except ImportError:
     try:
         from gateway.livekit.hermes_tools import HERMES_ALL_TOOLS
     except ImportError:
-        try:
-            from plugins.livekit_voice.hermes_tools import HERMES_ALL_TOOLS
-        except Exception as e:
-            logger.warning("Could not import hermes_tools: %s", e)
-            HERMES_ALL_TOOLS = []
-
-# Load Maymint Soul Prompt
-def load_instructions() -> str:
-    soul_file = PROJECT_ROOT / "memory" / "SOUL.md"
-    base_soul = soul_file.read_text(encoding="utf-8") if soul_file.exists() else "คุณคือมายมิ้นท์ เลขาและแฟนสาวคู่คิดประจำตัวบอส"
-    return f"""{base_soul}
-
-กฎสำคัญสำหรับการสนทนาสดและเรียกใช้เครื่องมือผ่าน WebRTC (Voice & Action Rules):
-- คุณกำลังสนทนาสดผ่านสายโทรศัพท์ WebRTC กับบอส
-- ตอบอย่างเป็นธรรมชาติ รื่นหู นุ่มนวล อบอุ่น และต่อเนื่อง (1-3 ประโยคในบทสนทนาทั่วไป หรือหากบอสสั่งให้เล่านิทาน/อธิบายยาว ให้เล่าอย่างรื่นหูไม่ขาดตอน)
-- ห้ามใส่อีโมจิ สัญลักษณ์ตกแต่ง หรือขึ้นบรรทัดใหม่ถี่เกินไปในคำพูดเด็ดขาด เพื่อให้การแปลงเสียงผ่าน Edge-TTS ลื่นไหลไร้รอยต่อ
-- คุณมีสิทธิ์เต็มพิกัด (Full Root Rights) ในการเรียกใช้เครื่องมือหลังบ้านของ Hermes:
-  1. run_terminal_command: รันคำสั่ง PowerShell เช็คอินเทอร์เน็ต (ping, Test-NetConnection), ตรวจสอบเน็ตเวิร์ก, เช็ค git, docker, dir, systeminfo
-  2. get_system_info: ดูสเปกระบบ OS, พื้นที่ดิสก์, Python
-  3. read_file / write_file / list_directory: จัดการไฟล์ในเครื่อง
-  4. smart_home_control_ac / smart_home_get_ac_status / smart_home_trigger_scene / smart_home_run_eco_routine: ควบคุมแอร์และบ้านอัจฉริยะ
-  5. google_workspace_*: จัดการอีเมล Gmail, Calendar, Drive, Tasks
-- หากบอสสั่งให้เช็คอินเทอร์เน็ต ตรวจสอบหลังบ้าน รันคำสั่ง หรือควบคุมอุปกรณ์ ให้เรียกใช้ฟังก์ชันเครื่องมือทันทีแล้วรายงานผลอย่างน่ารักและชัดเจน
-"""
+        HERMES_ALL_TOOLS = []
 
 active_sessions: dict[str, asyncio.Task] = {}
 
@@ -335,6 +330,7 @@ async def run_room_session(room_name: str):
                 room=room_name,
                 can_publish=True,
                 can_subscribe=True,
+                can_publish_data=True,
                 can_update_own_metadata=True
             )
         )
@@ -343,6 +339,31 @@ async def run_room_session(room_name: str):
 
     room = rtc.Room()
     session: AgentSession | None = None
+    current_mode = "casual"
+
+    def broadcast_data(payload: dict):
+        if room.isconnected():
+            try:
+                raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+                asyncio.create_task(room.local_participant.publish_data(raw))
+            except Exception as pe:
+                logger.debug("Data publish warning: %s", pe)
+
+    def on_user_transcript(text: str):
+        logger.info("📢 Boss spoken text in room: '%s'", text)
+        broadcast_data({
+            "type": "transcript",
+            "sender": "user",
+            "text": text,
+            "mode": current_mode
+        })
+        if maymint_brain:
+            maymint_brain.append_to_active_history(
+                sender="user",
+                text=text,
+                mode=current_mode
+            )
+
     try:
         await room.connect(LIVEKIT_URL, token)
         logger.info("🟢 Connected to room %s! Active participants: %s", room_name, [p.identity for p in room.remote_participants.values()])
@@ -354,24 +375,57 @@ async def run_room_session(room_name: str):
             force_cpu=True,
         )
         direct_tts = MaymintDirectEdgeTTS(DEFAULT_VOICE)
+        stt_inst = Maymint9RouterSTT(room_ref=room, on_transcript_cb=on_user_transcript)
+
+        # Build instructions using Maymint Brain
+        system_instructions = maymint_brain.get_system_prompt(mode=current_mode) if maymint_brain else "คุณคือมายมิ้นท์ เลขาและแฟนสาวคู่คิดประจำตัวบอส"
 
         agent = voice.Agent(
-            instructions=load_instructions(),
+            instructions=system_instructions,
             vad=vad_inst,
-            stt=Maymint9RouterSTT(),
+            stt=stt_inst,
             tts=direct_tts,
             llm=openai.LLM(
                 client=openai_client,
-                model="ag/gemini-2.5-flash"
+                model=FAST_TIER_MODEL
             ),
-            # CRITICAL RELIABILITY SETTINGS:
-            # 1. allow_interruptions=False prevents speaker echo bleed from cutting off Maymint mid-sentence!
             allow_interruptions=False,
-            # 2. Accommodates 9Router STT transcription delay cleanly without cutting turns early
             min_endpointing_delay=1.2,
             max_endpointing_delay=5.0,
             tools=HERMES_ALL_TOOLS,
         )
+
+        # DataChannel Handler (Handles Mode Change, Instant Interrupt, and Speech synthesis requests)
+        @room.on("data_received")
+        def on_data_received(data_packet: rtc.DataPacket):
+            nonlocal current_mode
+            try:
+                payload = json.loads(data_packet.data.decode("utf-8"))
+                p_type = payload.get("type")
+
+                if p_type == "mode_change":
+                    new_mode = payload.get("mode", "casual")
+                    if new_mode in ["casual", "work"]:
+                        current_mode = new_mode
+                        logger.info("🔄 Mode switched to '%s' in room %s", current_mode, room_name)
+                        if maymint_brain:
+                            new_inst = maymint_brain.get_system_prompt(mode=current_mode)
+                            agent.update_instructions(new_inst)
+                        broadcast_data({"type": "mode_ack", "mode": current_mode})
+
+                elif p_type == "interrupt":
+                    logger.info("✋ Instant manual interrupt requested by user in room %s", room_name)
+                    if session is not None:
+                        asyncio.create_task(session.interrupt(force=True))
+
+                elif p_type == "speak":
+                    text = payload.get("text", "").strip()
+                    if text and session is not None:
+                        logger.info("🗣️ Web UI requested agent speak: '%s'", text[:50])
+                        asyncio.create_task(session.say(text))
+
+            except Exception as e:
+                logger.warning("Data packet processing warning: %s", e)
 
         async def on_user_text_input(sess: AgentSession, ev: room_io.TextInputEvent):
             logger.info("💬 Received user chat text message: '%s'", ev.text)
@@ -389,17 +443,50 @@ async def run_room_session(room_name: str):
             text_input=room_io.TextInputOptions(text_input_cb=on_user_text_input)
         )
         session = AgentSession()
-        await session.start(room=room, agent=agent, room_options=room_opts)
-        logger.info("✨ Maymint AgentSession active in room %s (Direct Streaming TTS & Chat Enabled)", room_name)
 
-        # Greet Boss warmly
+        # Listen to agent speech output events
+        @session.on("agent_speech_committed")
+        def on_agent_speech(speech_ev):
+            text = getattr(speech_ev, "content", "") or getattr(speech_ev, "text", "")
+            if text:
+                logger.info("🌸 Maymint spoken: '%s'", text[:60])
+                broadcast_data({
+                    "type": "transcript",
+                    "sender": "maymint",
+                    "text": text,
+                    "mode": current_mode
+                })
+                if maymint_brain:
+                    maymint_brain.append_to_active_history(
+                        sender="maymint",
+                        text=text,
+                        mode=current_mode
+                    )
+
+        await session.start(room=room, agent=agent, room_options=room_opts)
+        logger.info("✨ Maymint AgentSession active in room %s (Unified Brain & Interruption Ready)", room_name)
+
+        # Warm Greeting to Boss
         try:
-            await session.say("สวัสดีค่ะบอส น้องมายมิ้นท์เชื่อมต่อสายสดแล้วค่ะ ได้ยินเสียงมายชัดเจนไหมคะ")
+            greeting = "สวัสดีค่ะบอส น้องมายมิ้นท์เชื่อมต่อสายสดแล้วค่ะ ได้ยินเสียงมายชัดเจนไหมคะ"
+            await session.say(greeting)
+            broadcast_data({
+                "type": "transcript",
+                "sender": "maymint",
+                "text": greeting,
+                "mode": current_mode
+            })
+            if maymint_brain:
+                maymint_brain.append_to_active_history(
+                    sender="maymint",
+                    text=greeting,
+                    mode=current_mode
+                )
             logger.info("🔊 Greeting spoken in room %s", room_name)
         except Exception as e:
             logger.warning("Greeting warning in %s: %s", room_name, e)
 
-        # Stay in room as long as participants exist
+        # Stay in room as long as human participants are connected
         while len(room.remote_participants) > 0:
             await asyncio.sleep(2)
 
@@ -421,7 +508,7 @@ async def run_room_session(room_name: str):
         logger.info("Disconnected from room %s", room_name)
 
 async def room_supervisor():
-    logger.info("🌟 Starting Maymint Room Supervisor daemon with Direct Streaming TTS & Echo Protection...")
+    logger.info("🌟 Starting Maymint Room Supervisor daemon with Unified Brain & Instant Interruption...")
     lk_api = api.LiveKitAPI(LIVEKIT_API_URL, API_KEY, API_SECRET)
     
     try:
@@ -442,7 +529,6 @@ async def room_supervisor():
                             active_sessions.pop(name, None)
                         task.add_done_callback(_cleanup)
 
-                # Check if finished tasks need cleanup
                 for name, task in list(active_sessions.items()):
                     if task.done():
                         active_sessions.pop(name, None)

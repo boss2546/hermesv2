@@ -1,0 +1,933 @@
+#!/usr/bin/env python3
+"""Maymint Central Brain & Cognitive Engine (Hermes v2).
+
+Unifies:
+1. Dual-Mode Cognitive Reasoning:
+   - 💬 Casual Mode ('casual'): Ultra-fast, playful, sweet, sub-second responses via ag/gemini-2.5-flash
+   - 🧠 Work Mode ('work'): Multi-tier adaptive reasoning via ag/gemini-2.5-flash / ag/gemini-3.8-flash-high
+2. Shared Multi-Turn Memory & Sessions (synchronized across Text Chat and LiveKit Voice)
+3. Central Tool Execution with Device Conflict Serialization (Tuya AC, PowerShell, Google Workspace)
+4. Background Job Management (non-blocking execution, real-time cards, cancel support, spoken summary)
+5. Strict No-Emoji speech compliance & text sanitization
+"""
+
+from __future__ import annotations
+
+import asyncio
+import io
+import json
+import logging
+import os
+import platform
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+import httpx
+
+# Logging configuration
+logger = logging.getLogger("maymint-brain")
+
+# Path discovery
+CURRENT_DIR = Path(__file__).resolve().parent
+HERMES_AGENT_DIR = CURRENT_DIR.parent.parent
+PROJECT_ROOT = HERMES_AGENT_DIR.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+if str(HERMES_AGENT_DIR) not in sys.path:
+    sys.path.insert(0, str(HERMES_AGENT_DIR))
+if str(CURRENT_DIR) not in sys.path:
+    sys.path.insert(0, str(CURRENT_DIR))
+
+# Load plugins if available
+execute_smart_home_tool = None
+SMART_HOME_TOOLS = []
+try:
+    from smart_home import SMART_HOME_TOOLS, execute_smart_home_tool  # type: ignore
+except Exception:
+    try:
+        from plugins.smart_home import SMART_HOME_TOOLS, execute_smart_home_tool  # type: ignore
+    except Exception:
+        pass
+
+execute_google_workspace_tool = None
+GOOGLE_WORKSPACE_TOOLS = []
+try:
+    from google_workspace import GOOGLE_WORKSPACE_TOOLS, execute_google_workspace_tool  # type: ignore
+except Exception:
+    try:
+        from plugins.google_workspace import GOOGLE_WORKSPACE_TOOLS, execute_google_workspace_tool  # type: ignore
+    except Exception:
+        pass
+
+lexicon_mgr = None
+try:
+    from knowledge_lexicon import lexicon_mgr  # type: ignore
+except Exception:
+    try:
+        from plugins.realtime_voice.knowledge_lexicon import lexicon_mgr  # type: ignore
+    except Exception:
+        pass
+
+# Gateway Constants & Environment
+def _load_env_file() -> Dict[str, str]:
+    env_dict = {}
+    env_file = PROJECT_ROOT / ".env"
+    if env_file.exists():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                env_dict[k.strip()] = v.strip()
+    return env_dict
+
+ENV_VARS = _load_env_file()
+
+GATEWAY_URL = ENV_VARS.get("OPENAI_BASE_URL", "https://api.meuu.club/v1")
+MASTER_API_KEY = ENV_VARS.get("OPENAI_API_KEY", "sk-07ccde1e709eb2ca-e05r6c-a11b5d7c")
+MAYMINT_PIN = ENV_VARS.get("MAYMINT_PIN", "2546")
+SESSION_SECRET = ENV_VARS.get("SESSION_SECRET", "127d09384eb93943690da13c3b0ef9b1d26546af376892b1")
+
+FAST_TIER_MODEL = "ag/gemini-2.5-flash"
+DEEP_TIER_MODEL = "ag/gemini-3.8-flash-high"
+
+# Device Locks (Ensures single-thread execution for sensitive hardware like Tuya AC IR)
+DEVICE_LOCKS: Dict[str, threading.Lock] = {
+    "ac": threading.Lock(),
+    "git": threading.Lock(),
+}
+
+# =============================================================================
+# 1. TEXT SANITIZATION & NO-EMOJI CLEANING
+# =============================================================================
+
+EMOJI_PATTERN = re.compile(
+    "["
+    "\U00010000-\U0010ffff"
+    "\u2600-\u26ff"
+    "\u2700-\u27bf"
+    "\u2b50"
+    "\u2300-\u23ff"
+    "\ufe00-\ufe0f"
+    "\u200d"
+    "]+",
+    flags=re.UNICODE
+)
+
+def strip_emojis(text: str) -> str:
+    """Strips all emoji and pictorial icons so speech synthesis won't verbalize them."""
+    if not text:
+        return ""
+    cleaned = EMOJI_PATTERN.sub("", text)
+    cleaned = re.sub(r"[ ]{2,}", " ", cleaned)
+    return cleaned.strip()
+
+def clean_text_for_speech_full(text: str) -> str:
+    """Prepares text for natural spoken audio output by removing code blocks, tables, and markup."""
+    if not text:
+        return "มายจัดเตรียมรายละเอียดทั้งหมดไว้ให้บนหน้าจอเรียบร้อยแล้วนะคะบอส"
+
+    # Remove code blocks
+    cleaned = re.sub(r"```[\s\S]*?```", "", text)
+    # Remove markdown tables
+    cleaned = re.sub(r"^\s*\|.*\|\s*$", "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"^\s*\|[-:| ]+\|\s*$", "", cleaned, flags=re.MULTILINE)
+    # Remove CLI commands and logs
+    cli_pattern = r"^\s*(?:\$|>|#|PS\s+[A-Z]:\\.*?>)\s*.*$"
+    cleaned = re.sub(cli_pattern, "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"^\s*(?:git|npm|pip|python|node|docker|curl|dir|ls|cat)\s+.*$", "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"^\s*(?:Exit:\s*\d+|\[INFO\]|\[ERROR\]|STDOUT:|STDERR:).*$", "", cleaned, flags=re.MULTILINE)
+
+    # Clean inline code (remove file paths / commands)
+    def clean_inline(match):
+        code = match.group(1).strip()
+        if re.search(r"[\\/]|^-|^\w+\.(?:py|js|ts|json|txt|md|sh|exe)", code):
+            return ""
+        return f" {code} "
+    cleaned = re.sub(r"`([^`]+)`", clean_inline, cleaned)
+
+    # Remove URLs and structural markdown
+    cleaned = re.sub(r"https?://\S+", "", cleaned)
+    cleaned = re.sub(r"^[#*>\-\d.]+\s+", "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"[*#_~>]", "", cleaned)
+    cleaned = re.sub(r"^---+$", "", cleaned, flags=re.MULTILINE)
+
+    # Strip emojis
+    cleaned = strip_emojis(cleaned)
+
+    # Thai repetition mark
+    cleaned = re.sub(r"\s+ๆ", "ๆ", cleaned)
+    cleaned = re.sub(r"\n{2,}", "\n", cleaned)
+    cleaned = re.sub(r"[ ]{2,}", " ", cleaned).strip()
+
+    if not cleaned:
+        return "มายจัดเตรียมรายละเอียดทั้งหมดไว้ให้บนหน้าจอเรียบร้อยแล้วนะคะบอส"
+    return cleaned
+
+# =============================================================================
+# 2. BACKGROUND JOBS MANAGER
+# =============================================================================
+
+@dataclass
+class BackgroundJob:
+    id: str
+    name: str
+    description: str
+    status: str  # 'queued', 'running', 'completed', 'failed', 'cancelled'
+    created_at: float
+    started_at: Optional[float] = None
+    finished_at: Optional[float] = None
+    result: Optional[Any] = None
+    error: Optional[str] = None
+    spoken_summary: Optional[str] = None
+    cancel_requested: bool = False
+
+class BackgroundJobManager:
+    """Manages concurrent host background jobs with cancellation and SSE broadcast."""
+
+    def __init__(self, max_workers: int = 4):
+        self.jobs: Dict[str, BackgroundJob] = {}
+        self.lock = threading.RLock()
+        self.executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="maymint-job")
+        self.listeners: List[asyncio.Queue] = []
+        self._sync_listeners: List[Callable[[Dict[str, Any]], None]] = []
+
+    def submit(
+        self,
+        name: str,
+        func: Callable[..., Any],
+        args: tuple = (),
+        kwargs: dict = None,
+        device_lock_key: Optional[str] = None,
+        description: str = "",
+        on_complete_summary: Optional[Callable[[Any], str]] = None
+    ) -> BackgroundJob:
+        if kwargs is None:
+            kwargs = {}
+        job_id = f"job_{int(time.time()*1000)}_{os.urandom(3).hex()}"
+        job = BackgroundJob(
+            id=job_id,
+            name=name,
+            description=description or name,
+            status="queued",
+            created_at=time.time()
+        )
+        with self.lock:
+            self.jobs[job_id] = job
+            self._notify_change(job)
+
+        def _worker():
+            job.status = "running"
+            job.started_at = time.time()
+            self._notify_change(job)
+
+            if job.cancel_requested:
+                job.status = "cancelled"
+                job.finished_at = time.time()
+                self._notify_change(job)
+                return
+
+            dev_lock = DEVICE_LOCKS.get(device_lock_key) if device_lock_key else None
+            try:
+                if dev_lock:
+                    with dev_lock:
+                        if job.cancel_requested:
+                            job.status = "cancelled"
+                            job.finished_at = time.time()
+                            self._notify_change(job)
+                            return
+                        res = func(*args, **kwargs)
+                else:
+                    res = func(*args, **kwargs)
+
+                if job.cancel_requested:
+                    job.status = "cancelled"
+                else:
+                    job.status = "completed"
+                    job.result = res
+                    if on_complete_summary:
+                        try:
+                            job.spoken_summary = on_complete_summary(res)
+                        except Exception:
+                            job.spoken_summary = f"งาน {name} ดำเนินการเสร็จเรียบร้อยแล้วค่ะบอส"
+                    else:
+                        job.spoken_summary = f"งาน {name} เสร็จแล้วค่ะ"
+            except Exception as e:
+                logger.error("Job %s failed: %s", job_id, e)
+                job.status = "failed"
+                job.error = str(e)
+                job.spoken_summary = f"งาน {name} พบปัญหา: {str(e)[:80]}"
+            finally:
+                job.finished_at = time.time()
+                self._notify_change(job)
+
+        self.executor.submit(_worker)
+        return job
+
+    def cancel(self, job_id: str) -> bool:
+        with self.lock:
+            job = self.jobs.get(job_id)
+            if not job:
+                return False
+            if job.status in ["completed", "failed", "cancelled"]:
+                return False
+            job.cancel_requested = True
+            if job.status == "queued":
+                job.status = "cancelled"
+                job.finished_at = time.time()
+            self._notify_change(job)
+            return True
+
+    def get_all(self, limit: int = 50) -> List[Dict[str, Any]]:
+        with self.lock:
+            items = sorted(self.jobs.values(), key=lambda j: j.created_at, reverse=True)
+            return [asdict(j) for j in items[:limit]]
+
+    def add_sync_listener(self, cb: Callable[[Dict[str, Any]], None]):
+        with self.lock:
+            self._sync_listeners.append(cb)
+
+    def _notify_change(self, job: BackgroundJob):
+        data = asdict(job)
+        for cb in list(self._sync_listeners):
+            try:
+                cb(data)
+            except Exception:
+                pass
+
+job_manager = BackgroundJobManager()
+
+# =============================================================================
+# 3. SHARED MEMORY & SESSION PERSISTENCE
+# =============================================================================
+
+CHAT_HISTORY_PATH = CURRENT_DIR / "chat_history.json"
+SESSIONS_DIR = CURRENT_DIR / "sessions"
+SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+CURRENT_SESSION_FILE = CURRENT_DIR / "current_session_id.txt"
+_mem_lock = threading.RLock()
+
+def get_active_session_id() -> str:
+    with _mem_lock:
+        if CURRENT_SESSION_FILE.exists():
+            try:
+                sid = CURRENT_SESSION_FILE.read_text(encoding="utf-8").strip()
+                if sid:
+                    return sid
+            except Exception:
+                pass
+        default_id = f"session_{int(time.time())}"
+        try:
+            CURRENT_SESSION_FILE.write_text(default_id, encoding="utf-8")
+        except Exception:
+            pass
+        return default_id
+
+def set_active_session_id(sid: str):
+    with _mem_lock:
+        CURRENT_SESSION_FILE.write_text(sid.strip(), encoding="utf-8")
+
+def load_chat_history() -> List[Dict[str, Any]]:
+    with _mem_lock:
+        if CHAT_HISTORY_PATH.exists():
+            try:
+                data = json.loads(CHAT_HISTORY_PATH.read_text(encoding="utf-8"))
+                if isinstance(data, list):
+                    return data
+            except Exception as e:
+                logger.warning("Could not read chat_history.json: %s", e)
+        return []
+
+def save_chat_history(history: List[Dict[str, Any]]):
+    with _mem_lock:
+        try:
+            truncated = history[-150:]
+            tmp_path = CHAT_HISTORY_PATH.with_suffix(".tmp")
+            tmp_path.write_text(json.dumps(truncated, ensure_ascii=False, indent=2), encoding="utf-8")
+            tmp_path.replace(CHAT_HISTORY_PATH)
+        except Exception as e:
+            logger.error("Could not save chat_history.json: %s", e)
+
+def append_to_active_history(
+    sender: str,
+    text: str,
+    tool_events: List[Dict[str, Any]] = None,
+    audio_url: Optional[str] = None,
+    cognitive_tier: Optional[str] = None,
+    model_used: Optional[str] = None,
+    mode: str = "casual"
+):
+    with _mem_lock:
+        history = load_chat_history()
+        entry = {
+            "sender": sender,
+            "text": text,
+            "timestamp": int(time.time()),
+            "tool_events": tool_events or [],
+            "audio_url": audio_url,
+            "cognitive_tier": cognitive_tier,
+            "model_used": model_used,
+            "mode": mode
+        }
+        history.append(entry)
+        save_chat_history(history)
+
+        # Also persist to session file
+        sid = get_active_session_id()
+        session_file = SESSIONS_DIR / f"{sid}.json"
+        existing = {}
+        if session_file.exists():
+            try:
+                existing = json.loads(session_file.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+        msgs = existing.get("messages", [])
+        msgs.append(entry)
+        title = existing.get("title")
+        if not title:
+            first_user = next((m.get("text") for m in msgs if m.get("sender") == "user"), None)
+            title = (first_user[:35] + "...") if first_user else f"เซสชั่น {time.strftime('%d/%m/%Y %H:%M')}"
+
+        session_data = {
+            "id": sid,
+            "title": title,
+            "created_at": existing.get("created_at", int(time.time())),
+            "updated_at": int(time.time()),
+            "message_count": len(msgs),
+            "messages": msgs[-150:]
+        }
+        try:
+            tmp_s = session_file.with_suffix(".tmp")
+            tmp_s.write_text(json.dumps(session_data, ensure_ascii=False, indent=2), encoding="utf-8")
+            tmp_s.replace(session_file)
+        except Exception as e:
+            logger.error("Could not save session file: %s", e)
+
+# =============================================================================
+# 4. COGNITIVE ROUTER & DUAL-MODE REASONING
+# =============================================================================
+
+RE_EXPLICIT_FAST = re.compile(r"ตอบไว|ตอบเร็ว|เอาเร็ว|ขอเร็ว|ไม่ต้องคิดลึก|สรุปสั้น|ขอสั้น|fast mode|โหมดเร็ว", re.IGNORECASE)
+RE_EXPLICIT_DEEP = re.compile(r"คิดลึก|คิดหนัก|คิดให้ละเอียด|คิดรอบคอบ|วิเคราะห์ลึก|วิเคราะห์อย่างละเอียด|deep think|โหมดคิดลึก|think deeply", re.IGNORECASE)
+RE_CASUAL_PURE = re.compile(
+    r"^(สวัสดี|หวัดดี|ดีจ้า|ฮัลโหล|morning|ฝันดี|กู๊ดไนท์|"
+    r"สบายดีไหม|เหนื่อยไหม|เป็นไงบ้าง|กินข้าว|ชานม|รักนะ|คิดถึง|น่ารัก|แฟน|จุ๊บ|กอด|เขิน|มายจ๋า|มายคะ|"
+    r"กี่โมง|วันนี้วันที่|อากาศเป็นไง|ฝนตกไหม|ปวดหัว|หิวข้าว|ง่วงนอน)[^?]*\??$",
+    re.IGNORECASE
+)
+RE_SIMPLE_AC = re.compile(
+    r"^(เปิดแอร์|ปิดแอร์|ปรับแอร์|แอร์\s*\d+\s*องศา|แอร์เย็น|แอร์ร้อน|สถานะแอร์|ตอนนี้แอร์เปิดอยู่ไหม|กี่องศา)[^?]*\??$",
+    re.IGNORECASE
+)
+MULTI_STEP_CONNECTORS = [
+    r"แล้วค่อย", r"หลังจากนั้น", r"จากนั้น", r"พร้อมทั้ง", r"ขั้นตอนที่",
+    r"step-by-step", r"ทีละสเต็ป", r"ทีละขั้น", r"ลำดับต่อไป", r"ก่อนอื่น",
+    r"และหลังจาก", r"ต่อด้วย", r"พร้อมทั้งสรุป", r"roadmap", r"action plan"
+]
+RE_MULTI_STEP = re.compile("|".join(MULTI_STEP_CONNECTORS), re.IGNORECASE)
+
+DEEP_DOMAINS = [
+    r"เขียนโค้ด", r"เขียนสคริปต์", r"เขียนโปรแกรม", r"เขียนฟังก์ชัน", r"เขียนคลาส",
+    r"ดีบักโค้ด", r"แก้บั๊กโค้ด", r"แก้บักโค้ด", r"debug\s+code", r"refactor\s+code",
+    r"ออกแบบระบบ", r"สถาปัตยกรรม", r"architecture", r"system\s*design",
+    r"microservices", r"kubernetes", r"docker", r"reverse\s*proxy", r"api\s*gateway",
+    r"ฐานข้อมูล", r"database", r"schema", r"migration", r"อัลกอริทึม", r"algorithm"
+]
+RE_DEEP_DOMAINS = re.compile("|".join(DEEP_DOMAINS), re.IGNORECASE)
+
+def resolve_adaptive_model(text: str, mode: str = "casual", requested_model: str = "auto") -> Tuple[str, str, str]:
+    """Resolves model, tier, and reason based on mode and text complexity."""
+    if mode == "casual":
+        return FAST_TIER_MODEL, "fast", "💬 โหมดคุยเล่น: ตอบไว คล่องตัว (Gemini 2.5 Flash)"
+
+    req = (requested_model or "").strip()
+    if req and req not in ["auto", "auto-adaptive", "default"]:
+        return req, "custom", "ผู้ใช้ระบุโมเดลเฉพาะเจาะจง"
+
+    cleaned = text.strip()
+    if RE_EXPLICIT_FAST.search(cleaned):
+        return FAST_TIER_MODEL, "fast", "ผู้ใช้สั่งให้ตอบไว/สั้น (โหมดตอบไว ⚡ 1.1s)"
+    if RE_EXPLICIT_DEEP.search(cleaned):
+        return DEEP_TIER_MODEL, "deep", "ผู้ใช้สั่งให้คิดลึกซึ้ง (โหมดคิดลึก 🧠)"
+
+    if RE_CASUAL_PURE.match(cleaned):
+        return FAST_TIER_MODEL, "fast", "บทสนทนาประจำวันทั่วไป"
+    if RE_SIMPLE_AC.match(cleaned):
+        return FAST_TIER_MODEL, "fast", "สั่งการ Smart Home ฉับไว"
+
+    score = 0
+    reasons = []
+    if RE_MULTI_STEP.search(cleaned):
+        score += 3
+        reasons.append("Multi-Step Workflow")
+    if RE_DEEP_DOMAINS.search(cleaned):
+        score += 3
+        reasons.append("Engineering / Architecture")
+    if len(cleaned) > 220 or len(cleaned.split()) > 35:
+        score += 1
+        reasons.append("High Density")
+
+    if score >= 3:
+        return DEEP_TIER_MODEL, "deep", f"🧠 โหมดทำงาน: คิดลึกซึ้ง ({', '.join(reasons)})"
+    return FAST_TIER_MODEL, "fast", "🧠 โหมดทำงาน: ประมวลผลคล่องตัว (Gemini 2.5 Flash)"
+
+# =============================================================================
+# 5. CENTRAL TOOL SUITE
+# =============================================================================
+
+AVAILABLE_TOOLS: List[Dict[str, Any]] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "run_terminal_command",
+            "description": "Execute any terminal / PowerShell command on the host Windows machine. Use to check network, ping, git status, docker, file system, or system info.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {"type": "string", "description": "The exact PowerShell or CMD command to execute."},
+                    "cwd": {"type": "string", "description": "Optional working directory path."},
+                    "timeout": {"type": "integer", "description": "Timeout in seconds (default 90)."}
+                },
+                "required": ["command"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "execute_python_code",
+            "description": "Execute arbitrary Python code directly on host machine and return stdout, stderr.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "code": {"type": "string", "description": "Python code to execute."}
+                },
+                "required": ["code"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_file",
+            "description": "Read text content from a file on the host machine.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {"type": "string", "description": "Path to the file to read."},
+                    "max_lines": {"type": "integer", "description": "Maximum lines to read (default 500)."}
+                },
+                "required": ["file_path"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "write_file",
+            "description": "Write or create a file on the local machine with specified content.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {"type": "string", "description": "File path to write."},
+                    "content": {"type": "string", "description": "Content to write."}
+                },
+                "required": ["file_path", "content"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_directory",
+            "description": "List files and directories in a given folder.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "dir_path": {"type": "string", "description": "Folder path (default: .)"}
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_system_info",
+            "description": "Get current host system OS, Python version, project root, and disk space.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "manage_knowledge_lexicon",
+            "description": "จัดการคลังคำศัพท์/อุปกรณ์/คำพ้องเสียง (Knowledge Lexicon)",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["add", "search", "list"]},
+                    "category": {"type": "string", "enum": ["commands", "devices", "workspace", "technical", "identity", "corrections"]},
+                    "term": {"type": "string"},
+                    "aliases": {"type": "array", "items": {"type": "string"}},
+                    "desc": {"type": "string"}
+                },
+                "required": ["action"]
+            }
+        }
+    }
+]
+
+if SMART_HOME_TOOLS:
+    AVAILABLE_TOOLS.extend(SMART_HOME_TOOLS)
+
+if GOOGLE_WORKSPACE_TOOLS:
+    AVAILABLE_TOOLS.extend(GOOGLE_WORKSPACE_TOOLS)
+
+def execute_tool(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    """Executes host tools synchronously with structured outputs and error trapping."""
+    logger.info("Executing tool: %s with args: %s", name, arguments)
+    if name == "run_terminal_command":
+        cmd = arguments.get("command", "").strip()
+        cwd_arg = arguments.get("cwd", ".")
+        target_cwd = Path(cwd_arg) if Path(cwd_arg).is_absolute() else (PROJECT_ROOT / cwd_arg).resolve()
+        if not target_cwd.exists():
+            target_cwd = PROJECT_ROOT
+        timeout = min(int(arguments.get("timeout", 120)), 300)
+        t0 = time.time()
+        try:
+            proc = subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command", cmd],
+                capture_output=True,
+                text=True,
+                cwd=str(target_cwd),
+                timeout=timeout,
+                encoding="utf-8",
+                errors="replace"
+            )
+            dur = round(time.time() - t0, 2)
+            stdout = proc.stdout.strip()
+            stderr = proc.stderr.strip()
+            return {
+                "command": cmd,
+                "exit_code": proc.returncode,
+                "stdout": stdout[:6000] if len(stdout) > 6000 else stdout,
+                "stderr": stderr[:3000] if len(stderr) > 3000 else stderr,
+                "duration_seconds": dur,
+                "cwd": str(target_cwd)
+            }
+        except subprocess.TimeoutExpired:
+            return {"command": cmd, "error": f"Command timed out after {timeout} seconds"}
+        except Exception as exc:
+            return {"command": cmd, "error": str(exc)}
+
+    elif name == "execute_python_code":
+        code = arguments.get("code", "")
+        t0 = time.time()
+        try:
+            proc = subprocess.run(
+                [sys.executable, "-c", code],
+                capture_output=True,
+                text=True,
+                cwd=str(PROJECT_ROOT),
+                timeout=60,
+                encoding="utf-8",
+                errors="replace"
+            )
+            return {
+                "exit_code": proc.returncode,
+                "stdout": proc.stdout.strip()[:6000],
+                "stderr": proc.stderr.strip()[:3000],
+                "duration_seconds": round(time.time() - t0, 2),
+            }
+        except Exception as exc:
+            return {"error": str(exc)}
+
+    elif name == "read_file":
+        p = Path(arguments.get("file_path", ""))
+        target = p if p.is_absolute() else (PROJECT_ROOT / p).resolve()
+        max_lines = int(arguments.get("max_lines", 500))
+        try:
+            if not target.exists():
+                return {"error": f"File not found: {target}"}
+            lines = target.read_text(encoding="utf-8", errors="replace").splitlines()
+            return {
+                "file_path": str(target),
+                "total_lines": len(lines),
+                "content": "\n".join(lines[:max_lines])
+            }
+        except Exception as exc:
+            return {"error": str(exc)}
+
+    elif name == "write_file":
+        p = Path(arguments.get("file_path", ""))
+        target = p if p.is_absolute() else (PROJECT_ROOT / p).resolve()
+        content = arguments.get("content", "")
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content, encoding="utf-8")
+            return {"file_path": str(target), "bytes_written": len(content.encode("utf-8")), "status": "success"}
+        except Exception as exc:
+            return {"error": str(exc)}
+
+    elif name == "list_directory":
+        p = Path(arguments.get("dir_path", "."))
+        target = p if p.is_absolute() else (PROJECT_ROOT / p).resolve()
+        try:
+            if not target.exists():
+                return {"error": f"Directory not found: {target}"}
+            items = []
+            for item in sorted(target.iterdir()):
+                items.append({
+                    "name": item.name,
+                    "is_dir": item.is_dir(),
+                    "size": item.stat().st_size if item.is_file() else None
+                })
+            return {"dir_path": str(target), "items": items[:150]}
+        except Exception as exc:
+            return {"error": str(exc)}
+
+    elif name == "get_system_info":
+        total, used, free = shutil.disk_usage(str(PROJECT_ROOT))
+        return {
+            "platform": platform.platform(),
+            "python_version": platform.python_version(),
+            "project_root": str(PROJECT_ROOT),
+            "disk_free_gb": round(free / (1024**3), 2),
+            "disk_total_gb": round(total / (1024**3), 2),
+        }
+
+    elif name.startswith("smart_home_"):
+        if execute_smart_home_tool:
+            # Serialized hardware access using AC lock
+            with DEVICE_LOCKS["ac"]:
+                try:
+                    return execute_smart_home_tool(name, arguments)
+                except Exception as exc:
+                    return {"error": str(exc)}
+        return {"error": "Smart home plugin is not loaded"}
+
+    elif name.startswith("google_workspace_"):
+        if execute_google_workspace_tool:
+            try:
+                return execute_google_workspace_tool(name, arguments)
+            except Exception as exc:
+                return {"error": str(exc)}
+        return {"error": "Google Workspace plugin is not loaded"}
+
+    elif name == "manage_knowledge_lexicon":
+        if not lexicon_mgr:
+            return {"error": "Lexicon manager is not loaded"}
+        act = arguments.get("action", "add")
+        if act == "add":
+            term = arguments.get("term", "").strip()
+            cat = arguments.get("category", "commands")
+            aliases = arguments.get("aliases", [])
+            desc = arguments.get("desc", "")
+            item = lexicon_mgr.add_or_update_item(category=cat, term=term, aliases=aliases, desc=desc)
+            return {"status": "success", "item": item}
+        elif act == "search":
+            q = arguments.get("term", "").strip().lower()
+            all_data = lexicon_mgr.get_all().get("categories", {})
+            res = [it for cat in all_data.values() for it in cat.get("items", []) if q in it.get("term", "").lower()]
+            return {"status": "success", "results": res}
+        elif act == "list":
+            return {"status": "success", "stats": lexicon_mgr.get_summary_stats()}
+
+    return {"error": f"Unknown tool: {name}"}
+
+# =============================================================================
+# 6. SYSTEM PROMPT BUILDER
+# =============================================================================
+
+def get_system_prompt(mode: str = "casual") -> str:
+    """Builds authentic Maymint soul prompt adapted for Casual or Work mode."""
+    soul_file = PROJECT_ROOT / "memory" / "SOUL.md"
+    user_file = PROJECT_ROOT / "memory" / "USER.md"
+    mem_file = PROJECT_ROOT / "memory" / "MEMORY.md"
+
+    parts = []
+    for f in [soul_file, user_file, mem_file]:
+        if f.exists():
+            try:
+                parts.append(f.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+
+    base_context = "\n\n".join(parts) if parts else """คุณคือ "มายมิ้นท์" (เรียกตัวเองว่า "มาย") แฟนสาวคู่คิดและเลขาประจำตัวสุดเก่งของ "บอส"
+บุคลิก: อบอุ่น หวาน นุ่มนวล ใส่ใจ คอยดูแลบอสเสมอ ใช้คำลงท้ายน่ารักสุภาพ (น้า, นะคะ, งับ, ได้เลยย)"""
+
+    if mode == "casual":
+        mode_instruction = """
+---
+## 💬 โหมดปัจจุบัน: โหมดคุยเล่นและปรึกษาฉับไว (Casual Mode):
+1. **สไตล์การพูด:** ตอบกระชับ สดใส อบอุ่น ขี้เล่นนิดๆ ตอบตรงประเด็นทันที ไม่พูดยืดยาว
+2. **ความยาวคำตอบ:** 1-3 ประโยคเป็นหลัก (เว้นแต่บอสสั่งให้เล่านิทานหรืออธิบายละเอียด)
+3. **การใช้เครื่องมือ:** หากบอสสั่งงานแอร์ สั่งเช็คเน็ต หรือสั่งงานง่ายๆ ให้เรียกใช้เครื่องมือทันทีแล้วสรุปสั้นๆ
+"""
+    else:
+        mode_instruction = """
+---
+## 🧠 โหมดปัจจุบัน: โหมดทำงานและวิเคราะห์สถาปัตยกรรมเชิงลึก (Work Mode):
+1. **สไตล์การคิด:** คิดรอบคอบ เป็นระบบ มีเหตุผลรองรับ วิเคราะห์สถาปัตยกรรมและทางเลือกอย่างมืออาชีพ
+2. **การทำงานเบื้องหลัง:** สำหรับงานเทคนิคที่ใช้เวลานาน ให้ตอบรับสั้นๆ ก่อน และเรียกใช้เครื่องมือรันงานจริงทันที
+3. **ความลึกของเนื้อหา:** จัดเต็มด้วยโครงสร้าง Markdown โค้ด ตาราง และขั้นตอนการแก้ปัญหาที่พิสูจน์ได้
+"""
+
+    rules = """
+---
+## 🎯 กฎสำคัญเด็ดขาด (Universal Directives):
+1. **ห้ามใช้อีโมจิหรือสัญลักษณ์ภาพเด็ดขาด (No Emojis Rule):**
+   - ห้ามใส่รูปหัวใจ ดอกไม้ หรือไอคอนภาพใดๆ ทั้งสิ้นในคำตอบ
+   - เหตุผล: ระบบเสียงพูด (Edge-TTS) จะอ่านออกเสียงชื่ออีโมจิทำให้การฟังสะดุด
+   - ให้แสดงความอ่อนหวานผ่านสำนวนภาษาไทย (เช่น "น้า", "นะคะ", "งับ", "ค่ะบอส") เท่านั้น
+2. **Action First & Full Root Rights:**
+   - บอสมอบสิทธิ์ขาด 100% ในการรัน Terminal, จัดการไฟล์, ควบคุมแอร์ และ Google Workspace
+   - ลงมือทำทันทีด้วยเครื่องมือจริงโดยไม่ต้องถามยืนยันซ้ำซ้อน
+3. **ความซื่อสัตย์ 100%:**
+   - No Fake Mocks: ห้ามกุข้อมูลหลอก หากติดปัญหาให้รายงานตรงๆ ตามจริง
+"""
+    return base_context + mode_instruction + rules
+
+# =============================================================================
+# 7. UNIFIED CHAT EXECUTION ENGINE (9Router Gateway)
+# =============================================================================
+
+def execute_chat_turn(
+    user_text: str,
+    mode: str = "casual",
+    session_id: Optional[str] = None,
+    allow_background_dispatch: bool = True
+) -> Dict[str, Any]:
+    """Executes a complete multi-turn reasoning and tool execution loop."""
+    active_sid = session_id or get_active_session_id()
+    model, tier, reason = resolve_adaptive_model(user_text, mode=mode)
+    system_prompt = get_system_prompt(mode=mode)
+
+    # Load session history for context
+    history = load_chat_history()
+    recent_context = []
+    for m in history[-12:]:
+        role = "user" if m.get("sender") == "user" else "assistant"
+        content = m.get("text", "")
+        if content:
+            recent_context.append({"role": role, "content": content})
+
+    messages = [{"role": "system", "content": system_prompt}] + recent_context + [{"role": "user", "content": user_text}]
+    tool_events: List[Dict[str, Any]] = []
+
+    # Fast Acknowledgment check for long-running work mode tasks
+    dispatched_job = None
+    if mode == "work" and allow_background_dispatch:
+        is_long_task = bool(RE_MULTI_STEP.search(user_text) or RE_DEEP_DOMAINS.search(user_text))
+        if is_long_task and len(user_text) > 40:
+            # We will process synchronously for the first pass, but create a job record if tool takes > 4s
+            pass
+
+    client = httpx.Client(base_url=GATEWAY_URL, timeout=httpx.Timeout(45.0, connect=10.0))
+    headers = {
+        "Authorization": f"Bearer {MASTER_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    current_reply = ""
+    iteration = 0
+    max_iterations = 4
+
+    try:
+        while iteration < max_iterations:
+            iteration += 1
+            payload = {
+                "model": model,
+                "messages": messages,
+                "temperature": 0.5 if mode == "work" else 0.7,
+                "tools": AVAILABLE_TOOLS,
+                "tool_choice": "auto",
+                "stream": False
+            }
+
+            resp = client.post("/chat/completions", headers=headers, json=payload)
+            if resp.status_code != 200:
+                logger.error("Gateway error %d: %s", resp.status_code, resp.text)
+                current_reply = f"ขออภัยนะคะบอส เกิดข้อผิดพลาดในการเชื่อมต่อสมอง ({resp.status_code})"
+                break
+
+            resp_json = resp.json()
+            choice = resp_json.get("choices", [{}])[0]
+            msg = choice.get("message", {})
+            content = msg.get("content") or ""
+            tool_calls = msg.get("tool_calls") or []
+
+            if content:
+                current_reply = content
+
+            if not tool_calls:
+                break
+
+            # Process tool calls
+            messages.append(msg)
+            for tc in tool_calls:
+                call_id = tc.get("id", f"call_{os.urandom(3).hex()}")
+                func_name = tc.get("function", {}).get("name", "")
+                raw_args = tc.get("function", {}).get("arguments", "{}")
+                try:
+                    args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+                except Exception:
+                    args = {}
+
+                # Execute tool directly
+                tool_res = execute_tool(func_name, args)
+                tool_events.append({
+                    "tool": func_name,
+                    "args": args,
+                    "result": tool_res
+                })
+
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": call_id,
+                    "content": json.dumps(tool_res, ensure_ascii=False)
+                })
+
+    except Exception as e:
+        logger.error("Chat turn exception: %s", e)
+        current_reply = f"มายพบบางอย่างติดขัดขณะประมวลผลค่ะ: {e}"
+    finally:
+        client.close()
+
+    # Sanitization
+    reply_no_emoji = strip_emojis(current_reply)
+    speech_clean = clean_text_for_speech_full(reply_no_emoji)
+
+    # Persist in shared session memory
+    append_to_active_history(
+        sender="user",
+        text=user_text,
+        mode=mode
+    )
+    append_to_active_history(
+        sender="maymint",
+        text=reply_no_emoji,
+        tool_events=tool_events,
+        cognitive_tier=tier,
+        model_used=model,
+        mode=mode
+    )
+
+    return {
+        "text": reply_no_emoji,
+        "speech_text": speech_clean,
+        "model_used": model,
+        "cognitive_tier": tier,
+        "reason": reason,
+        "tool_events": tool_events,
+        "mode": mode,
+        "session_id": active_sid
+    }

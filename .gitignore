@@ -80,3 +80,7 @@ scratch/
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
+
+# User personal notes
+โน็ต.txt
+

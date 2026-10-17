@@ -493,11 +493,43 @@
 
 ---
 
+- [x] **สเต็ป 36: ยกเครื่องระบบเสียง may.meuu.live สู่ LiveKit WebRTC Engine 100% (Liquid Glass UI Preserved, PIN Security, Dual-Mode & 24/7 Watchdog - PASS 100%)**
+  - **การรักษาสถาปัตยกรรม Liquid Glass Web Dashboard เดิม 100%:**
+    - คงความงดงามของธีม Dreamscape Sunset, Frosted Glass Card, Waveform Audio Visualizer, และกล่อง Settings บนพอร์ต `9229` ไว้อย่างสมบูรณ์
+    - ปลดระวางระบบอัด WAV/Web Speech เก่า และเชื่อมต่อ LiveKit Client WebRTC SDK สู่ `lk.meuu.live` (พอร์ต 7880)
+  - **ระบบความปลอดภัยและการยืนยันตัวตน (PIN Authentication):**
+    - กำหนด PIN 4 หลัก (`2546` จัดเก็บใน `.env`)
+    - ระบบ SHA-256 HMAC Signature Session Cookie อายุ 30 วัน
+    - Brute-force protection: ใส่ผิดเกิน 5 ครั้งล็อกทันที 15 นาที
+    - ป้องกันทุกเส้นทาง API (`/api/chat`, `/api/livekit-token`, `/api/jobs/*`)
+  - **สมองกลางและการสลับโหมด (`hermes-agent/plugins/realtime_voice/maymint_brain.py`):**
+    - ผสาน Cognitive Router, Persona Prompt, Lexicon, และ Session Memory ร่วมกัน
+    - รองรับปุ่มสลับโหมดบน UI:
+      - 💬 **คุยเล่น (Casual Mode):** ใช้ Gemini 2.5 Flash ตอบไว คุยสนุกเป็นธรรมชาติ
+      - 🧠 **ทำงาน (Work Mode):** ใช้ Gemini 3.8 Flash High คิดรอบคอบ แก้ปัญหาและรันเครื่องมือ
+    - ทั้งการพิมพ์และการพูดด้วยเสียงใช้เครื่องมือและความทรงจำชุดเดียวกัน 100%
+  - **ระบบงานเบื้องหลัง (Background Jobs & Serialization):**
+    - งานเครื่องมือที่ใช้เวลานานถูกส่งไปรันเบื้องหลังแบบ Non-blocking
+    - แสดงการ์ดสถานะงานแบบเรียลไทม์บน UI ผ่าน SSE `/api/jobs/stream` (⏳ กำลังทำ → ✅ เสร็จสิ้น / ❌ เกิดข้อผิดพลาด) พร้อมปุ่ม ✖ ยกเลิกงาน
+    - มายมิ้นท์จะพูดสรุปสั้นๆ ให้ฟังเมื่อว่าง
+    - ระบบ Device Lock (`DEVICE_LOCKS["ac"]`) ป้องกันคำสั่งชนกันบนอุปกรณ์ Smart Home
+  - **ระบบขัดจังหวะการพูด (Speech Interruption):**
+    - เมื่อบอสแตะปุ่มไมค์ขณะที่น้องมายกำลังพูด ระบบจะส่ง `{ type: "interrupt" }` ผ่าน LiveKit DataChannel ให้ตัดเสียงพูดทันที
+  - **ความคงทนและการทำงานตลอด 24/7 (Always-On Supervisor):**
+    - สคริปต์ `scripts/maymint-watchdog.ps1` ตรวจสุขภาพ 3 บริการ (พอร์ต 7880, 9229, Agent Daemon) และสั่ง Auto-Restart ภายใน 10-15 วินาทีหากเกิดข้อผิดพลาด
+    - ลงทะเบียน Windows Task Scheduler (`Maymint-AlwaysOn`) ให้รันอัตโนมัติเมื่อบูตเครื่อง
+    - มีสคริปต์ `START-MAYMINT.bat` และ `STOP-MAYMINT.bat` ให้บอสสั่งงานด้วยคลิกเดียว
+  - **การทำความสะอาดและล้างไฟล์เก่า:**
+    - ลบ Official Agents Playground ตัวทดสอบเดิม, `web_server.py`, `livekit_server.zip` คืนพื้นที่ดิสก์และโครงสร้างโฟลเดอร์สะอาด 100%
+
+---
+
 ## 🌐 ลิงก์ระบบที่เปิดใช้งานอยู่
-- 🏆 **Official LiveKit Agents Playground (Public):** `https://discussing-spine-techniques-arena.trycloudflare.com/#cam=0&mic=1&screen=0&video=0&audio=1&chat=1&theme_color=cyan`
-- 📊 **Web Logs Dashboard (Public):** `https://discussing-spine-techniques-arena.trycloudflare.com/logs`
-- 📡 **LiveKit Server (Public WSS):** `wss://rack-casinos-earnings-qty.trycloudflare.com`
-- 🌸 **Maymint Production Subdomain:** `https://may.meuu.live/`
+- 🌸 **Maymint Liquid Glass Web Dashboard (Production):** `https://may.meuu.live/` (พอร์ต 9229, PIN: 2546)
+- 📡 **LiveKit WebRTC Signaling Subdomain:** `wss://lk.meuu.live` (พอร์ต 7880)
+- 🎙️ **LiveKit Media Direct IP:** `168.222.28.67` (TCP 7881, UDP 50000-50100)
+- 🛡️ **Always-On Watchdog Service:** รันเบื้องหลังผ่าน Windows Task Scheduler (`Maymint-AlwaysOn`)
+
 
 
 

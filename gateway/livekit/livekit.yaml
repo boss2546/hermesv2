@@ -5,8 +5,9 @@ rtc:
   tcp_port: 7881
   port_range_start: 50000
   port_range_end: 50100
-  use_external_ip: false
+  use_external_ip: true
+  node_ip: "168.222.28.67"
 keys:
-  devkey: secret
+  maymint_key_bcf1fe4a923e6181: maymint_sec_0d4cedaee574e28e5d5cf90fb8c81e4c
 logging:
   level: info
