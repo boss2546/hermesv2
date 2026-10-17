@@ -286,6 +286,10 @@ class BackgroundJobManager:
             self._notify_change(job)
             return True
 
+    def get_job(self, job_id: str) -> Optional[BackgroundJob]:
+        with self.lock:
+            return self.jobs.get(job_id)
+
     def get_all(self, limit: int = 50) -> List[Dict[str, Any]]:
         with self.lock:
             items = sorted(self.jobs.values(), key=lambda j: j.created_at, reverse=True)
