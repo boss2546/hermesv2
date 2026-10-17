@@ -13,13 +13,23 @@ Features:
 
 from __future__ import annotations
 
+import os
+import sys
+
+# Fast Singleton Mutex Check before loading heavy AI/ML packages
+if os.name == "nt":
+    import ctypes
+    _kernel32 = ctypes.windll.kernel32
+    _daemon_mutex = _kernel32.CreateMutexW(None, False, "Global\\MaymintAgentDaemonMutex")
+    if _kernel32.GetLastError() == 183:  # ERROR_ALREADY_EXISTS
+        print("⚠️ Another Maymint Agent Daemon instance is already running on this machine. Exiting safely.", flush=True)
+        sys.exit(0)
+
 import asyncio
 import io
 import json
 import logging
-import os
 import re
-import sys
 import wave
 from pathlib import Path
 from typing import Optional

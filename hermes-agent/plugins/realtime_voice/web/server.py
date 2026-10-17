@@ -12,10 +12,21 @@ Provides:
 
 from __future__ import annotations
 
+import os
+import sys
+
+# Fast Singleton Mutex Check before loading web framework
+if os.name == "nt":
+    import ctypes
+    _kernel32 = ctypes.windll.kernel32
+    _server_mutex = _kernel32.CreateMutexW(None, False, "Global\\MaymintWebServerMutex")
+    if _kernel32.GetLastError() == 183:  # ERROR_ALREADY_EXISTS
+        print("⚠️ Another Maymint Web Server instance is already active. Exiting safely.", flush=True)
+        sys.exit(0)
+
 import base64
 import json
 import logging
-import os
 import platform
 import re
 import secrets
@@ -409,7 +420,7 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
                     description=desc or f"คำสั่ง: {cmd[:50]}",
                     on_complete_summary=lambda r: f"งาน {j_name} เสร็จแล้วค่ะ"
                 )
-                self._send_json({"success": True, "job_id": job.id, "job": asdict(job)})
+                self._send_json({"success": True, "status": "submitted", "job_id": job.id, "job": asdict(job)})
             elif j_type == "python" or "code" in payload:
                 code = payload.get("code", "")
                 job = maymint_brain.job_manager.submit(
@@ -420,7 +431,7 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
                     description=desc or "Python Script",
                     on_complete_summary=lambda r: f"งาน {j_name} รันเสร็จแล้วค่ะ"
                 )
-                self._send_json({"success": True, "job_id": job.id, "job": asdict(job)})
+                self._send_json({"success": True, "status": "submitted", "job_id": job.id, "job": asdict(job)})
             else:
                 self._send_json({"error": "Either command or code required"}, status=400)
         elif path == "/api/jobs/cancel":
@@ -511,7 +522,7 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
 
     def _handle_chat(self, payload: Dict[str, Any]):
         """Dual-Mode Cognitive Chat completion via maymint_brain."""
-        user_text = payload.get("text", "").strip()
+        user_text = (payload.get("text") or payload.get("message") or "").strip()
         mode = payload.get("mode", "casual")
         voice = payload.get("voice") or RUNTIME_CONFIG.get("voice", "th-TH-PremwadeeNeural")
         speed = payload.get("speed") or RUNTIME_CONFIG.get("speed", "+0%")
@@ -532,7 +543,7 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             clean_speech = turn_result.get("speech_text", "")
 
             audio_url = None
-            if auto_speak and clean_speech and engine:
+            if auto_speak and clean_speech:
                 try:
                     f_path, chunks, dur = synthesize_speech_multiround(clean_speech, voice=voice, speed=speed, pitch=pitch)
                     audio_url = f"/audio/{f_path.name}"
@@ -658,6 +669,7 @@ def synthesize_speech_multiround(
     return out_file, [clean_text], time.time() - t0
 
 def run_server():
+    ThreadingHTTPServer.allow_reuse_address = True
     server = ThreadingHTTPServer(("0.0.0.0", PORT), VoiceRequestHandler)
     logger.info("🌸 Maymint Liquid Glass Dashboard running at http://127.0.0.1:%d/ (PIN Secured)", PORT)
     try:

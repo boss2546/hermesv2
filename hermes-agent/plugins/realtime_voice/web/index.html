@@ -1233,52 +1233,6 @@
     });
 
     // =========================================================================
-    // BACKGROUND JOBS & SSE STREAM
-    // =========================================================================
-    function initJobStream() {
-      try {
-        const es = new EventSource('/api/jobs/stream');
-        es.onmessage = (event) => {
-          try {
-            const job = JSON.parse(event.data);
-            updateJobUI(job);
-          } catch (e) {}
-        };
-      } catch (e) {}
-    }
-
-    function updateJobUI(job) {
-      const container = document.getElementById('jobsContainer');
-      const list = document.getElementById('jobsList');
-      const count = document.getElementById('jobsCount');
-
-      container.style.display = 'block';
-      let existing = document.getElementById(`job-${job.id}`);
-      if (!existing) {
-        existing = document.createElement('div');
-        existing.id = `job-${job.id}`;
-        existing.className = 'job-item';
-        list.appendChild(existing);
-      }
-
-      const statusIcon = job.status === 'completed' ? '✅' : (job.status === 'running' ? '⏳' : '❌');
-      existing.innerHTML = `
-        <span>${statusIcon} <strong>${escapeHtml(job.name)}:</strong> ${escapeHtml(job.status)}</span>
-        ${job.status === 'running' || job.status === 'queued' ? `<button class="job-cancel-btn" onclick="cancelJob('${job.id}')">✖ ยกเลิก</button>` : ''}
-      `;
-    }
-
-    async function cancelJob(jobId) {
-      try {
-        await fetch('/api/jobs/cancel', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ job_id: jobId })
-        });
-      } catch (e) {}
-    }
-
-    // =========================================================================
     // CHAT TRANSCRIPT & MESSAGE RENDERING
     // =========================================================================
     function appendChatMessage(sender, text, toolEvents = null) {

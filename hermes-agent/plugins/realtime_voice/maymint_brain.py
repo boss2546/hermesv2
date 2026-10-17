@@ -254,6 +254,13 @@ class BackgroundJobManager:
                 return
 
             dev_lock = DEVICE_LOCKS.get(device_lock_key) if device_lock_key else None
+            # Inject _job_id into arguments dict if applicable for process PID tracking
+            call_args = list(args)
+            if len(call_args) >= 2 and isinstance(call_args[1], dict):
+                call_args[1] = dict(call_args[1])
+                call_args[1]["_job_id"] = job.id
+            call_args = tuple(call_args)
+
             try:
                 if dev_lock:
                     with dev_lock:
@@ -264,9 +271,9 @@ class BackgroundJobManager:
                                     job.finished_at = time.time()
                                 self._notify_change(job)
                             return
-                        res = func(*args, **kwargs)
+                        res = func(*call_args, **kwargs)
                 else:
-                    res = func(*args, **kwargs)
+                    res = func(*call_args, **kwargs)
 
                 if job.cancel_requested:
                     with self.lock:
@@ -702,20 +709,30 @@ def execute_tool(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         if not target_cwd.exists():
             target_cwd = PROJECT_ROOT
         timeout = min(int(arguments.get("timeout", 120)), 300)
+        job_id = arguments.get("_job_id")
+        job_ref = job_manager.get_job(job_id) if job_id else None
         t0 = time.time()
         try:
-            proc = subprocess.run(
+            proc = subprocess.Popen(
                 ["powershell", "-NoProfile", "-NonInteractive", "-Command", cmd],
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
                 cwd=str(target_cwd),
-                timeout=timeout,
                 encoding="utf-8",
                 errors="replace"
             )
+            if job_ref:
+                job_ref.process_pid = proc.pid
+            try:
+                stdout_str, stderr_str = proc.communicate(timeout=timeout)
+            finally:
+                if job_ref:
+                    job_ref.process_pid = None
+
             dur = round(time.time() - t0, 2)
-            stdout = proc.stdout.strip()
-            stderr = proc.stderr.strip()
+            stdout = (stdout_str or "").strip()
+            stderr = (stderr_str or "").strip()
             return {
                 "command": cmd,
                 "exit_code": proc.returncode,
@@ -731,21 +748,31 @@ def execute_tool(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
 
     elif name == "execute_python_code":
         code = arguments.get("code", "")
+        job_id = arguments.get("_job_id")
+        job_ref = job_manager.get_job(job_id) if job_id else None
         t0 = time.time()
         try:
-            proc = subprocess.run(
+            proc = subprocess.Popen(
                 [sys.executable, "-c", code],
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
                 cwd=str(PROJECT_ROOT),
-                timeout=60,
                 encoding="utf-8",
                 errors="replace"
             )
+            if job_ref:
+                job_ref.process_pid = proc.pid
+            try:
+                stdout_str, stderr_str = proc.communicate(timeout=60)
+            finally:
+                if job_ref:
+                    job_ref.process_pid = None
+
             return {
                 "exit_code": proc.returncode,
-                "stdout": proc.stdout.strip()[:6000],
-                "stderr": proc.stderr.strip()[:3000],
+                "stdout": (stdout_str or "").strip()[:6000],
+                "stderr": (stderr_str or "").strip()[:3000],
                 "duration_seconds": round(time.time() - t0, 2),
             }
         except Exception as exc:
