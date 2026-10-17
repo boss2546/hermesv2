@@ -1262,27 +1262,6 @@
       <!-- Waveform Sticks -->
       <div class="waveform-capsule" id="visualizer"></div>
 
-      <!-- Real-Time Audio Level & Echo / Loopback Diagnostic Bar -->
-      <div class="mic-diag-panel" id="micDiagPanel">
-        <div class="diag-header-row">
-          <div class="diag-meter-box">
-            <span class="diag-icon" id="diagMicIcon">🎙️</span>
-            <span class="diag-meter-text" id="diagMeterText">ระดับเสียงไมค์: รอเริ่มพูด</span>
-            <div class="diag-bar-track">
-              <div class="diag-bar-fill" id="diagBarFill"></div>
-            </div>
-          </div>
-          <div class="diag-actions">
-            <button class="glass-btn small" id="micCheckBtn" title="ทดสอบไมค์ 3 วินาทีแล้วฟังเสียงกลับทันที">
-              ⚡ ทดสอบไมค์ (3s)
-            </button>
-            <button class="glass-btn small highlight" id="echoPlayBtn" title="ฟังเสียงที่อัดล่าสุดกลับมา" disabled>
-              🔊 ฟังเสียงตัวเอง
-            </button>
-          </div>
-        </div>
-      </div>
-
       <!-- Quick Action Chips -->
       <div class="quick-chips-row">
         <button class="liquid-chip" onclick="sendQuickPrompt('สวัสดีจ้ามายมิ้นท์ วันนี้เป็นยังไงบ้าง')">👋 สวัสดีจ้ามายมิ้นท์ 💖</button>
@@ -1450,9 +1429,11 @@
       </div>
 
       <div class="logs-toolbar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem; gap:0.5rem; flex-wrap:wrap;">
-        <div style="display:flex; gap:0.5rem;">
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
           <button class="glass-btn small" id="logsCopyBtn">📋 คัดลอก Logs</button>
           <button class="glass-btn small" id="logsClearBtn">🗑️ ล้าง Logs</button>
+          <button class="glass-btn small" id="micCheckBtn" title="ทดสอบไมค์ 3 วินาทีแล้วฟังเสียงกลับทันที">⚡ ทดสอบไมค์ (3s)</button>
+          <button class="glass-btn small highlight" id="echoPlayBtn" title="ฟังเสียงที่อัดล่าสุดกลับมา" disabled>🔊 ฟังเสียงตัวเอง</button>
         </div>
         <div style="display:flex; gap:0.5rem; align-items:center;">
           <button class="glass-btn small" id="testSpeakerBtn" title="ทดสอบลำโพงหรือหูฟังว่ามีเสียงออกไหม">🔊 ทดสอบเสียงลำโพง</button>
