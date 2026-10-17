@@ -86,6 +86,8 @@ logger = logging.getLogger("voice-server")
 
 WEB_DIR = CURRENT_DIR
 PORT = 9229
+AUDIO_CACHE_DIR = PROJECT_ROOT / "cache" / "audio"
+AUDIO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 BING_CACHE: Dict[str, Any] = {"url": "", "title": "", "timestamp": 0}
 
 # =============================================================================
@@ -348,7 +350,6 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
 
-            queue = asyncio.Queue() if False else []
             stop_event = threading.Event()
 
             def _listener(job_data):
@@ -362,9 +363,20 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
             if maymint_brain:
                 maymint_brain.job_manager.add_sync_listener(_listener)
 
-            # Keep stream open
-            while not stop_event.is_set():
-                time.sleep(1)
+            try:
+                # Keep stream open with periodic keep-alive heartbeat to detect broken socket
+                while not stop_event.is_set():
+                    if stop_event.wait(timeout=5.0):
+                        break
+                    try:
+                        self.wfile.write(b": keepalive\n\n")
+                        self.wfile.flush()
+                    except Exception:
+                        stop_event.set()
+                        break
+            finally:
+                if maymint_brain:
+                    maymint_brain.job_manager.remove_sync_listener(_listener)
             return
 
         elif path == "/api/lexicon":
@@ -593,11 +605,23 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
 
     def _serve_audio(self, is_head: bool = False):
         fname = os.path.basename(self.path.split("?")[0])
-        temp_dir = Path(tempfile.gettempdir()) / "hermes_voice"
-        audio_path = temp_dir / fname
-        if not audio_path.exists() and engine:
-            audio_path = engine._temp_dir / fname
-        if not audio_path.exists():
+        candidate_paths = [
+            AUDIO_CACHE_DIR / fname,
+            Path(tempfile.gettempdir()) / "hermes_voice" / fname,
+            Path("C:/Users/Administrator/AppData/Local/Temp/hermes_voice") / fname,
+            Path("C:/Users/Administrator/AppData/Local/Temp/2/hermes_voice") / fname,
+            Path("C:/Users/Administrator/AppData/Local/Temp/1/hermes_voice") / fname,
+        ]
+        if engine and hasattr(engine, "_temp_dir"):
+            candidate_paths.append(engine._temp_dir / fname)
+
+        audio_path = None
+        for cp in candidate_paths:
+            if cp.exists():
+                audio_path = cp
+                break
+
+        if not audio_path:
             self.send_error(404, "Audio file not found")
             return
 
@@ -609,6 +633,11 @@ class VoiceRequestHandler(SimpleHTTPRequestHandler):
                 ranges = range_header.replace("bytes=", "").split("-")
                 start = int(ranges[0]) if ranges[0] else 0
                 end = int(ranges[1]) if len(ranges) > 1 and ranges[1] else file_size - 1
+                if start > end or start >= file_size or start < 0:
+                    self.send_response(416)
+                    self.send_header("Content-Range", f"bytes */{file_size}")
+                    self.end_headers()
+                    return
                 end = min(end, file_size - 1)
                 content_length = end - start + 1
 
@@ -663,7 +692,7 @@ def synthesize_speech_multiround(
     # Fallback to direct edge_tts
     import edge_tts
     comm = edge_tts.Communicate(clean_text, voice, rate=speed, pitch=pitch)
-    out_file = temp_dir / f"speech_{secrets.token_hex(4)}.mp3"
+    out_file = AUDIO_CACHE_DIR / f"speech_{secrets.token_hex(4)}.mp3"
     import asyncio
     asyncio.run(comm.save(str(out_file)))
     return out_file, [clean_text], time.time() - t0

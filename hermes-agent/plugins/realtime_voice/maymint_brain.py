@@ -356,13 +356,26 @@ class BackgroundJobManager:
         with self.lock:
             self._sync_listeners.append(cb)
 
+    def remove_sync_listener(self, cb: Callable[[Dict[str, Any]], None]):
+        with self.lock:
+            if cb in self._sync_listeners:
+                self._sync_listeners.remove(cb)
+
     def _notify_change(self, job: BackgroundJob):
         data = asdict(job)
-        for cb in list(self._sync_listeners):
+        dead = []
+        with self.lock:
+            listeners = list(self._sync_listeners)
+        for cb in listeners:
             try:
                 cb(data)
             except Exception:
-                pass
+                dead.append(cb)
+        if dead:
+            with self.lock:
+                for d in dead:
+                    if d in self._sync_listeners:
+                        self._sync_listeners.remove(d)
 
 job_manager = BackgroundJobManager(max_workers=16)
 
