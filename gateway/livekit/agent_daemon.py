@@ -55,7 +55,7 @@ import edge_tts
 import httpx
 import openai as openai_sdk
 from livekit import api, rtc
-from livekit.agents import AgentSession, function_tool, stt, tts, voice
+from livekit.agents import AgentSession, function_tool, stt, tokenize, tts, voice
 from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS, APIConnectOptions
 from livekit.agents.utils import audio
 from livekit.agents.voice import room_io
@@ -80,6 +80,8 @@ API_SECRET = ENV_VARS.get("LIVEKIT_API_SECRET", "maymint_sec_0d4cedaee574e28e5d5
 GATEWAY_URL = ENV_VARS.get("OPENAI_BASE_URL", "https://api.meuu.club/v1")
 MASTER_API_KEY = ENV_VARS.get("OPENAI_API_KEY", "sk-07ccde1e709eb2ca-e05r6c-a11b5d7c")
 DEFAULT_VOICE = "th-TH-PremwadeeNeural"
+FAST_TIER_MODEL = getattr(maymint_brain, "FAST_TIER_MODEL", "ag/gemini-2.5-flash")
+DEEP_TIER_MODEL = getattr(maymint_brain, "DEEP_TIER_MODEL", "ag/gemini-3.8-flash-high")
 
 # =========================================================================
 # 1. DIRECT STREAMING EDGE-TTS PROVIDER
@@ -375,6 +377,7 @@ async def run_room_session(room_name: str):
             force_cpu=True,
         )
         direct_tts = MaymintDirectEdgeTTS(DEFAULT_VOICE)
+        streaming_tts = tts.StreamAdapter(tts=direct_tts, sentence_tokenizer=tokenize.basic.SentenceTokenizer())
         stt_inst = Maymint9RouterSTT(room_ref=room, on_transcript_cb=on_user_transcript)
 
         # Build instructions using Maymint Brain
@@ -384,7 +387,7 @@ async def run_room_session(room_name: str):
             instructions=system_instructions,
             vad=vad_inst,
             stt=stt_inst,
-            tts=direct_tts,
+            tts=streaming_tts,
             llm=openai.LLM(
                 client=openai_client,
                 model=FAST_TIER_MODEL
