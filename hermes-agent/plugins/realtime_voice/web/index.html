@@ -732,36 +732,248 @@
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(12px);
-      z-index: 80;
+      background: rgba(8, 4, 14, 0.78);
+      backdrop-filter: blur(16px);
+      z-index: 90;
       display: none;
       align-items: center;
       justify-content: center;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .modal-overlay.open {
+      display: flex;
+      opacity: 1;
     }
     .modal-window {
-      background: rgba(24, 14, 38, 0.95);
-      border: 1px solid var(--glass-border);
-      border-radius: 24px;
-      padding: 1.8rem;
-      width: 540px;
+      background: rgba(22, 14, 34, 0.94);
+      border: 1px solid var(--glass-border-light);
+      border-radius: 26px;
+      padding: 1.8rem 2rem;
+      width: 560px;
       max-width: 92vw;
       max-height: 85vh;
       overflow-y: auto;
-      box-shadow: var(--glass-specular);
+      box-shadow: var(--glass-specular), 0 20px 50px rgba(0, 0, 0, 0.6);
+      transform: scale(0.95);
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .modal-overlay.open .modal-window {
+      transform: scale(1);
     }
     .modal-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
       margin-bottom: 1.4rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 0.9rem;
     }
     .modal-close-btn {
-      background: transparent;
-      border: none;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--glass-border);
       color: var(--text-dim);
-      font-size: 1.4rem;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
       cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .modal-close-btn:hover {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: #ef4444;
+      color: #ffffff;
+      transform: rotate(90deg);
+    }
+
+    .glass-btn.primary {
+      background: linear-gradient(135deg, var(--pink-core), var(--purple-accent));
+      border: 1px solid var(--pink-glow);
+      color: #ffffff;
+      box-shadow: 0 4px 15px rgba(236, 72, 153, 0.35);
+    }
+    .glass-btn.primary:hover {
+      box-shadow: 0 6px 20px rgba(236, 72, 153, 0.6);
+      transform: translateY(-1px);
+    }
+
+    /* Sessions List Styling */
+    .session-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      max-height: 380px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .session-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    .session-list::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+    }
+    .session-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 0.85rem 1.1rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.22s ease;
+    }
+    .session-card:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--pink-glow);
+      transform: translateX(3px);
+    }
+    .session-card.active {
+      background: rgba(236, 72, 153, 0.22);
+      border-color: var(--pink-glow);
+      box-shadow: 0 0 15px rgba(236, 72, 153, 0.25);
+    }
+    .session-card-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      flex: 1;
+      min-width: 0;
+    }
+    .session-title {
+      font-size: 0.92rem;
+      font-weight: 500;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .session-meta {
+      font-size: 0.76rem;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .session-tag {
+      font-size: 0.7rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 8px;
+      font-weight: 500;
+    }
+    .session-tag.active {
+      background: rgba(16, 185, 129, 0.25);
+      color: #6ee7b7;
+      border: 1px solid #10b981;
+    }
+    .session-count-badge {
+      background: rgba(236, 72, 153, 0.25);
+      border: 1px solid rgba(244, 114, 182, 0.4);
+      color: #fdf2f8;
+      font-size: 0.72rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 10px;
+    }
+
+    /* Config Modal Styling */
+    .config-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.15rem;
+    }
+    .config-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .config-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .config-label {
+      font-size: 0.86rem;
+      font-weight: 500;
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .config-subtext {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      font-weight: normal;
+    }
+    .config-select {
+      background: rgba(14, 8, 24, 0.85);
+      border: 1px solid var(--glass-border);
+      color: #ffffff;
+      padding: 0.65rem 0.9rem;
+      border-radius: 14px;
+      font-size: 0.88rem;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .config-select:focus {
+      border-color: var(--pink-glow);
+      box-shadow: 0 0 10px rgba(236, 72, 153, 0.3);
+    }
+    .config-select option {
+      background: #180e26;
+      color: #ffffff;
+    }
+    .config-range {
+      width: 100%;
+      accent-color: var(--pink-core);
+      cursor: pointer;
+      height: 6px;
+      border-radius: 3px;
+    }
+    .range-val-badge {
+      font-size: 0.78rem;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--glass-border);
+      padding: 0.15rem 0.55rem;
+      border-radius: 8px;
+      color: var(--pink-glow);
+      font-weight: 600;
+    }
+
+    /* Toast Notification */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 150;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast-item {
+      background: rgba(22, 14, 34, 0.94);
+      border: 1px solid var(--pink-glow);
+      backdrop-filter: blur(20px);
+      padding: 0.75rem 1.25rem;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+      font-size: 0.86rem;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      pointer-events: auto;
+      animation: slideUpToast 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    @keyframes slideUpToast {
+      from { opacity: 0; transform: translateY(20px) scale(0.9); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
     }
   </style>
 </head>
@@ -920,6 +1132,102 @@
     </div>
   </div>
 
+  <!-- Sessions History Modal -->
+  <div class="modal-overlay" id="sessionsModal">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div>
+          <h3 style="font-size:1.15rem; font-weight:600; display:flex; align-items:center; gap:0.5rem;">📜 ประวัติการสนทนา <span class="session-count-badge" id="sessionsTotalBadge">0</span></h3>
+          <p style="font-size:0.8rem; color:var(--text-dim); margin-top:3px;">เลือกบทสนทนาย้อนหลัง หรือกดเริ่มแชตใหม่ได้เลยค่ะบอส 💖</p>
+        </div>
+        <button class="modal-close-btn" id="sessionsCloseBtn" title="ปิดหน้าต่าง">✕</button>
+      </div>
+
+      <div style="margin-bottom:1rem;">
+        <button class="glass-btn primary" id="modalNewSessionBtn" style="width:100%; justify-content:center; padding:0.65rem; font-size:0.9rem;">
+          ➕ เริ่มต้นบทสนทนาใหม่ (New Chat)
+        </button>
+      </div>
+
+      <div class="session-list" id="sessionsList">
+        <!-- Sessions dynamically injected here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="configModal">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div>
+          <h3 style="font-size:1.15rem; font-weight:600; display:flex; align-items:center; gap:0.5rem;">⚙️ ตั้งค่าระบบมายมิ้นท์</h3>
+          <p style="font-size:0.8rem; color:var(--text-dim); margin-top:3px;">ปรับแต่งเสียงพูด และเอฟเฟกต์กระจกแก้ว Liquid Glass</p>
+        </div>
+        <button class="modal-close-btn" id="configCloseBtn" title="ปิดหน้าต่าง">✕</button>
+      </div>
+
+      <div class="config-form">
+        <!-- Voice Model -->
+        <div class="config-group">
+          <label class="config-label">
+            <span>🗣️ เสียงพากย์ AI (Voice Model)</span>
+            <span class="config-subtext">เลือกบุคลิกเสียงของมายมิ้นท์</span>
+          </label>
+          <select id="cfgVoice" class="config-select">
+            <option value="th-TH-PremwadeeNeural">🌸 น้องเปรมวดี (PremwadeeNeural) — หวานละมุน ขี้อ้อน นุ่มนวล</option>
+            <option value="th-TH-NiwatNeural">👔 พี่นิวัฒน์ (NiwatNeural) — สุภาพ ทางการ สุขุม</option>
+          </select>
+        </div>
+
+        <!-- Speech Rate / Speed -->
+        <div class="config-group">
+          <div class="config-label-row">
+            <label class="config-label">⚡ ความเร็วเสียงพูด (Speech Rate)</label>
+            <span class="range-val-badge" id="cfgSpeedVal">+0%</span>
+          </div>
+          <input type="range" id="cfgSpeed" min="-30" max="50" step="5" value="0" class="config-range">
+        </div>
+
+        <!-- Speech Pitch -->
+        <div class="config-group">
+          <div class="config-label-row">
+            <label class="config-label">🎵 ระดับคีย์เสียง (Pitch)</label>
+            <span class="range-val-badge" id="cfgPitchVal">+0Hz</span>
+          </div>
+          <input type="range" id="cfgPitch" min="-20" max="30" step="5" value="0" class="config-range">
+        </div>
+
+        <!-- Glass Blur -->
+        <div class="config-group">
+          <div class="config-label-row">
+            <label class="config-label">✨ ความเบลอกระจกแก้ว (Liquid Blur)</label>
+            <span class="range-val-badge" id="cfgBlurVal">16px</span>
+          </div>
+          <input type="range" id="cfgBlur" min="4" max="48" step="2" value="16" class="config-range">
+        </div>
+
+        <!-- Glass Opacity -->
+        <div class="config-group">
+          <div class="config-label-row">
+            <label class="config-label">💧 ความทึบแสงกระจก (Glass Opacity)</label>
+            <span class="range-val-badge" id="cfgOpacityVal">68%</span>
+          </div>
+          <input type="range" id="cfgOpacity" min="20" max="95" step="5" value="68" class="config-range">
+        </div>
+
+        <div style="margin-top:1.4rem; display:flex; gap:0.8rem; justify-content:flex-end;">
+          <button class="glass-btn" id="configCancelBtn" style="padding:0.6rem 1.2rem;">ยกเลิก</button>
+          <button class="glass-btn primary" id="configSaveBtn" style="padding:0.6rem 1.4rem;">
+            💾 บันทึกการตั้งค่า
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
   <!-- Audio Player Element for LiveKit and Fallback -->
   <audio id="livekitAudioPlayer" autoplay playsinline></audio>
   <audio id="maymintAudioPlayer" playsinline style="display:none;"></audio>
@@ -1059,6 +1367,10 @@
           pinModal.style.display = 'none';
           initLiveKit();
           initJobStream();
+          loadChatHistory();
+          fetchSessionsList();
+          loadConfig();
+          showToast('ยินดีต้อนรับกลับบ้านค่ะบอส 💖');
         } else {
           pinError.innerText = data.message || 'รหัส PIN ไม่ถูกต้องค่ะ';
           clearPin();
@@ -1090,8 +1402,12 @@
         if (!data.authenticated) {
           pinModal.style.display = 'flex';
         } else {
+          pinModal.style.display = 'none';
           initLiveKit();
           initJobStream();
+          loadChatHistory();
+          fetchSessionsList();
+          loadConfig();
         }
       } catch (e) {
         pinModal.style.display = 'flex';
@@ -1368,7 +1684,365 @@
       } catch (e) {}
     }
 
-    // Submit Text Message
+    // =========================================================================
+    // TOAST NOTIFICATIONS & TOOL BADGE RENDERING
+    // =========================================================================
+    function showToast(msg, icon = '💖') {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = 'toast-item';
+      toast.innerHTML = `<span>${icon}</span> <span>${escapeHtml(msg)}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(12px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function renderToolBadge(tool, result) {
+      const row = document.createElement('div');
+      row.className = 'msg-row';
+      const box = document.createElement('div');
+      box.className = 'terminal-event-box';
+      let formattedResult = '';
+      if (typeof result === 'string') {
+        formattedResult = result;
+      } else {
+        try {
+          formattedResult = JSON.stringify(result, null, 2);
+        } catch (e) {
+          formattedResult = String(result);
+        }
+      }
+      box.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <span class="terminal-badge success">⚡ คำสั่งระบบ: ${escapeHtml(tool || 'system_tool')}</span>
+          <span style="font-size:0.72rem; color:var(--text-dim);">${new Date().toLocaleTimeString('th-TH')}</span>
+        </div>
+        <pre style="margin:0; font-size:0.78rem; color:#e2e8f0; white-space:pre-wrap; word-break:break-all; max-height:160px; overflow-y:auto;">${escapeHtml(formattedResult)}</pre>
+      `;
+      row.appendChild(box);
+      chatBox.appendChild(row);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // =========================================================================
+    // MODALS CONTROLLERS (SESSIONS & CONFIG)
+    // =========================================================================
+    const sessionsModal = document.getElementById('sessionsModal');
+    const configModal = document.getElementById('configModal');
+    const sessionsOpenBtn = document.getElementById('sessionsOpenBtn');
+    const sessionsCloseBtn = document.getElementById('sessionsCloseBtn');
+    const newSessionBtn = document.getElementById('newSessionBtn');
+    const modalNewSessionBtn = document.getElementById('modalNewSessionBtn');
+    const configOpenBtn = document.getElementById('configOpenBtn');
+    const configCloseBtn = document.getElementById('configCloseBtn');
+    const configCancelBtn = document.getElementById('configCancelBtn');
+    const configSaveBtn = document.getElementById('configSaveBtn');
+
+    function openSessionsModal() {
+      fetchSessionsList();
+      if (sessionsModal) sessionsModal.classList.add('open');
+    }
+    function closeSessionsModal() {
+      if (sessionsModal) sessionsModal.classList.remove('open');
+    }
+
+    function openConfigModal() {
+      loadConfig();
+      if (configModal) configModal.classList.add('open');
+    }
+    function closeConfigModal() {
+      if (configModal) configModal.classList.remove('open');
+    }
+
+    if (sessionsOpenBtn) sessionsOpenBtn.addEventListener('click', openSessionsModal);
+    if (sessionsCloseBtn) sessionsCloseBtn.addEventListener('click', closeSessionsModal);
+    if (sessionsModal) {
+      sessionsModal.addEventListener('click', (e) => {
+        if (e.target === sessionsModal) closeSessionsModal();
+      });
+    }
+
+    if (newSessionBtn) newSessionBtn.addEventListener('click', createNewSession);
+    if (modalNewSessionBtn) {
+      modalNewSessionBtn.addEventListener('click', () => {
+        createNewSession();
+        closeSessionsModal();
+      });
+    }
+
+    if (configOpenBtn) configOpenBtn.addEventListener('click', openConfigModal);
+    if (configCloseBtn) configCloseBtn.addEventListener('click', closeConfigModal);
+    if (configCancelBtn) configCancelBtn.addEventListener('click', closeConfigModal);
+    if (configSaveBtn) configSaveBtn.addEventListener('click', saveConfig);
+    if (configModal) {
+      configModal.addEventListener('click', (e) => {
+        if (e.target === configModal) closeConfigModal();
+      });
+    }
+
+    // Config Sliders Live Badges & Dynamic CSS Preview
+    const cfgSpeed = document.getElementById('cfgSpeed');
+    const cfgPitch = document.getElementById('cfgPitch');
+    const cfgBlur = document.getElementById('cfgBlur');
+    const cfgOpacity = document.getElementById('cfgOpacity');
+
+    if (cfgSpeed) {
+      cfgSpeed.addEventListener('input', (e) => {
+        const v = parseInt(e.target.value) || 0;
+        document.getElementById('cfgSpeedVal').innerText = (v >= 0 ? `+${v}%` : `${v}%`);
+      });
+    }
+    if (cfgPitch) {
+      cfgPitch.addEventListener('input', (e) => {
+        const v = parseInt(e.target.value) || 0;
+        document.getElementById('cfgPitchVal').innerText = (v >= 0 ? `+${v}Hz` : `${v}Hz`);
+      });
+    }
+    if (cfgBlur) {
+      cfgBlur.addEventListener('input', (e) => {
+        const v = parseInt(e.target.value) || 16;
+        document.getElementById('cfgBlurVal').innerText = `${v}px`;
+        document.documentElement.style.setProperty('--glass-blur', `${v}px`);
+      });
+    }
+    if (cfgOpacity) {
+      cfgOpacity.addEventListener('input', (e) => {
+        const v = parseInt(e.target.value) || 68;
+        document.getElementById('cfgOpacityVal').innerText = `${v}%`;
+        document.documentElement.style.setProperty('--glass-opacity', (v / 100).toString());
+      });
+    }
+
+    // Escape Key Listener to dismiss open modals
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (sessionsModal && sessionsModal.classList.contains('open')) closeSessionsModal();
+        if (configModal && configModal.classList.contains('open')) closeConfigModal();
+      }
+    });
+
+    // =========================================================================
+    // SESSIONS & CONFIG API OPERATIONS
+    // =========================================================================
+    let activeSessionId = '';
+
+    async function fetchSessionsList() {
+      try {
+        const res = await fetch('/api/sessions');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success) {
+          activeSessionId = data.active_session_id || '';
+          const sessions = data.sessions || [];
+          const sessionBadge = document.getElementById('sessionBadge');
+          const sessionsTotalBadge = document.getElementById('sessionsTotalBadge');
+          if (sessionBadge) sessionBadge.innerText = sessions.length;
+          if (sessionsTotalBadge) sessionsTotalBadge.innerText = `${sessions.length} เซสชั่น`;
+
+          const listEl = document.getElementById('sessionsList');
+          if (!listEl) return;
+
+          if (sessions.length === 0) {
+            listEl.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--text-dim); font-size:0.85rem;">ยังไม่มีประวัติการสนทนาค่ะ เริ่มคุยกับมายได้เลยนะคะ 💖</div>`;
+            return;
+          }
+
+          listEl.innerHTML = sessions.map(s => {
+            const isActive = s.id === activeSessionId;
+            const updatedDate = s.updated_at ? new Date(s.updated_at * 1000).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) : '';
+            return `
+              <div class="session-card ${isActive ? 'active' : ''}" onclick="switchSession('${escapeHtml(s.id)}')">
+                <div class="session-card-info">
+                  <div class="session-title">${escapeHtml(s.title || 'บทสนทนา')}</div>
+                  <div class="session-meta">
+                    <span>🕒 ${updatedDate}</span>
+                    <span class="session-count-badge">💬 ${s.message_count || 0} ข้อความ</span>
+                  </div>
+                </div>
+                ${isActive ? '<span class="session-tag active">🟢 ใช้งานอยู่</span>' : '<span style="font-size:0.8rem; color:var(--text-dim);">เลือก ➔</span>'}
+              </div>
+            `;
+          }).join('');
+        }
+      } catch (e) {
+        console.warn('Could not fetch sessions:', e);
+      }
+    }
+
+    async function switchSession(sessionId) {
+      if (!sessionId) return;
+      if (sessionId === activeSessionId) {
+        closeSessionsModal();
+        return;
+      }
+      try {
+        const res = await fetch('/api/sessions/switch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId })
+        });
+        const data = await res.json();
+        if (data.success) {
+          activeSessionId = data.active_session_id;
+          chatBox.innerHTML = '';
+          if (data.history && data.history.length > 0) {
+            data.history.forEach(msg => {
+              const sender = (msg.role === 'user' || msg.sender === 'user') ? 'user' : 'maymint';
+              const text = msg.content || msg.text || '';
+              if (text) appendChatMessage(sender, text);
+            });
+          } else {
+            chatBox.innerHTML = `
+              <div class="msg-row">
+                <div class="msg-bubble maymint">
+                  🌸 <strong>มายมิ้นท์:</strong> สลับมาที่เซสชั่นนี้แล้วค่ะบอส พร้อมคุยต่อแล้วนะคะ 💖✨
+                </div>
+              </div>
+            `;
+          }
+          closeSessionsModal();
+          fetchSessionsList();
+          showToast('สลับบทสนทนาเรียบร้อยแล้วค่ะ ✨');
+        }
+      } catch (e) {
+        showToast('เกิดข้อผิดพลาดในการสลับเซสชั่นค่ะ 🥺', '❌');
+      }
+    }
+
+    async function createNewSession() {
+      try {
+        const res = await fetch('/api/sessions/new', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (data.success) {
+          activeSessionId = data.active_session_id;
+          chatBox.innerHTML = `
+            <div class="msg-row">
+              <div class="msg-bubble maymint">
+                🌸 <strong>มายมิ้นท์:</strong> เริ่มต้นบทสนทนาใหม่แล้วค่ะบอส! วันนี้มีอะไรให้มายช่วยดูแลบ้างคะ สั่งงานหรือคุยเล่นกับมายได้เลยนะคะ 💖✨
+              </div>
+            </div>
+          `;
+          closeSessionsModal();
+          fetchSessionsList();
+          showToast('เริ่มต้นบทสนทนาใหม่แล้วค่ะ 🌸');
+        }
+      } catch (e) {
+        showToast('สร้างเซสชั่นใหม่ไม่สำเร็จค่ะ 🥺', '❌');
+      }
+    }
+
+    async function loadChatHistory() {
+      try {
+        const res = await fetch('/api/history');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success && Array.isArray(data.history) && data.history.length > 0) {
+          chatBox.innerHTML = '';
+          data.history.forEach(msg => {
+            const sender = (msg.role === 'user' || msg.sender === 'user') ? 'user' : 'maymint';
+            const text = msg.content || msg.text || '';
+            if (text) appendChatMessage(sender, text);
+          });
+        }
+      } catch (e) {
+        console.warn('Could not load history:', e);
+      }
+    }
+
+    async function loadConfig() {
+      try {
+        const res = await fetch('/api/config');
+        if (!res.ok) return;
+        const cfg = await res.json();
+        
+        const voiceSelect = document.getElementById('cfgVoice');
+        const speedInput = document.getElementById('cfgSpeed');
+        const pitchInput = document.getElementById('cfgPitch');
+        const blurInput = document.getElementById('cfgBlur');
+        const opacityInput = document.getElementById('cfgOpacity');
+
+        if (voiceSelect && cfg.voice) voiceSelect.value = cfg.voice;
+        
+        if (speedInput && cfg.speed) {
+          const num = parseInt(String(cfg.speed).replace('%', '').replace('+', '')) || 0;
+          speedInput.value = num;
+          document.getElementById('cfgSpeedVal').innerText = (num >= 0 ? `+${num}%` : `${num}%`);
+        }
+
+        if (pitchInput && cfg.pitch) {
+          const num = parseInt(String(cfg.pitch).replace('Hz', '').replace('+', '')) || 0;
+          pitchInput.value = num;
+          document.getElementById('cfgPitchVal').innerText = (num >= 0 ? `+${num}Hz` : `${num}Hz`);
+        }
+
+        if (blurInput && cfg.glass_blur !== undefined) {
+          blurInput.value = cfg.glass_blur;
+          document.getElementById('cfgBlurVal').innerText = `${cfg.glass_blur}px`;
+          document.documentElement.style.setProperty('--glass-blur', `${cfg.glass_blur}px`);
+        }
+
+        if (opacityInput && cfg.glass_opacity !== undefined) {
+          const pct = Math.round(cfg.glass_opacity * 100);
+          opacityInput.value = pct;
+          document.getElementById('cfgOpacityVal').innerText = `${pct}%`;
+          document.documentElement.style.setProperty('--glass-opacity', (pct / 100).toString());
+        }
+
+        if (cfg.auto_speak !== undefined && autoSpeakToggle) {
+          autoSpeakToggle.checked = Boolean(cfg.auto_speak);
+        }
+      } catch (e) {
+        console.warn('Could not load config:', e);
+      }
+    }
+
+    async function saveConfig() {
+      const voice = document.getElementById('cfgVoice').value;
+      const speedNum = parseInt(document.getElementById('cfgSpeed').value) || 0;
+      const speed = speedNum >= 0 ? `+${speedNum}%` : `${speedNum}%`;
+      const pitchNum = parseInt(document.getElementById('cfgPitch').value) || 0;
+      const pitch = pitchNum >= 0 ? `+${pitchNum}Hz` : `${pitchNum}Hz`;
+      const blur = parseInt(document.getElementById('cfgBlur').value) || 16;
+      const opacity = (parseInt(document.getElementById('cfgOpacity').value) || 68) / 100;
+
+      const payload = {
+        voice: voice,
+        speed: speed,
+        pitch: pitch,
+        glass_blur: blur,
+        glass_opacity: opacity,
+        auto_speak: autoSpeakToggle.checked
+      };
+
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          document.documentElement.style.setProperty('--glass-blur', `${blur}px`);
+          document.documentElement.style.setProperty('--glass-opacity', opacity.toString());
+          closeConfigModal();
+          showToast('บันทึกการตั้งค่าเรียบร้อยแล้วค่ะบอส 💖');
+        }
+      } catch (e) {
+        showToast('บันทึกการตั้งค่าไม่สำเร็จค่ะ 🥺', '❌');
+      }
+    }
+
+    // =========================================================================
+    // SUBMIT TEXT MESSAGE & SEND BUTTON
+    // =========================================================================
     async function submitTextMessage() {
       const text = chatTextInput.value.trim();
       if (!text || isProcessing) return;
@@ -1392,6 +2066,9 @@
           })
         });
         const data = await res.json();
+        if (data.tool_events && Array.isArray(data.tool_events)) {
+          data.tool_events.forEach(te => renderToolBadge(te.tool, te.result));
+        }
         if (data.reply) {
           appendChatMessage('maymint', data.reply);
           if (autoSpeakToggle.checked && data.audio_url) {
@@ -1399,6 +2076,7 @@
             maymintAudioPlayer.play().catch(() => {});
           }
         }
+        fetchSessionsList();
         resetStages();
       } catch (err) {
         appendChatMessage('maymint', 'ขอโทษด้วยนะคะบอส มีข้อผิดพลาดในการเชื่อมต่อค่ะ');
