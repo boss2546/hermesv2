@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "updated_at": 1791690724,
+  "updated_at": 1792216538,
   "description": "คลังคำสั่งและคำศัพท์สำหรับถอดความเสียง ป้องกันคำเพี้ยน และจัดระเบียบบริบทระบบ",
   "categories": {
     "commands": {
@@ -458,6 +458,36 @@
           "source": "autonomous_ai_harvester",
           "auto_learned": true,
           "created_at": 1791690724
+        },
+        {
+          "id": "tec_421964",
+          "term": "Omnibus Stress Test",
+          "category": "technical",
+          "desc": "การทดสอบระบบสมบูรณ์แบบรอบสุดท้าย 11 เสาหลัก",
+          "aliases": [
+            "เทสละเอียด",
+            "เทสครั้งสุดท้าย"
+          ]
+        },
+        {
+          "id": "tec_489500",
+          "term": "Omnibus Stress Test",
+          "category": "technical",
+          "desc": "การทดสอบระบบสมบูรณ์แบบรอบสุดท้าย 11 เสาหลัก",
+          "aliases": [
+            "เทสละเอียด",
+            "เทสครั้งสุดท้าย"
+          ]
+        },
+        {
+          "id": "tec_538249",
+          "term": "Omnibus Stress Test",
+          "category": "technical",
+          "desc": "การทดสอบระบบสมบูรณ์แบบรอบสุดท้าย 11 เสาหลัก",
+          "aliases": [
+            "เทสละเอียด",
+            "เทสครั้งสุดท้าย"
+          ]
         }
       ]
     },
